@@ -43,6 +43,7 @@ import aprender
 import avisos
 import datos
 import conocimiento
+import copias
 import fechas
 import frases as _frases
 import memoria
@@ -281,8 +282,30 @@ def aprendizaje(mundo: Mundo) -> Resultado | None:
                      aprender.texto(pendientes), tipo="fallo")
 
 
+def copia(mundo: Mundo) -> Resultado | None:
+    """La copia del día. Calla si sale bien, que es lo normal.
+
+    Un aviso diario de «copia hecha» es ruido: a los tres días nadie lo lee,
+    y el día que ponga «no se pudo copiar» tampoco. Así que solo habla
+    cuando hay algo que contar.
+    """
+    try:
+        destino, copiados = copias.hacer()
+        copias.limpiar()
+    except OSError as error:
+        return Resultado("copia", "No he podido copiar las citas:",
+                         [f"{type(error).__name__}: {error}",
+                          "Si el disco está lleno, el bot tampoco podrá apuntar citas."],
+                         tipo="fallo")
+    if not copiados:
+        return None
+    return None if destino.exists() else Resultado(
+        "copia", "La copia no se ha guardado donde debía.", [str(destino)], tipo="fallo")
+
+
 TODOS = {
     "recordatorios": recordatorios,
+    "copia": copia,
     "aprendizaje": aprendizaje,
     "resumen": resumen,
     "huecos": huecos,

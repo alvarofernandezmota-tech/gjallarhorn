@@ -345,6 +345,26 @@ diagnóstico se pega en un chat, y el panel es la libreta del dueño dentro de
 su tailnet. El puerto que se publica en internet no tiene ni ruta para esto,
 y hay pruebas que lo comprueban.
 
+## Copias: lo peor es perder las citas
+
+Una copia al día de las citas, los clientes y los avisos, dentro de la
+carpeta del negocio y en JSON sin comprimir —el día malo no quieres depender
+de una herramienta para abrir tu agenda—:
+
+```bash
+make copia            # la de hoy, y tira las viejas (se guardan 14)
+make copias           # qué copias hay
+python3 copias.py --restaurar 2026-09-11
+```
+
+Restaurar **no borra lo que hay**: antes guarda el estado actual en
+`copias/antes-de-restaurar-…`. Restaurar la copia equivocada y quedarse sin
+las dos versiones es un error que solo se comete una vez.
+
+La hace sola uno de los agentes cada mañana, y solo habla si algo falla. No
+sustituye a una copia fuera de la máquina: si arde la máquina, arden las
+copias. Para eso, `GJALLARHORN_DATOS` a una carpeta que ya sincronices.
+
 ## Lo que no supo contestar
 
 Un recepcionista nuevo pregunta: «oye, me han llamado tres veces preguntando

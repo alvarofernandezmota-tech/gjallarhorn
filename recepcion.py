@@ -1126,6 +1126,14 @@ class Conversacion:
         if self.frases.reconoce("colgar", comparable):
             return self._despedida()
 
+        # «A nombre de mi mujer»: ha dicho «a nombre de» y lo de detrás no es
+        # un nombre. Preguntarlo es mejor que tomar el recado, que era lo que
+        # pasaba: quien intentaba dar el nombre se llevaba un «tomo nota».
+        if NOMBRE.search(limpia) and nombre_dado is None:
+            if self.cita is not None and not self.cita.cerrada:
+                self.esperando = "nombre"
+            return Respuesta(self.frases.decir("pide_nombre"), "cita")
+
         # «Hola, buenas» a secas, o un «vale» de asentir: se le invita a
         # hablar, no se toma nota. Con una cita a medias se repite lo que
         # faltaba. Un «vale» contestado con «tomo nota y le devolvemos la
