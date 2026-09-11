@@ -61,6 +61,9 @@ cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
 buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
 	$(PY) rag.py "$(FRASE)" --negocio $(NEGOCIO)
 
+panel: $(PY)  ## el dia del dueño en la terminal (en el movil: /panel)
+	$(PY) panel.py --negocio $(NEGOCIO)
+
 agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
 	$(PY) agentes.py --negocio $(NEGOCIO)
 

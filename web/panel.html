@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{NEGOCIO}} · el día</title>
+<style>
+  :root { color-scheme: light dark; --fondo:#faf9f7; --texto:#1c1b19; --linea:#e2ded8;
+          --tarjeta:#fff; --acento:#1a73e8; --rojo:#d93025; --verde:#137333; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo:#17161a; --texto:#e9e7e4; --linea:#2e2c33; --tarjeta:#201f25;
+            --acento:#8ab4f8; --rojo:#f28b82; --verde:#81c995; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+         background:var(--fondo); color:var(--texto); padding-bottom:env(safe-area-inset-bottom); }
+  header { padding:14px 16px; border-bottom:1px solid var(--linea);
+           display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+  header b { font-size:16px; }
+  header small { opacity:.6; font-size:12px; }
+  main { padding:14px 16px 28px; max-width:44rem; margin:0 auto; }
+  .cuentas { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .cuenta { flex:1 1 6.5rem; background:var(--tarjeta); border:1px solid var(--linea);
+            border-radius:12px; padding:9px 11px; }
+  .cuenta b { display:block; font-size:20px; line-height:1.2; }
+  .cuenta small { opacity:.6; font-size:11.5px; }
+  h2 { font-size:14px; text-transform:uppercase; letter-spacing:.04em; opacity:.6;
+       margin:20px 0 8px; }
+  .cita, .aviso { background:var(--tarjeta); border:1px solid var(--linea);
+                  border-radius:12px; padding:10px 12px; margin-bottom:8px;
+                  display:flex; gap:10px; align-items:flex-start; }
+  .hora { font-weight:700; font-variant-numeric:tabular-nums; min-width:3.4rem; }
+  .quien { flex:1; min-width:0; }
+  .quien b { display:block; }
+  .quien small { opacity:.65; font-size:12.5px; }
+  .quien a { color:inherit; }
+  .quitar { border:0; background:transparent; color:var(--rojo); font:inherit;
+            cursor:pointer; padding:2px 6px; border-radius:8px; }
+  .quitar:hover { background:color-mix(in srgb, var(--rojo) 12%, transparent); }
+  .huecos { font-size:13.5px; opacity:.75; line-height:1.8; }
+  .huecos span { border:1px dashed var(--linea); border-radius:9px; padding:2px 7px;
+                 margin-right:5px; white-space:nowrap; }
+  .vacio { opacity:.55; font-size:14px; }
+  .aviso small { opacity:.6; font-size:11.5px; display:block; }
+  .aviso.nuevo { border-left:3px solid var(--acento); }
+  .aviso .texto { flex:1; min-width:0; white-space:pre-wrap; word-wrap:break-word;
+                  font-size:14px; }
+  footer { padding:0 16px 24px; max-width:44rem; margin:0 auto; display:flex; gap:8px; }
+  footer button { flex:1; border:1px solid var(--linea); border-radius:10px; padding:10px;
+                  font:inherit; background:var(--tarjeta); color:inherit; cursor:pointer; }
+  #estado { font-size:12px; opacity:.6; text-align:center; padding:6px 16px 18px; }
+</style>
+
+<header>
+  <b>{{NEGOCIO}}</b>
+  <small id="reloj">cargando…</small>
+</header>
+
+<main id="cuerpo">
+  <p class="vacio">Cargando el día…</p>
+</main>
+
+<footer>
+  <button id="refrescar">Actualizar</button>
+  <button id="vistos">Dar por leídos los avisos</button>
+</footer>
+<div id="estado"></div>
+
+<script>
+const cuerpo = document.getElementById("cuerpo");
+const reloj = document.getElementById("reloj");
+const estado = document.getElementById("estado");
+
+// Cada 60 s. Esto lo mira alguien con el móvil en la mano mientras trabaja:
+// más a menudo es gastar el servidor —que es de un hilo y puede estar
+// atendiendo una llamada— para ver lo mismo.
+const CADA = 60000;
+
+function escapar(texto) {
+  const d = document.createElement("div");
+  d.textContent = texto ?? "";
+  return d.innerHTML;
+}
+
+function pintarCita(cita) {
+  const quien = cita.nombre || "sin nombre";
+  const tel = cita.telefono
+    ? ` · <a href="tel:${escapar(cita.telefono)}">${escapar(cita.telefono)}</a>` : "";
+  const precio = cita.precio ? ` · ${escapar(cita.precio)}` : "";
+  return `<div class="cita">
+    <div class="hora">${escapar(cita.hora)}</div>
+    <div class="quien"><b>${escapar(quien)}</b>
+      <small>${escapar(cita.servicio || "sin servicio")}${precio}${tel}</small></div>
+    <button class="quitar" data-id="${cita.id}" title="Anular esta cita">Anular</button>
+  </div>`;
+}
+
+function pintarDia(dia) {
+  const cabeza = dia.dicho.charAt(0).toUpperCase() + dia.dicho.slice(1);
+  if (dia.cerrado) return `<h2>${escapar(cabeza)}</h2><p class="vacio">Cerrado.</p>`;
+  const citas = dia.citas.length
+    ? dia.citas.map(pintarCita).join("")
+    : `<p class="vacio">Ninguna cita todavía.</p>`;
+  const huecos = dia.huecos.length
+    ? `<p class="huecos">Libre: ${dia.huecos.map(h => `<span>${escapar(h)}</span>`).join("")}</p>`
+    : `<p class="huecos">Sin huecos libres.</p>`;
+  const previsto = dia.previsto
+    ? ` · previsto ${Math.round(dia.previsto)} €${dia.sin_precio ? ` (+${dia.sin_precio} sin precio)` : ""}`
+    : "";
+  return `<h2>${escapar(cabeza)}${escapar(previsto)}</h2>${citas}${huecos}`;
+}
+
+function pintarAviso(aviso) {
+  return `<div class="aviso ${aviso.visto ? "" : "nuevo"}">
+    <div class="texto">${escapar(aviso.texto)}
+      <small>${escapar(aviso.fecha)} ${escapar(aviso.hora)} · ${escapar(aviso.tipo)}</small>
+    </div></div>`;
+}
+
+function pintar(datos) {
+  reloj.textContent = `${datos.fecha} · ${datos.ahora}`;
+  const c = datos.cuentas;
+  cuerpo.innerHTML = `
+    <div class="cuentas">
+      <div class="cuenta"><b>${c.citas_hoy}</b><small>citas hoy</small></div>
+      <div class="cuenta"><b>${c.huecos_hoy}</b><small>huecos libres</small></div>
+      <div class="cuenta"><b>${Math.round(c.previsto_hoy)} €</b><small>previsto</small></div>
+      <div class="cuenta"><b>${c.sin_ver}</b><small>avisos sin ver</small></div>
+    </div>
+    ${datos.dias.map(pintarDia).join("")}
+    <h2>Últimos avisos</h2>
+    ${datos.avisos.length ? datos.avisos.map(pintarAviso).join("")
+                          : `<p class="vacio">Nada que contar.</p>`}`;
+
+  for (const boton of cuerpo.querySelectorAll(".quitar")) {
+    boton.onclick = () => anular(boton.dataset.id, boton);
+  }
+}
+
+async function cargar() {
+  try {
+    const r = await fetch("/panel/datos");
+    if (!r.ok) throw new Error(`el servidor ha dicho ${r.status}`);
+    pintar(await r.json());
+    estado.textContent = "";
+  } catch (e) {
+    estado.textContent = "No he podido leer el día: " + e.message;
+  }
+}
+
+async function anular(id, boton) {
+  // Con confirmación y a propósito: quitar una cita dejando al cliente
+  // plantado no puede ser un toque sin querer con el móvil en el bolsillo.
+  if (!confirm("¿Anular esta cita? El cliente no se entera solo.")) return;
+  boton.disabled = true;
+  try {
+    const r = await fetch("/panel/anular", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: Number(id) }),
+    });
+    const datos = await r.json();
+    estado.textContent = datos.anulada
+      ? `Anulada: ${datos.anulada.nombre || "sin nombre"}, ${datos.anulada.hora}.`
+      : "Esa cita ya no estaba.";
+  } catch (e) {
+    estado.textContent = "No he podido anularla: " + e.message;
+  }
+  await cargar();
+}
+
+document.getElementById("refrescar").onclick = cargar;
+document.getElementById("vistos").onclick = async () => {
+  try {
+    await fetch("/panel/vistos", { method: "POST" });
+  } catch (e) { /* dar por leído nunca debe romper la pantalla */ }
+  await cargar();
+};
+
+cargar();
+setInterval(cargar, CADA);
+</script>
