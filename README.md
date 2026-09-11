@@ -110,6 +110,22 @@ cabe, ofrece los huecos que sí hay, cerca de lo que pidió:
 Y resuelve solo el «¿a las cinco de la mañana o de la tarde?» cuando solo una
 de las dos cae en horario. Las citas se ven con `python3 agenda.py`.
 
+Quien pregunta qué hay, lo oye; y a «¿a qué hora?» se puede contestar como se
+contesta por teléfono:
+
+```
+— ¿Tenéis hueco el jueves por la tarde?   El jueves 17 tengo las cuatro y media, las cinco o
+                                          las cinco y media de la tarde. ¿Cuál le viene bien?
+— El primero                              ¿A nombre de quién se la apunto?
+— Cuando podáis                           Lo más pronto que tengo es hoy a las doce, mañana a
+                                          las nueve o el martes 15 a las diez. ¿Le viene bien alguno?
+— Las cinco menos cuarto                  (04:45 → con agenda, «a esa hora no estamos abiertos»)
+— Sobre las cinco                         ¿Las cinco de la tarde?
+```
+
+«A las 5:30», que es como transcribe el proveedor «las cinco y media», **no**
+se da por acotado: se pregunta si es de la tarde, como con «las cinco».
+
 Sin `[horario]`, se toma nota y se promete confirmar, como antes. A propósito:
 antes que reservar contra un horario que nadie ha escrito, mejor no reservar.
 

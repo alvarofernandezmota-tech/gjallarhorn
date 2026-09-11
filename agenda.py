@@ -193,8 +193,12 @@ class Agenda:
         return None
 
     def huecos(self, fecha: str, duracion: int, desde: int | None = None,
-               tope: int = 3) -> list[Hueco]:
-        """Los primeros huecos libres de un día en los que cabe `duracion`."""
+               tope: int = 3, hasta: int | None = None) -> list[Hueco]:
+        """Los primeros huecos libres de un día en los que cabe `duracion`.
+
+        `desde` y `hasta` en minutos del día: «por la tarde» son los huecos
+        desde las 14:00; «por la mañana», los que acaban antes.
+        """
         if self.horario is None:
             return []
         dia = date.fromisoformat(fecha)
@@ -211,6 +215,7 @@ class Agenda:
             inicio = ini
             while inicio + duracion <= fin:
                 if (desde is None or inicio >= desde) \
+                        and (hasta is None or inicio + duracion <= hasta) \
                         and not self._ocupado(fecha, inicio, duracion):
                     encontrados.append(Hueco(fecha, _hora(inicio)))
                     if len(encontrados) >= tope:
