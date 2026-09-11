@@ -391,7 +391,7 @@ class Recepcion(Comun):
         # «el jueves» y «a las cinco» signifiquen algo dos turnos despues.
         respuesta = self.charla().atender(oido)
         if respuesta.aviso:
-            avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
+            avisos.registrar(respuesta.tipo_aviso, respuesta.aviso, respuesta.datos)
             avisar.en_segundo_plano()
         print(f"🎙️  {oido}\n  → {respuesta.texto}", flush=True)
 

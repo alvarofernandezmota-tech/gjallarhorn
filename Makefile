@@ -64,6 +64,9 @@ buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
 panel: $(PY)  ## el dia del dueño en la terminal (en el movil: /panel)
 	$(PY) panel.py --negocio $(NEGOCIO)
 
+aprender: $(PY)  ## que te preguntan y no supo contestar
+	$(PY) aprender.py --negocio $(NEGOCIO)
+
 agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
 	$(PY) agentes.py --negocio $(NEGOCIO)
 

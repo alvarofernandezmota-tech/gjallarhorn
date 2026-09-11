@@ -39,6 +39,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 import agenda as _agenda
+import aprender
 import avisos
 import conocimiento
 import fechas
@@ -53,6 +54,12 @@ PERDIDO_DIAS = 180
 # Cuántos días mira el agente de huecos. Más de una semana no sirve de nada:
 # los huecos de dentro de tres semanas se llenan solos.
 HUECOS_DIAS = 7
+
+# Cuánto mira atrás el agente que dice lo que no supo contestar, y cuántas
+# veces tienen que haberlo preguntado para que salga. Una vez es anécdota;
+# dos ya es un cliente perdido que se repite.
+APRENDER_DIAS = 30
+MINIMO_PARA_CONTARLO = 2
 
 
 @dataclass(frozen=True)
@@ -256,8 +263,26 @@ def revision(mundo: Mundo) -> Resultado | None:
     return Resultado("revision", "Revisión del negocio:", problemas, tipo="fallo")
 
 
+def aprendizaje(mundo: Mundo) -> Resultado | None:
+    """Lo que le han preguntado y no supo contestar, para que alguien lo escriba.
+
+    Es el agente que hace que esto mejore con el uso. No aprende solo —eso
+    sería inventarse respuestas—: le pasa la lista a quien sabe la respuesta.
+
+    Solo lo repetido (`MINIMO_PARA_CONTARLO`): una pregunta suelta rara la
+    hace cualquiera, y una lista con todas es una lista que no se lee.
+    """
+    pendientes = aprender.faltas(mundo.negocio.conocimiento, dias=APRENDER_DIAS,
+                                 minimo=MINIMO_PARA_CONTARLO, hoy=mundo.hoy)
+    if not pendientes:
+        return None
+    return Resultado("aprendizaje", "Lo que te preguntan y no sé contestar:",
+                     aprender.texto(pendientes), tipo="fallo")
+
+
 TODOS = {
     "recordatorios": recordatorios,
+    "aprendizaje": aprendizaje,
     "resumen": resumen,
     "huecos": huecos,
     "seguimiento": seguimiento,

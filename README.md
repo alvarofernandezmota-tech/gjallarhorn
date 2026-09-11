@@ -305,6 +305,32 @@ diagnóstico se pega en un chat, y el panel es la libreta del dueño dentro de
 su tailnet. El puerto que se publica en internet no tiene ni ruta para esto,
 y hay pruebas que lo comprueban.
 
+## Lo que no supo contestar
+
+Un recepcionista nuevo pregunta: «oye, me han llamado tres veces preguntando
+por las uñas, ¿eso lo hacemos?». Esto es ese momento, y es lo que hace que
+el bot mejore con el uso:
+
+```bash
+make aprender
+```
+```
+Lo que el agente no supo contestar (últimos 30 días):
+
+preguntaron algo que no está escrito en ningún sitio:
+  «¿hacéis uñas?» (3 veces) → faq.md
+preguntaron por un servicio que no está en la tabla de precios:
+  «¿cuánto vale un masaje?» (2 veces) → tarifas.md
+```
+
+Escribes esas dos cosas en el fichero que te dice y a partir de ahí las
+contesta solo. **No aprende por su cuenta**, a propósito: aprender solo aquí
+sería inventarse respuestas, y lo que sabe el negocio lo escribe el negocio.
+
+Sale también en el panel, y uno de los agentes lo manda al móvil cuando algo
+se repite. Las preguntas dichas de tres formas distintas se agrupan en una
+línea: se agrupan por la palabra que más se repite entre lo que te preguntan.
+
 ## El teléfono de verdad
 
 Un proveedor de telefonía que hable TwiML (Twilio, Telnyx) recibe la llamada

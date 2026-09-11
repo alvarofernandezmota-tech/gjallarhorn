@@ -73,6 +73,11 @@ class Respuesta:
     aviso: str | None = None   # qué registrar en avisos.py, si procede
     tipo_aviso: str = "llamada"
     cuelga: bool = False       # con esta frase se termina la llamada
+    # Lo que hay que saber del aviso **sin volver a leer su texto**: qué le
+    # faltó al agente y con qué frase. De aquí sale `aprender.py`, que le dice
+    # al dueño qué le falta escribir. Parsear luego la frase del aviso para
+    # sacar eso es justo el apaño que esto evita.
+    datos: dict | None = None
 
 
 # Lo que se reconoce de quien llama vive en `frases.py` y se puede cambiar por
@@ -139,7 +144,7 @@ def _responder_precio(frase: str, base: Path | None = None) -> Respuesta:
         return Respuesta(
             frases.decir("precio_no_esta"), "precio",
             aviso=f"Preguntó un precio que no está en tarifas: «{frase}»",
-            tipo_aviso="fallo")
+            tipo_aviso="fallo", datos={"falta": "tarifa", "frase": frase})
     if len(encontrados) == 1:
         return _precio_de(encontrados[0], frases)
     opciones = "; ".join(f"{s['servicio']} {s['precio']}" for s in encontrados)
@@ -197,7 +202,7 @@ def _responder_horario(frase: str, base: Path | None = None) -> Respuesta:
         return Respuesta(respuesta, "horario")
     return Respuesta(_frases.cargar(base).decir("sin_horario"), "horario",
                      aviso="Preguntó el horario y no está en la FAQ",
-                     tipo_aviso="fallo")
+                     tipo_aviso="fallo", datos={"falta": "horario"})
 
 
 def atender(frase: str, base: Path | None = None) -> Respuesta:
@@ -386,6 +391,7 @@ class Conversacion:
         self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
         self._candidatas: list[dict] = []     # citas entre las que hay que elegir al anular
         self._ofrecidos: list = []            # huecos ofrecidos; «sí» o «el primero» elige uno
+        self._veces_hora = 0                  # cuántas veces se ha preguntado la hora
         self.recuerdos = None                 # memoria.Ficha de quien llama, si se le conoce
         self.reservadas: list[dict] = []      # lo que se ha cerrado en esta llamada
         self.anulaciones = 0                  # y lo que se ha quitado
@@ -455,7 +461,7 @@ class Conversacion:
     def _abrir_cita(self) -> Cita:
         self.cita = Cita(servicio=self.servicio["servicio"] if self.servicio else None,
                          nombre=self.nombre)
-        self._ofrecidos = []
+        self._ofrecidos, self._veces_hora = [], 0
         return self.cita
 
     def _pedir_servicio(self) -> Respuesta | None:
@@ -561,7 +567,7 @@ class Conversacion:
     def _coger_hueco(self, hueco) -> Respuesta:
         cita = self.cita
         cita.fecha, cita.hora, cita.acotada = hueco.fecha, hueco.hora, True
-        self._ofrecidos = []
+        self._ofrecidos, self._veces_hora = [], 0
         return self._seguir_cita()
 
     def _seguir_cita(self) -> Respuesta:
@@ -576,6 +582,16 @@ class Conversacion:
         if falta == "fecha":
             return Respuesta(self.frases.decir("pide_dia", servicio=que), "cita")
         if falta == "hora":
+            # Ya se preguntó una vez y no llega ninguna hora: se ofrecen los
+            # huecos en vez de repetir. Un recepcionista no pregunta tres
+            # veces lo mismo, y esta era la forma de quedarse en bucle: quien
+            # llamó pidiendo «hueco por la mañana» se pasó la llamada oyendo
+            # «¿a qué hora?» sin que nadie le dijera qué horas había.
+            if self.agenda is not None and (self._ofreciendo or self._veces_hora >= 1):
+                self._ofreciendo = False
+                self._veces_hora = 0
+                return self._ofrecer_huecos()
+            self._veces_hora += 1
             if cita.franja:
                 return Respuesta(self.frases.decir(
                     "pide_hora_franja", fecha=self._dicha(cita.fecha),
@@ -982,7 +998,7 @@ class Conversacion:
                 return Respuesta(
                     self.frases.decir("precio_no_esta"), "precio",
                     aviso=f"Preguntó un precio que no está en tarifas: «{limpia}»",
-                    tipo_aviso="fallo")
+                    tipo_aviso="fallo", datos={"falta": "tarifa", "frase": limpia})
 
         if viva and self.esperando == "franja":
             if (hecho := self._confirmar_franja(comparable)) is not None:
@@ -1076,11 +1092,20 @@ class Conversacion:
             if not conocimiento.tarifas(self.base):
                 return Respuesta(self.frases.decir("sin_tarifas"), "precio",
                                  aviso=f"Sin tarifas cargadas. Preguntó: «{limpia}»",
-                                 tipo_aviso="fallo")
+                                 tipo_aviso="fallo", datos={"falta": "tarifas"})
             return self._con_lo_pendiente(self._precio(limpia))
 
         if self.frases.reconoce("horario", comparable):
             return self._con_lo_pendiente(_responder_horario(limpia, self.base))
+
+        # «¿Eres un robot?», «¿me pasas con alguien?»: se dice lo que es y se
+        # toma el recado. Va **antes** que la FAQ: «¿me puedes pasar con
+        # alguien?» se llevaba «para un corte, si hay hueco, se puede pasar
+        # sin cita», que es contestar a otra cosa a quien pide una persona.
+        if self.frases.reconoce("humano", comparable):
+            return Respuesta(self.frases.decir("humano"), "recado",
+                             aviso=f"Pide hablar con una persona: «{limpia}»",
+                             datos={"falta": "persona", "frase": limpia})
 
         # Lo demás que esté escrito en los .md del negocio: tarjeta, dónde, si
         # hace falta cita, el aparcamiento… Lo busca `rag.py` y se contesta con
@@ -1094,18 +1119,17 @@ class Conversacion:
         if self.frases.reconoce("colgar", comparable):
             return self._despedida()
 
-        # «Hola, buenas» a secas: se le invita a hablar, no se toma nota. Con
-        # una cita a medias se repite lo que faltaba.
+        # «Hola, buenas» a secas, o un «vale» de asentir: se le invita a
+        # hablar, no se toma nota. Con una cita a medias se repite lo que
+        # faltaba. Un «vale» contestado con «tomo nota y le devolvemos la
+        # llamada» es lo que hace que esto suene a contestador.
+        if len(comparable.split()) <= 2 and self.frases.reconoce("si", comparable) \
+                and not viva:
+            return Respuesta(self.frases.decir("digame"), "saludo")
         if self.frases.reconoce("saludo", comparable) and len(comparable.split()) <= 4:
             if viva:
                 return self._seguir_cita()
             return Respuesta(self.frases.decir("digame"), "saludo")
-
-        # «¿Eres un robot?», «¿puedo hablar con alguien?»: se dice lo que es y
-        # se toma el recado. Nunca se hace pasar por una persona.
-        if self.frases.reconoce("humano", comparable):
-            return Respuesta(self.frases.decir("humano"), "recado",
-                             aviso=f"Pide hablar con una persona: «{limpia}»")
 
         # Nada que reconocer por reglas ni en lo que hay escrito. Antes de
         # rendirse, el LLM, si lo hay: devuelve intención y datos con forma
@@ -1135,7 +1159,8 @@ class Conversacion:
         self._sin_entender += 1
         clave = "recado_insistente" if self._sin_entender >= 3 else "recado"
         return Respuesta(self.frases.decir(clave), "recado",
-                         aviso=f"Recado: «{limpia}»", cuelga=clave == "recado_insistente")
+                         aviso=f"Recado: «{limpia}»", cuelga=clave == "recado_insistente",
+                         datos={"falta": "respuesta", "frase": limpia})
 
     def _despedida(self) -> Respuesta:
         return Respuesta(self.frases.decir("despedida"), "recado", cuelga=True)
@@ -1168,7 +1193,7 @@ class Conversacion:
             return Respuesta(
                 self.frases.decir("precio_no_esta"), "precio",
                 aviso=f"Preguntó un precio que no está en tarifas: «{limpia}»",
-                tipo_aviso="fallo")
+                tipo_aviso="fallo", datos={"falta": "tarifa", "frase": limpia})
         if self.servicio is not None:
             return _precio_de(self.servicio, self.frases)
         self._opciones, self.esperando = [], "cual"
@@ -1195,7 +1220,7 @@ class Conversacion:
                 return _precio_de(self.servicio, self.frases)
             return Respuesta(self.frases.decir("precio_no_esta"), "precio",
                              aviso=f"Preguntó un precio que no está en tarifas: «{limpia}»",
-                             tipo_aviso="fallo")
+                             tipo_aviso="fallo", datos={"falta": "tarifa", "frase": limpia})
         if entendido.intencion == "cita":
             if self.cita is None or self.cita.cerrada:
                 self._abrir_cita()
@@ -1250,7 +1275,7 @@ def llamada(audio: Path, negocio, transcriptor, locutor=None,
         respuesta = atender(dicho, negocio.conocimiento)
 
     if respuesta.aviso:
-        avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
+        avisos.registrar(respuesta.tipo_aviso, respuesta.aviso, respuesta.datos)
 
     salida = None
     if locutor is not None:

@@ -171,6 +171,7 @@ ENTIENDE = {
     # Quien pregunta si habla con una persona, o pide hablar con una.
     # Sin eñes: se compara sin tildes, y la eñe se queda en ene.
     "humano": ["robot", "maquina", "una persona", "un humano", "hablar con alguien",
+               "pasar con", "pasarme con", "pasame con", "me pasas con", "con alguien",
                "con el dueno", "con la duena", "con el encargado", "con la encargada",
                "con alguien", "eres real", "hay alguien", "persona de verdad",
                "una persona real", "con el jefe", "con la jefa"],

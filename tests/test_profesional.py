@@ -133,12 +133,14 @@ class TestLaFaqContesta(CasoProfesional):
     def test_en_mitad_de_una_cita_se_contesta_y_se_retoma(self):
         dicho = self.texto("quiero cita", "el jueves", "¿aceptáis tarjeta?")
         self.assertIn("Bizum y efectivo", dicho)
-        self.assertIn("¿A qué hora", dicho)
+        # Se retoma la cita: o se vuelve a preguntar la hora, o —si ya se
+        # preguntó una vez— se ofrecen las que hay, que es mejor que repetir.
+        self.assertTrue("¿A qué hora" in dicho or "viene bien" in dicho, dicho)
 
     def test_el_precio_en_mitad_de_una_cita_tambien_retoma(self):
         dicho = self.texto("quiero cita", "el jueves", "¿cuánto valen las mechas?")
         self.assertIn("65", dicho)
-        self.assertIn("¿A qué hora", dicho)
+        self.assertTrue("¿A qué hora" in dicho or "viene bien" in dicho, dicho)
 
     def test_lo_que_no_esta_en_la_faq_sigue_siendo_recado(self):
         self.assertIn("Tomo nota", self.texto("¿vendéis pelucas?"))
@@ -155,9 +157,13 @@ class TestLaFranjaSeRecuerda(CasoProfesional):
         self.assertEqual((self.llamada.cita.hora, self.llamada.cita.acotada), ("17:00", True))
 
     def test_dicha_al_preguntar_la_hora(self):
+        # Ya se preguntó la hora una vez, así que en vez de repetir se
+        # ofrecen las horas **de esa franja**, que es lo que prueba que la
+        # franja se ha recordado.
         dicho = self.texto("quiero cita", "el jueves", "por la mañana")
-        self.assertIn("por la mañana", dicho)
-        self.assertIn("¿A qué hora", dicho)
+        self.assertIn("de la mañana", dicho)
+        self.assertNotIn("de la tarde", dicho)
+        self.assertEqual(self.llamada.cita.franja, "manana")
         self.decir("a las once")
         self.assertEqual((self.llamada.cita.hora, self.llamada.cita.acotada), ("11:00", True))
 
@@ -331,3 +337,61 @@ class TestTelefoniaProfesional(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestNoSeQuedaEnBucle(CasoProfesional):
+    """Salió de una llamada entera simulada: el bot preguntaba «¿a qué hora?»
+    cuatro veces seguidas a quien había llamado justamente a preguntar qué
+    horas había. Preguntar dos veces lo mismo ya es un contestador."""
+
+    def test_a_la_segunda_vez_se_ofrecen_las_horas(self):
+        guion = ["quiero cita de tinte el jueves", "pues no sé", "lo que sea mejor"]
+        dichos = [self.llamada.atender(f).texto for f in guion]
+        self.assertIn("¿A qué hora", dichos[0])
+        self.assertTrue(any("viene bien" in d for d in dichos[1:]),
+                        f"no ha ofrecido ninguna hora: {dichos}")
+
+    def test_preguntar_por_huecos_acaba_ofreciendolos_aunque_no_diga_el_servicio(self):
+        dichos = [self.llamada.atender(f).texto
+                  for f in ["¿tenéis hueco el jueves por la tarde?", "el primero"]]
+        self.assertTrue(any("de la tarde" in d for d in dichos),
+                        f"nunca llegó a decir qué horas hay: {dichos}")
+
+    def test_y_esas_horas_se_pueden_coger(self):
+        self.texto("¿tenéis hueco el jueves por la tarde?", "para un tinte")
+        dicho = self.texto("el primero")
+        self.assertIn("¿A nombre de quién", dicho)
+        self.assertEqual(self.llamada.cita.servicio, "Tinte")
+        self.assertTrue(self.llamada.cita.hora)
+        self.assertIn("Reservada", self.texto("Marta"))
+
+
+class TestPedirUnaPersonaGanaALaFaq(CasoProfesional):
+    def test_pasame_con_alguien_no_se_contesta_con_la_faq(self):
+        # «¿Me puedes pasar con alguien?» se llevaba «para un corte, si hay
+        # hueco, se puede pasar sin cita»: contestar otra cosa a quien pide
+        # hablar con una persona.
+        respuesta = self.decir("¿me puedes pasar con alguien?")
+        self.assertIn("asistente automático", respuesta.texto)
+        self.assertEqual(respuesta.datos["falta"], "persona")
+
+    def test_las_formas_de_pedirlo(self):
+        for frase in ("¿me pasas con la dueña?", "quiero hablar con una persona",
+                      "¿eres un robot?", "¿me puedes pasar con alguien?"):
+            with self.subTest(frase=frase):
+                llamada = recepcion.Conversacion(self.negocio.conocimiento, agenda=self.agenda)
+                self.assertIn("asistente automático", llamada.atender(frase).texto)
+
+
+class TestUnValeSueltoNoEsUnRecado(CasoProfesional):
+    def test_vale_a_secas_invita_a_seguir(self):
+        respuesta = self.decir("vale")
+        self.assertIn("Dígame", respuesta.texto)
+        self.assertIsNone(respuesta.aviso)
+
+    def test_pero_en_mitad_de_una_cita_no_se_pierde_lo_que_faltaba(self):
+        self.texto("quiero cita", "el jueves")
+        self.assertNotIn("Dígame", self.texto("vale"))
+
+    def test_y_vale_gracias_sigue_siendo_la_despedida(self):
+        self.assertTrue(self.decir("vale, gracias").cuelga)

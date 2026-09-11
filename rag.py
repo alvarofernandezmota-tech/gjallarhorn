@@ -117,17 +117,25 @@ class Pasaje:
 
 
 def _singular(palabra: str) -> str:
-    """«novias» → «novia», «recogidos» → «recogido». El plural no es otra cosa.
+    """La raíz con la que se compara: «novias» → «novia», «masajes» → «masaj».
 
-    Es toda la morfología que hay aquí, y a propósito: un lematizador de
-    verdad es otra dependencia y otro sitio donde equivocarse. Lo que no
-    cubre —«aparcar» contra «aparcamiento»— lo cubren los sinónimos de
-    `frases.toml`, que los escribe quien conoce a su clientela.
+    Dos pasos, y el segundo es el que importa: se quita la ese del plural y
+    **luego la e final**. Sin el segundo paso, «masaje» y «masajes» eran dos
+    palabras distintas —una acababa en «masaje» y la otra en «masaj»— y la
+    misma pregunta salía en dos líneas. Con él, las dos caen en «masaj», que
+    es lo único que hace falta: esto no se le enseña a nadie, solo se compara.
+
+    Por eso tampoco importa que «flores» y «flor» acaben en «flor» y «clase»
+    en «clas»: mientras la regla se aplique igual a lo que pregunta el
+    cliente y a lo que escribió el dueño, casan. Es toda la morfología que
+    hay aquí, a propósito: un lematizador de verdad es otra dependencia y
+    otro sitio donde equivocarse, y lo que no cubre —«aparcar» contra
+    «aparcamiento»— lo cubren los sinónimos de `frases.toml`.
     """
-    if len(palabra) >= 6 and palabra.endswith("es"):
-        return palabra[:-2]
-    if len(palabra) >= 5 and palabra.endswith("s"):
-        return palabra[:-1]
+    if len(palabra) >= 4 and palabra.endswith("s"):
+        palabra = palabra[:-1]
+    if len(palabra) >= 5 and palabra.endswith("e"):
+        palabra = palabra[:-1]
     return palabra
 
 
@@ -172,7 +180,19 @@ def _utiles(texto: str) -> list[str]:
     lista y volvería a colarse.
     """
     crudas = [p for p in re.findall(r"\w+", texto) if p not in conocimiento.VACIAS]
-    return [_singular(p) for p in crudas if _singular(p) not in conocimiento.VACIAS]
+    return [_raiz(p) for p in crudas]
+
+
+def _raiz(palabra: str) -> str:
+    """La raíz, salvo que al quitarle el plural se convierta en una muletilla.
+
+    «uñas» sin tildes es «unas», y quitándole la ese queda «una», que es un
+    artículo y está en la lista de palabras vacías. Sin esta excepción, quien
+    preguntaba por las uñas se quedaba sin ninguna palabra que buscar: la
+    pregunta desaparecía entera.
+    """
+    raiz = _singular(palabra)
+    return palabra if raiz in conocimiento.VACIAS else raiz
 
 
 def _partir(texto: str, fuente: str) -> list[Pasaje]:

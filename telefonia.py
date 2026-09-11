@@ -271,7 +271,7 @@ class Centralita:
 
         respuesta = llamada.atender(dicho)
         if respuesta.aviso:
-            avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
+            avisos.registrar(respuesta.tipo_aviso, respuesta.aviso, respuesta.datos)
             avisar.en_segundo_plano()
         print(f"☎️  {dicho}\n  → {respuesta.texto}", flush=True)
 
