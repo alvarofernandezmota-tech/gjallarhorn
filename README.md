@@ -150,6 +150,33 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+## El teléfono de verdad
+
+Un proveedor de telefonía que hable TwiML (Twilio, Telnyx) recibe la llamada
+en tu número y hace un POST a `/telefono/entrada`; el servidor le contesta
+con lo que decir y se queda escuchando. **Cada llamada es su conversación**:
+pueden entrar dos a la vez. Quien ya llamó y dio su nombre, la próxima vez
+oye «Hola, Marta» y no se le vuelve a preguntar.
+
+```bash
+# .env: GJALLARHORN_TELEFONO_TOKEN=<el Auth Token del proveedor>
+make arrancar
+make funnel          # publica el puerto por Tailscale, sin abrir el router
+```
+
+Y en el proveedor, como webhook de voz, `https://<máquina>.<tailnet>.ts.net/telefono/entrada`.
+
+Aquí **no se usan Whisper ni Piper**: el proveedor transcribe y sintetiza en
+su lado. Va en décimas de segundo donde Whisper `small` tarda casi tres, y
+para el teléfono esa es la diferencia entre servir y no servir. El audio
+pasa por el proveedor, pero eso pasa con cualquier número: quien te da la
+línea oye la línea. Lo que sigue siendo de aquí es **la conversación, los
+precios y la agenda**: ni una palabra de lo que se le dice al cliente la
+pone el proveedor.
+
+Cada petición viene firmada con el token; la que no, 403 sin mirar nada.
+Sin token no hay webhook: antes que abierto, apagado.
+
 ## Un LLM, opcional, y solo donde las reglas no llegan
 
 Las reglas cubren precio, cita, horario y despedida; lo demás es «tomo nota».
@@ -231,6 +258,7 @@ gjallarhorn/
 ├─ agenda.py               los huecos: reserva de verdad contra el horario
 ├─ avisar.py               los avisos, al móvil por Telegram
 ├─ cerebro.py              el LLM, opcional: entiende, no habla ni pone precios
+├─ telefonia.py            el webhook del número de verdad, una conversación por llamada
 ├─ diagnostico.py          qué le pasa a esta máquina, en veinte líneas
 ├─ Makefile                instalar, arrancar, medir, estado: un comando cada uno
 ├─ negocio.py              un negocio = una carpeta

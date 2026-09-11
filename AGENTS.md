@@ -50,9 +50,10 @@ casa el 2026-09-11: una llamada por voz desde un iPhone, oída y contestada.
   2898 ms para 3,2 s de audio, contra un presupuesto de 2000 ms para el turno
   entero. Es un número frío; `make medir` da el caliente y `MODELO=base` el del
   modelo pequeño. Hasta tener esos dos, no se decide nada.
-- **No hay telefonía.** Entra voz y sale voz por el navegador; lo que no hay es
-  una línea. Esa decisión se toma con los números de arriba delante: si lo
-  local no baja de dos segundos, toca una API de voz en tiempo real.
+- **El teléfono está a un token de distancia.** El webhook (`telefonia.py`)
+  existe y está probado; falta un número en un proveedor TwiML y su token en
+  `.env`. Al teléfono oye y habla el proveedor —Whisper no llega a tiempo—;
+  la conversación, los precios y la agenda siguen siendo de aquí.
 - **El LLM está apagado por defecto.** Con `ANTHROPIC_API_KEY` en `.env`
   entra donde las reglas no llegan, y devuelve datos, no frases ni precios.
   Encenderlo manda el texto del cliente a la API: lo decide el negocio.
@@ -105,3 +106,4 @@ estas dos órdenes en local son la única verificación real.
 - Marcar un aviso como visto antes de que Telegram confirme que lo tiene.
 - Dejar que el LLM redacte lo que se le dice al cliente, o ponga un precio.
   Su salida es un JSON de cuatro campos, y así se queda.
+- Atender una petición del webhook de teléfono sin comprobar la firma.

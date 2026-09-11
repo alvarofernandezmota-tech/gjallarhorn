@@ -43,6 +43,11 @@ servidor: $(PY)  ## el MVP en primer plano (Ctrl+C para parar)
 cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
 	$(PY) cerebro.py "$(FRASE)" --negocio $(NEGOCIO)
 
+funnel:  ## publicar el webhook del telefono en internet (sin abrir el router)
+	tailscale funnel --bg $(PUERTO)
+	@echo "→ pon en el proveedor, como webhook de voz:  https://<esta-maquina>.<tailnet>.ts.net/telefono/entrada"
+	@echo "   y como status callback:                  https://<esta-maquina>.<tailnet>.ts.net/telefono/fin"
+
 avisar: $(PY)  ## mandar al movil los avisos pendientes (Telegram)
 	$(PY) avisar.py
 
@@ -83,4 +88,4 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
 	@$(PY) diagnostico.py
 
-.PHONY: ayuda instalar voz medir probar servidor pruebas cerebro avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
+.PHONY: ayuda instalar voz medir probar servidor pruebas cerebro funnel avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
