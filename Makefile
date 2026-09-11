@@ -101,9 +101,10 @@ olvidar: $(PY)  ## borrar la ficha de un numero: make olvidar TELEFONO=+34600...
 	$(PY) memoria.py --olvidar "$(TELEFONO)"
 
 funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
-	@$(PY) -c "import telefonia, sys; sys.exit(0 if telefonia.configuracion() else 1)" || \
-	  { echo "❌ sin GJALLARHORN_TELEFONO_TOKEN en .env no hay webhook que publicar."; \
-	    echo "   Publicar esto ahora solo abriria la demo a internet. Pon el token primero."; \
+	@$(PY) -c "import telefonia, sys; c = telefonia.configuracion(); \
+	  sys.exit(0 if c and not telefonia.token_de_mentira(c['token']) else 1)" || \
+	  { echo "❌ sin un GJALLARHORN_TELEFONO_TOKEN bueno en .env no hay webhook que publicar."; \
+	    echo "   Publicar esto ahora solo abriria la demo a internet. Mira «make revisar»."; \
 	    exit 1; }
 	tailscale funnel --bg $(PUERTO_TELEFONO)
 	@echo
