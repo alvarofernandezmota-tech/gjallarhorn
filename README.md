@@ -65,7 +65,7 @@ cp -r negocios/peluqueria negocios/mi-negocio
 |---|---|
 | `tarifas.md` | la tabla de precios — **de aquí y solo de aquí salen los números** |
 | `faq.md` | horario y lo que se pregunta por teléfono |
-| `negocio.toml` | el nombre, el saludo, la despedida |
+| `negocio.toml` | el nombre, el saludo, la despedida y **el horario** |
 | `frases.toml` | **lo que contesta el agente y lo que entiende del cliente** |
 
 **No se toca código.** Quien lleva el negocio tiene que poder cambiar un
@@ -74,6 +74,33 @@ no hay que abrir un `.py`.
 
 Todo menos `tarifas.md` y `faq.md` es opcional: una carpeta con los dos
 Markdown ya es un negocio.
+
+### `[horario]`: con esto reserva, sin esto toma nota
+
+```toml
+[horario]
+lunes = []                              # cerrado
+martes = ["10:00-14:00", "16:30-20:00"]
+sabado = ["09:00-14:00"]
+```
+
+Con el horario escrito, el agente **reserva de verdad**: comprueba que abrís
+ese día, que la hora cae dentro y que nadie tiene ya ese hueco —un tinte de
+90 min a las 10 ocupa hasta las 11:30, y un corte a las 11 no cabe—. Si no
+cabe, ofrece los huecos que sí hay, cerca de lo que pidió:
+
+```
+— El lunes a las cinco     El lunes 14 estamos cerrados. Tengo hueco el martes 15 a las
+                           diez de la mañana, el miércoles 16… ¿Le viene bien alguno?
+— El jueves a las seis     A esa hora ya tengo a alguien. El jueves 17 me queda las seis
+                           y media de la tarde, las siete… ¿Le viene bien alguno?
+```
+
+Y resuelve solo el «¿a las cinco de la mañana o de la tarde?» cuando solo una
+de las dos cae en horario. Las citas se ven con `python3 agenda.py`.
+
+Sin `[horario]`, se toma nota y se promete confirmar, como antes. A propósito:
+antes que reservar contra un horario que nadie ha escrito, mejor no reservar.
 
 ### `frases.toml`: las palabras también se editan
 
@@ -146,6 +173,7 @@ precio, peor.
 gjallarhorn/
 ├─ recepcion.py            quién atiende, y Conversacion: la llamada con memoria
 ├─ frases.py               lo que dice y lo que entiende, editable por negocio
+├─ agenda.py               los huecos: reserva de verdad contra el horario
 ├─ negocio.py              un negocio = una carpeta
 ├─ conocimiento.py         tarifas y FAQ, sin RAG (y por qué)
 ├─ voz.py                  la oreja (Whisper) y la boca (Piper), las dos locales

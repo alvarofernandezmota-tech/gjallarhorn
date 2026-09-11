@@ -84,6 +84,21 @@ cita si el día se dijo dos frases antes. Y el aviso se apunta **al colgar**,
 con el resultado —la cita cerrada, o lo que se quedó a medias—, no en cada
 turno: cinco apuntes de los que solo el último sirve no son un registro.
 
+### 5 ter. Reservar solo contra un horario escrito
+
+**Decisión**: con `[horario]` en `negocio.toml`, `agenda.py` reserva —abre,
+cae dentro, no se solapa— y ofrece huecos cercanos si no cabe. Sin horario,
+se toma nota y se promete confirmar.
+
+**Razón**: prometer un hueco que nadie ha comprobado es peor que no cogerlo:
+el cliente se presenta y no hay sitio. Y reservar contra un horario inventado
+es lo mismo con otro nombre. La única fuente de verdad es lo que el dueño
+escribe; cuando no lo escribe, el agente no se lo inventa.
+
+Solapar es pisarse en minutos, no empezar a la misma hora: un tinte de 90 min
+a las 10 ocupa hasta las 11:30. Y la agenda vuelve a comprobar al reservar,
+porque entre la pregunta y la reserva puede haber entrado otra llamada.
+
 ### 6. El aviso de que es automático no se puede quitar
 
 **Decisión**: `negocio.toml` deja personalizar el saludo, pero si el saludo

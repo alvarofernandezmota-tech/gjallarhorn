@@ -14,3 +14,17 @@ nombre = "Peluquería"
 saludo = "Hola, ha llamado a la peluquería. Puedo darle precios y tomarle una cita."
 
 despedida = "Gracias por llamar. ¡Hasta luego!"
+
+# Horario de apertura. Con esto el agente RESERVA de verdad: comprueba que
+# abrís ese día, que la hora cae dentro y que nadie tiene ya ese hueco. Si
+# quitas esta sección, vuelve a «tomar nota» sin comprobar nada.
+#
+# Cada día es una lista de tramos "HH:MM-HH:MM". Lista vacía = cerrado.
+[horario]
+lunes = []
+martes = ["10:00-14:00", "16:30-20:00"]
+miercoles = ["10:00-14:00", "16:30-20:00"]
+jueves = ["10:00-14:00", "16:30-20:00"]
+viernes = ["10:00-14:00", "16:30-20:00"]
+sabado = ["09:00-14:00"]
+domingo = []

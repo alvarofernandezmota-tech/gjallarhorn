@@ -48,6 +48,7 @@ class Negocio:
     saludo: str
     despedida: str
     voz: str | None = None
+    horario: "object | None" = None   # agenda.Horario, si negocio.toml lo trae
 
     @property
     def conocimiento(self) -> Path:
@@ -61,6 +62,21 @@ def _con_aviso(saludo: str) -> str:
     if any(senal in plano for senal in SENALES_DE_AVISO):
         return saludo
     return f"{saludo.rstrip()} {AVISO_AUTOMATICO}".strip()
+
+
+def _horario(config, fichero):
+    """El horario del negocio, o None si no está escrito.
+
+    Un horario mal escrito se dice con el fichero y la línea que lo causa, al
+    cargar, no en la primera llamada que intente reservar.
+    """
+    if not config:
+        return None
+    import agenda
+    try:
+        return agenda.Horario.desde(config)
+    except ValueError as error:
+        raise ValueError(f"{fichero}: {error}") from error
 
 
 def cargar(cual: str | Path) -> Negocio:
@@ -90,6 +106,7 @@ def cargar(cual: str | Path) -> Negocio:
         saludo=_con_aviso(config.get("saludo", SALUDO_POR_DEFECTO)),
         despedida=config.get("despedida", "Gracias por llamar. Hasta luego."),
         voz=config.get("voz"),
+        horario=_horario(config.get("horario"), fichero),
     )
 
 

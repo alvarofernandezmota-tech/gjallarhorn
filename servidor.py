@@ -94,7 +94,7 @@ class Recepcion(BaseHTTPRequestHandler):
     def charla(cls) -> "recepcion.Conversacion":
         """La llamada en curso. Se crea sola si hace falta."""
         if cls.conversacion is None:
-            cls.conversacion = recepcion.Conversacion(cls.negocio.conocimiento)
+            cls.conversacion = recepcion.conversacion_de(cls.negocio)
         return cls.conversacion
 
     def log_message(self, formato, *args):
@@ -132,7 +132,7 @@ class Recepcion(BaseHTTPRequestHandler):
             # Sin esto, la segunda prueba hereda la cita a medias de la
             # primera y contesta cosas que no vienen a cuento.
             quedo = Recepcion.charla().colgar()
-            Recepcion.conversacion = recepcion.Conversacion(self.negocio.conocimiento)
+            Recepcion.conversacion = recepcion.conversacion_de(self.negocio)
             return self._responder(
                 200, json.dumps({"colgado": quedo}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
@@ -209,7 +209,9 @@ def main() -> int:
     except FileNotFoundError as error:
         print(f"❌ {error}")
         return 1
-    Recepcion.conversacion = recepcion.Conversacion(Recepcion.negocio.conocimiento)
+    Recepcion.conversacion = recepcion.conversacion_de(Recepcion.negocio)
+    if Recepcion.negocio.horario is None:
+        print("⚠️  sin [horario] en negocio.toml: se toma nota, no se reserva")
 
     faltan = __import__("conocimiento").que_falta(Recepcion.negocio.conocimiento)
     if faltan:
