@@ -55,6 +55,7 @@ from pathlib import Path
 
 import agenda as _agenda
 import avisos
+import cerebro
 import conocimiento
 import fechas
 import frases as _frases
@@ -310,10 +311,11 @@ class Conversacion:
     peor que puede pasar aquí, así que a medias también se apunta.
     """
 
-    def __init__(self, base: Path | None = None, agenda=None):
+    def __init__(self, base: Path | None = None, agenda=None, preguntar=None):
         self.base = base
         self.frases = _frases.cargar(base)
         self.agenda = agenda          # agenda.Agenda, o None: entonces solo toma nota
+        self.preguntar = preguntar    # el LLM de cerebro.py; None = el real, si hay clave
         self.cita: Cita | None = None
         self.servicio: dict | None = None     # del que se viene hablando
         self.nombre: str | None = None
@@ -572,12 +574,50 @@ class Conversacion:
         if self.frases.reconoce("colgar", comparable):
             return Respuesta(self.frases.decir("despedida"), "recado")
 
-        # Nada que reconocer. Si hay una cita a medias, se insiste con lo que
-        # falta en vez de soltar un «tomo nota» que la abandona.
+        # Nada que reconocer por reglas. Antes de rendirse, el LLM, si lo hay:
+        # devuelve intencion y datos con forma fija, y se atiende como si las
+        # reglas lo hubieran entendido. Ni el precio ni la frase los pone el.
+        if (entendido := cerebro.entender(limpia, self.base, preguntar=self.preguntar)):
+            if (respuesta := self._segun_el_modelo(entendido, limpia)) is not None:
+                return respuesta
+
+        # Si hay una cita a medias, se insiste con lo que falta en vez de
+        # soltar un «tomo nota» que la abandona.
         if viva:
             return self._seguir_cita()
         return Respuesta(self.frases.decir("recado"), "recado",
                          aviso=f"Recado: «{limpia}»")
+
+    def _segun_el_modelo(self, entendido, limpia: str) -> Respuesta | None:
+        """Lo que el modelo entendio, atendido por el mismo camino que las reglas."""
+        if entendido.servicio:
+            for servicio in conocimiento.tarifas(self.base):
+                if servicio["servicio"] == entendido.servicio:
+                    self.servicio = servicio
+                    if self.cita and not self.cita.cerrada:
+                        self.cita.servicio = servicio["servicio"]
+        if entendido.nombre:
+            self.nombre = entendido.nombre.title()
+            if self.cita and not self.cita.cerrada:
+                self.cita.nombre = self.nombre
+
+        if entendido.intencion == "precio":
+            if self.servicio and entendido.servicio:
+                return _precio_de(self.servicio, self.frases)
+            return Respuesta(self.frases.decir("precio_no_esta"), "precio",
+                             aviso=f"Preguntó un precio que no está en tarifas: «{limpia}»",
+                             tipo_aviso="fallo")
+        if entendido.intencion == "cita":
+            if self.cita is None or self.cita.cerrada:
+                self._abrir_cita()
+            if entendido.cuando:
+                self._rellenar_con(entendido.cuando)
+            return self._seguir_cita()
+        if entendido.intencion == "horario":
+            return _responder_horario(limpia, self.base)
+        if entendido.intencion == "despedida":
+            return Respuesta(self.frases.decir("despedida"), "recado")
+        return None
 
     # -- el final ------------------------------------------------------------
 

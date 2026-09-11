@@ -111,6 +111,19 @@ de «visto» va detrás de la confirmación, nunca delante. Y mandar veinte
 «preguntó el precio» al día es la forma segura de que se deje de mirar el
 chat. El token y el chat van en `.env`, nunca en el repo: es público.
 
+### 5 quinquies. El LLM entiende; no habla ni pone precios
+
+**Decisión**: opcional y apagado por defecto. Entra solo cuando las reglas
+no reconocen la frase, y devuelve un JSON de forma fija (intención, servicio
+de la tabla o nulo, cuándo, nombre). Nunca redacta la respuesta ni pone un
+número. Un servicio fuera de la tabla se descarta diga lo que diga.
+
+**Razón**: la regla que manda es «un precio sale de la tabla o no sale», y la
+forma de garantizarla con un modelo generativo en medio es que su salida no
+pueda contener un precio. Y apagado por defecto porque encenderlo manda el
+texto del cliente a un tercero: es una decisión del negocio, no del código.
+Si falla o tarda, las reglas siguen: una llamada no se cae por un LLM.
+
 ### 6. El aviso de que es automático no se puede quitar
 
 **Decisión**: `negocio.toml` deja personalizar el saludo, pero si el saludo
