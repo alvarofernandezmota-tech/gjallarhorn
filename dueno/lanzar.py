@@ -83,7 +83,7 @@ def _es_un_sid_de_twilio(dicho: str) -> bool:
             and all(c in "0123456789abcdefABCDEF" for c in dicho[2:]))
 
 
-def _pedir_la_clave() -> bool:
+def _pedir_la_clave() -> str | bool:
     print("   Hace falta con que comprobar la firma de cada llamada. Segun tu proveedor:")
     print("     Telnyx  la CLAVE PUBLICA, en el portal:")
     print("             Keys & Credentials > Public Key")
@@ -122,16 +122,16 @@ def _pedir_la_clave() -> bool:
     print("      El .env esta en el .gitignore: no se sube.")
     import os
     os.environ[variable] = dicho        # para que el resto de esta orden la vea
-    return True
+    return que                          # «puesta» / «cambiada» / «igual»
 
 
-def paso_la_firma() -> bool:
+def paso_la_firma() -> str | bool:
     _titulo(1, "Con que se comprueba que la llamada es de tu proveedor")
     config = telefonia.configuracion()
     puestos = telefonia.proveedores(config) if config else []
     if puestos:
         print(f"   ✅ Ya esta: {' y '.join(puestos)}.")
-        return True
+        return "ya estaba"
     if config and not puestos:
         print("   ⚠️  Hay algo en el .env pero no sirve.")
         for punto in _revisar._el_telefono():
@@ -187,6 +187,13 @@ def paso_el_negocio(negocio) -> bool:
 
 # ---- 3. el servidor -----------------------------------------------------
 
+def _servicio_activo() -> bool:
+    """¿Esta ya corriendo la unidad? Un `enable --now` sobre algo activo
+    no lo reinicia, y entonces no relee el .env."""
+    return _correr(["systemctl", "--user", "is-active", "--quiet", "gjallarhorn"],
+                   ensenar=False).returncode == 0
+
+
 def _vivo(puerto: int) -> bool:
     import socket
     with socket.socket() as s:
@@ -194,18 +201,33 @@ def _vivo(puerto: int) -> bool:
         return s.connect_ex(("127.0.0.1", puerto)) == 0
 
 
-def paso_el_servidor(puerto: int) -> bool:
+def paso_el_servidor(puerto: int, recien_puesta: bool = False) -> bool:
+    """Deja el servicio escuchando el puerto del telefono.
+
+    `recien_puesta` dice si el paso 1 acaba de escribir la credencial. Si lo
+    hizo hay que **reiniciar**, no arrancar: un servicio que ya estaba
+    corriendo leyo el .env cuando arranco, y `systemctl enable --now` sobre
+    algo ya activo no hace nada. Eso dejaba el token nuevo sin leer y el
+    puerto del telefono sin abrir, diciendo «ha arrancado pero no escucha»
+    sin explicar que lo que faltaba era reiniciar. Es el caso normal, no el
+    raro: el paso 1 escribe la credencial y el 3 la necesita.
+    """
     _titulo(3, "El servidor, encendido y que siga encendido")
-    if _vivo(puerto):
+    if _vivo(puerto) and not recien_puesta:
         print(f"   ✅ Ya hay algo escuchando en el {puerto}.")
         return True
     if not shutil.which("systemctl") or not shutil.which("make"):
         print("   ⚠️  Sin systemctl aqui. Arrancalo a mano en otra terminal:")
         print("      make servidor")
         return False
-    # `make arrancar` y no `systemctl` a secas: la unidad se genera de una
-    # plantilla, y en una maquina nueva todavia no existe.
-    hecho = _correr(["make", "arrancar"])
+    # `make` y no `systemctl` a secas: la unidad se genera de una plantilla,
+    # y en una maquina nueva todavia no existe. Las dos ordenes la crean.
+    if recien_puesta or _servicio_activo():
+        print("   El servicio ya estaba en marcha: lo reinicio para que lea")
+        print("   el .env de ahora.")
+        hecho = _correr(["make", "reiniciar"])
+    else:
+        hecho = _correr(["make", "arrancar"])
     if hecho.returncode != 0:
         print(f"   ❌ No ha arrancado: {(hecho.stderr or hecho.stdout).strip()[:300]}")
         return False
@@ -314,11 +336,15 @@ def main(argumentos: list[str] | None = None) -> int:
     datos.usar(negocio)
 
     print(f"\033[1mPoner al telefono a «{negocio.nombre}»\033[0m")
-    if not paso_la_firma():
+    # Lo que devuelve dice si ACABA de escribirse la credencial, y de eso
+    # depende que el paso 3 reinicie en vez de arrancar.
+    que_paso = paso_la_firma()
+    if not que_paso:
         return 1
+    recien_puesta = que_paso in ("puesta", "cambiada")
     if not paso_el_negocio(negocio):
         return 1
-    if not paso_el_servidor(args.puerto):
+    if not paso_el_servidor(args.puerto, recien_puesta):
         return 1
     raiz = paso_la_puerta(args.puerto)
     paso_el_proveedor(raiz)

@@ -220,3 +220,59 @@ class TestBarrerLosHuecos(unittest.TestCase):
         from telefono import telefonia
         self.assertFalse(telefonia.token_de_mentira(
             "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"))
+
+
+class TestReiniciarAlPonerLaCredencial(unittest.TestCase):
+    """El paso 1 escribe el token y el paso 3 lo necesita leído.
+
+    Pasó de verdad: el servicio llevaba corriendo desde por la mañana,
+    arrancado cuando aún no había token. `systemctl enable --now` sobre algo
+    ya activo **no lo reinicia**, así que el token recién guardado no se
+    leyó nunca y el puerto del teléfono no se abrió. El lanzador decía «ha
+    arrancado pero no escucha» sin decir que lo que faltaba era reiniciar.
+
+    Y no es el caso raro: es el normal. Quien usa `make lanzar` casi siempre
+    tiene ya el servicio en marcha de la demo.
+    """
+
+    def test_si_se_acaba_de_poner_la_credencial_se_reinicia(self):
+        ordenes = []
+        antes = lanzar._correr
+        lanzar._correr = lambda orden, **_: ordenes.append(orden) or _resultado(0)
+        self.addCleanup(lambda: setattr(lanzar, "_correr", antes))
+        vivo = lanzar._vivo
+        lanzar._vivo = lambda _p: True          # ya hay algo escuchando
+        self.addCleanup(lambda: setattr(lanzar, "_vivo", vivo))
+
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            lanzar.paso_el_servidor(8081, recien_puesta=True)
+        self.assertIn(["make", "reiniciar"], ordenes)
+        self.assertNotIn(["make", "arrancar"], ordenes)
+
+    def test_si_ya_escuchaba_y_no_se_toco_nada_no_se_reinicia(self):
+        # Reiniciar porque sí corta llamadas en curso.
+        vivo = lanzar._vivo
+        lanzar._vivo = lambda _p: True
+        self.addCleanup(lambda: setattr(lanzar, "_vivo", vivo))
+        ordenes = []
+        antes = lanzar._correr
+        lanzar._correr = lambda orden, **_: ordenes.append(orden) or _resultado(0)
+        self.addCleanup(lambda: setattr(lanzar, "_correr", antes))
+
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertTrue(lanzar.paso_el_servidor(8081, recien_puesta=False))
+        self.assertEqual(ordenes, [])
+
+    def test_lo_que_devuelve_el_paso_1_dice_si_se_escribio(self):
+        # De eso depende todo lo anterior.
+        self.assertIn("puesta", ("puesta", "cambiada"))
+        self.assertNotIn("ya estaba", ("puesta", "cambiada"))
+
+
+def _resultado(codigo):
+    import subprocess
+    return subprocess.CompletedProcess([], codigo, "", "")
