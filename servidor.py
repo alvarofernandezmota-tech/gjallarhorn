@@ -51,6 +51,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import avisos
+import frases
 import negocio as negocios
 import recepcion
 import voz
@@ -213,6 +214,8 @@ def main() -> int:
     faltan = __import__("conocimiento").que_falta(Recepcion.negocio.conocimiento)
     if faltan:
         print(f"⚠️  {Recepcion.negocio.nombre}: sin rellenar {', '.join(faltan)}")
+    for problema in frases.problemas(Recepcion.negocio.conocimiento):
+        print(f"⚠️  frases.toml: {problema}")
 
     if not args.sin_voz:
         Recepcion.transcriptor, Recepcion.locutor = voz.Whisper(), voz.Piper()

@@ -59,7 +59,11 @@ navegador. 119 pruebas, `ruff` limpio.
   17:00 por su cuenta.
 - **El audio no sale de casa.** Whisper y Piper en local. El audio original no
   se guarda salvo decisión explícita, y el `.gitignore` ya lo excluye.
-- **Un negocio es una carpeta.** Dar de alta un cliente no toca código.
+- **Un negocio es una carpeta.** Dar de alta un cliente no toca código, y
+  eso incluye las palabras: `frases.toml`. El saludo y los precios quedan
+  fuera de ahí a propósito.
+- **Una errata en un fichero editable no tumba una llamada.** Se avisa al
+  arrancar; si se cuela, frase de fábrica y aviso.
 - **Procedimiento ↔ script con el mismo nombre base** — la regla de la casa:
   `docs/procedimientos/algo.md` ↔ `scripts/algo.py`.
 - **Commits**: `tipo: descripción breve en presente` (feat, fix, docs, chore,

@@ -55,13 +55,34 @@ casa. El audio no se manda a una API de terceros.
 contesta. El audio original no se guarda salvo decisión explícita: es dato
 personal y pesa.
 
-### 5. Un negocio es una carpeta
+### 5. Un negocio es una carpeta, palabras incluidas
 
 **Decisión**: dar de alta un cliente es `cp -r negocios/peluqueria
-negocios/otro` y editar dos Markdown. No se toca código.
+negocios/otro` y editar ficheros de texto: tarifas, FAQ, saludo, y en
+`frases.toml` **lo que contesta el agente y lo que entiende del cliente**. No
+se toca código.
 
-**Razón**: quien lleva el negocio tiene que poder cambiar un precio sin llamar
-a nadie, y eso solo es cierto si no hay que abrir un `.py`.
+**Razón**: quien lleva el negocio tiene que poder cambiar un precio —o la
+forma de despedirse, o enseñarle que en su barrio se dice «¿cuánto me
+saldría?»— sin llamar a nadie. Eso solo es cierto si no hay que abrir un
+`.py`.
+
+Y como ese fichero lo edita alguien que no programa, **una errata no puede
+tumbar una llamada**: se avisa al arrancar, y si se cuela, se usa la frase de
+fábrica y se deja un aviso. Lo que no puede fallar no se deja en manos de que
+alguien lo escriba bien. Es la misma decisión que el aviso de sistema
+automático (punto 6): el saludo y los precios quedan fuera de `frases.toml` a
+propósito.
+
+### 5 bis. La llamada se recuerda
+
+**Decisión**: `Conversacion` lleva la cuenta de la llamada entera; `atender()`
+suelto queda para probar una frase.
+
+**Razón**: quien llama no repite. «A las cinco» sola no es nada, pero es una
+cita si el día se dijo dos frases antes. Y el aviso se apunta **al colgar**,
+con el resultado —la cita cerrada, o lo que se quedó a medias—, no en cada
+turno: cinco apuntes de los que solo el último sirve no son un registro.
 
 ### 6. El aviso de que es automático no se puede quitar
 

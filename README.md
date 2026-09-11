@@ -9,10 +9,27 @@ cita. **Proyecto independiente, sin dependencias de ningún otro repo.**
 ## Qué hace
 
 ```
-audio → voz.escuchar → recepcion.atender → voz.hablar → audio
-                              ↓
+audio → voz.escuchar → Conversacion.atender → voz.hablar → audio
+                              ↓ al colgar
                         avisos.registrar
 ```
+
+Una llamada normal, tal cual la atiende hoy:
+
+```
+— Buenas, ¿cuánto vale un tinte?   Tengo varias: Tinte 45 €; Corte y tinte 60 €. ¿Cuál le interesa?
+— El tinte                         Tinte: 45 €, unos 90 min.
+— Vale, pues quiero cita           Muy bien, una cita de tinte. ¿Qué día le viene bien?
+— El jueves                        Perfecto, el jueves 17. ¿A qué hora le viene bien?
+— A las cinco                      ¿Las cinco de la tarde?
+— Sí                               ¿A nombre de quién se la apunto?
+— Me llamo Álvaro                  Le apunto la cita de tinte el jueves 17 a las cinco
+                                   de la tarde, a nombre de Álvaro. Se lo confirmamos.
+```
+
+**Recuerda.** El tinte del primer turno sigue vivo en el tercero, y «a las
+cinco» —que sola no es nada— es una cita porque el día se dijo antes. Sin
+memoria, esta llamada se cae en el segundo turno.
 
 Cuatro intenciones: **precio**, **cita**, **horario** y **recado**. Y una regla
 por encima de todas:
@@ -44,11 +61,47 @@ delante. Nadie reserva cita para el martes pasado.
 cp -r negocios/peluqueria negocios/mi-negocio
 ```
 
-Cambias `nombre` en `negocio.toml`, la tabla de `tarifas.md` y el texto de
-`faq.md`. **No se toca código.** Quien lleva el negocio tiene que poder cambiar
-un precio sin llamar a nadie, y eso solo es cierto si no hay que abrir un `.py`.
+| Fichero | Qué cambia |
+|---|---|
+| `tarifas.md` | la tabla de precios — **de aquí y solo de aquí salen los números** |
+| `faq.md` | horario y lo que se pregunta por teléfono |
+| `negocio.toml` | el nombre, el saludo, la despedida |
+| `frases.toml` | **lo que contesta el agente y lo que entiende del cliente** |
 
-`negocio.toml` es opcional: una carpeta con los dos Markdown ya es un negocio.
+**No se toca código.** Quien lleva el negocio tiene que poder cambiar un
+precio, o la forma de despedirse, sin llamar a nadie; y eso solo es cierto si
+no hay que abrir un `.py`.
+
+Todo menos `tarifas.md` y `faq.md` es opcional: una carpeta con los dos
+Markdown ya es un negocio.
+
+### `frases.toml`: las palabras también se editan
+
+Dos secciones. `[dice]` es lo que contesta el agente, con huecos que se
+rellenan solos:
+
+```toml
+[dice]
+pide_dia = "Muy bien, una cita{servicio}. ¿Qué día le viene bien?"
+despedida = "Gracias a usted. ¡Hasta luego!"
+```
+
+`[entiende]` es cómo puede pedir las cosas quien llama — aquí entra la forma
+de hablar de cada sitio:
+
+```toml
+[entiende]
+precio = ["cuanto", "vale", "cuesta", "precio", "me saldria"]
+```
+
+Lo que no pongas usa el valor de fábrica. Y **una errata no tumba una
+llamada**: un `{fehca}` mal tecleado se avisa al arrancar, y si se cuela, el
+agente dice la frase de fábrica y deja un aviso. Lo que no puede fallar no se
+deja en manos de que alguien lo escriba bien.
+
+Dos cosas no se pueden cambiar desde ahí, **a propósito**: el saludo —va en
+`negocio.toml` y se comprueba que avise de que es automático— y los precios,
+que salen de la tabla y de ningún otro sitio.
 
 ```bash
 python3 recepcion.py --negocio mi-negocio                        # por teclado
@@ -91,7 +144,8 @@ precio, peor.
 
 ```
 gjallarhorn/
-├─ recepcion.py            quién atiende: precio, cita, horario, recado
+├─ recepcion.py            quién atiende, y Conversacion: la llamada con memoria
+├─ frases.py               lo que dice y lo que entiende, editable por negocio
 ├─ negocio.py              un negocio = una carpeta
 ├─ conocimiento.py         tarifas y FAQ, sin RAG (y por qué)
 ├─ voz.py                  la oreja (Whisper) y la boca (Piper), las dos locales
