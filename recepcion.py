@@ -50,7 +50,7 @@ ayudarte?» a secas es quitar el aviso, no mejorar el texto.
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 
@@ -71,6 +71,7 @@ class Respuesta:
     intencion: str      # precio | cita | horario | recado
     aviso: str | None = None   # qué registrar en avisos.py, si procede
     tipo_aviso: str = "llamada"
+    cuelga: bool = False       # con esta frase se termina la llamada
 
 
 # Lo que se reconoce de quien llama vive en `frases.py` y se puede cambiar por
@@ -103,7 +104,7 @@ def _entre_ofrecidos(frase: str, ofrecidos: list[dict]) -> dict | None:
     2— justo cuando el cliente acaba de elegir.
     """
     dichas = conocimiento._palabras(frase)
-    if not dichas:
+    if not dichas or not ofrecidos:
         return None
     candidatos = [s for s in ofrecidos if dichas & conocimiento._palabras(s["servicio"])]
     if len(candidatos) != 1:
@@ -228,15 +229,38 @@ def atender(frase: str, base: Path | None = None) -> Respuesta:
 # ---- la llamada entera, con memoria ------------------------------------
 
 # «Me llamo Álvaro». Sobre el texto original, no sobre el de comparar, para no
-# devolverle el nombre sin tildes a quien acaba de decirlo.
+# devolverle el nombre sin tildes a quien acaba de decirlo. El grupo «yo»
+# distingue presentarse («soy Marta») de dar el nombre de otra persona («a
+# nombre de Lucía»): lo primero dice quién llama; lo segundo, solo quién viene.
+# La segunda palabra del nombre no puede ser una conjunción: «Marta y quería»
+# no es «Marta Y».
 NOMBRE = re.compile(
-    r"\b(?:me\s+llamo|mi\s+nombre\s+es|a\s+nombre\s+de|de\s+parte\s+de|"
-    r"para\s+(?:el\s+se[nñ]or|la\s+se[nñ]ora)\s+de)\s+"
-    r"([^\W\d_]+(?:\s+[^\W\d_]+)?)", re.IGNORECASE | re.UNICODE)
+    r"\b(?:(?P<yo>me\s+llamo|mi\s+nombre\s+es|soy)|a\s+nombre\s+de|de\s+parte\s+de|"
+    r"para\s+(?:el\s+se[nñ]or|la\s+se[nñ]ora)\s+de|(?:la\s+)?cita\s+de)\s+"
+    r"(?P<nombre>[^\W\d_]+(?:\s+(?!(?:y|e|o|u|que|para|de|del|la|el|con|por|pero|quiero|"
+    r"queria|quería|me|mi|a|un|una)\b)[^\W\d_]+)?)", re.IGNORECASE | re.UNICODE)
 
-# Palabras que nunca son un nombre, por mucho que vayan detrás de «soy».
+# Palabras que nunca son un nombre, por mucho que vayan detrás de «soy» o de
+# «la cita de»: «la cita de mañana» no es de nadie que se llame Mañana.
 NO_ES_NOMBRE = {"un", "una", "el", "la", "los", "las", "mi", "su", "para",
-                "que", "de", "del", "por", "cliente", "nueva", "nuevo"}
+                "que", "de", "del", "por", "cliente", "nueva", "nuevo", "yo",
+                "hoy", "manana", "pasado", "esta", "este", "ese", "esa",
+                "las", "los", *fechas.DIAS}
+
+# Preguntas en condicional: «¿y si no puedo ir?» no es «no puedo ir». Lo
+# primero se contesta con la FAQ; lo segundo anula la cita.
+HIPOTETICA = re.compile(r"^\W*(?:y\s+)?(?:si|cuando)\s+")
+
+# Lo que se dice al preguntar un precio sin nombrar el qué: «¿y cuánto me va
+# a costar?». Si tras quitar esto no queda palabra, no se ha nombrado ningún
+# servicio, y entonces vale el del que se venía hablando.
+RELLENO = {"costar", "costaria", "costara", "va", "valer", "valdria", "valen",
+           "cobrais", "cobran", "cobra", "cobrar", "sale", "saldria", "precios",
+           "tarifa", "tarifas", "tarda", "tardan", "tardais", "tardaria", "dura",
+           "duran", "tiempo", "mucho", "eso", "esto", "ese", "esa", "lleva",
+           "seria", "ser", "total", "todo", "podria", "puedes", "hora", "horas",
+           "minutos", "aproximadamente", "mas", "o", "menos", "entonces", "al",
+           "final", "aqui", "ahi", "cuestan", "cuanto"}
 
 def _ambigua(hora: str, acotada: bool) -> bool:
     """¿«Las cinco» podrían ser las 17:00 y nadie lo ha dicho?
@@ -247,14 +271,19 @@ def _ambigua(hora: str, acotada: bool) -> bool:
     return not acotada and int(hora[:2]) < 12
 
 
-def _nombre_en(frase: str) -> str | None:
-    """El nombre que se acaba de dar, si se ha dado con todas las letras."""
+def _nombre_en(frase: str, base: Path | None = None) -> tuple[str, bool] | None:
+    """(nombre, ¿se ha presentado?) si se ha dado con todas las letras.
+
+    «La cita de tinte» no es de nadie que se llame Tinte: lo que nombra un
+    servicio de la tabla no es un nombre.
+    """
     if (m := NOMBRE.search(frase)) is None:
         return None
-    nombre = " ".join(m.group(1).split())
-    if nombre.split()[0].lower() in NO_ES_NOMBRE:
+    nombre = " ".join(m.group("nombre").split())
+    primera = _sin_tildes(nombre.split()[0])
+    if primera in NO_ES_NOMBRE or primera in conocimiento.vocabulario(base):
         return None
-    return nombre.title()
+    return nombre.title(), m.group("yo") is not None
 
 
 def _nombre_a_secas(frase: str) -> str | None:
@@ -284,6 +313,7 @@ class Cita:
     fecha: str | None = None
     hora: str | None = None
     acotada: bool = False
+    franja: str | None = None     # «por la tarde», dicho antes que la hora
     nombre: str | None = None
     cerrada: bool = False
 
@@ -338,8 +368,10 @@ class Conversacion:
         self.preguntar = preguntar    # el LLM de cerebro.py; None = el real, si hay clave
         self.cita: Cita | None = None
         self.servicio: dict | None = None     # del que se viene hablando
-        self.nombre: str | None = None
+        self.nombre: str | None = None        # a nombre de quién va lo que se pida
+        self.presentado: str | None = None    # cómo se ha presentado quien llama
         self.esperando: str | None = None     # qué se acaba de preguntar
+        self._ultima_reserva: int | None = None   # por si luego corrige el nombre
         self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
         self._candidatas: list[dict] = []     # citas entre las que hay que elegir al anular
         self._opciones: list[dict] = []       # servicios ofrecidos en «¿cuál le interesa?»
@@ -349,8 +381,8 @@ class Conversacion:
 
     # -- lo que se recuerda de cada frase, se pregunte lo que se pregunte ----
 
-    def _recordar(self, frase: str) -> dict | None:
-        """Guarda lo que aporte esta frase. Devuelve el servicio que nombra AHORA.
+    def _recordar(self, frase: str) -> tuple[dict | None, str | None]:
+        """Guarda lo que aporte esta frase. Devuelve (servicio, nombre) que nombra AHORA.
 
         La distinción entre «el que nombra ahora» y «el que se recuerda» no es
         sutileza: confundirlos hace que a «¿y cambiar el parabrisas?» se le
@@ -363,11 +395,18 @@ class Conversacion:
             self.servicio = servicio
             if self.cita and not self.cita.cerrada:
                 self.cita.servicio = servicio["servicio"]
-        if (nombre := _nombre_en(frase)) is not None:
-            self.nombre = nombre
+        nombre = None
+        if (dado := _nombre_en(frase, self.base)) is not None:
+            nombre, se_presenta = dado
+            if se_presenta:
+                self.presentado = nombre
             if self.cita and not self.cita.cerrada:
                 self.cita.nombre = nombre
-        return servicio
+            # Con una cita ya cerrada, «a nombre de Lucía» corrige esa cita; no
+            # cambia quién llama, que es lo que se recuerda del número.
+            if se_presenta or self.nombre is None or (self.cita and not self.cita.cerrada):
+                self.nombre = nombre
+        return servicio, nombre
 
     # -- la cita, turno a turno ---------------------------------------------
 
@@ -385,6 +424,10 @@ class Conversacion:
         if falta == "fecha":
             return Respuesta(self.frases.decir("pide_dia", servicio=que), "cita")
         if falta == "hora":
+            if cita.franja:
+                return Respuesta(self.frases.decir(
+                    "pide_hora_franja", fecha=self._dicha(cita.fecha),
+                    franja=fechas.FRANJAS_DICHAS[cita.franja]), "cita")
             return Respuesta(self.frases.decir(
                 "pide_hora", fecha=self._dicha(cita.fecha), servicio=que), "cita")
         if falta == "franja":
@@ -398,10 +441,9 @@ class Conversacion:
             # Sin agenda se apunta, no se confirma: prometer un hueco que
             # nadie ha mirado es peor que no cogerlo.
             cita.cerrada = True
-            self.esperando = None
-            return Respuesta(self.frases.decir(
+            return Respuesta(self._y_algo_mas(self.frases.decir(
                 "cierra_cita", servicio=que, fecha=self._dicha(cita.fecha),
-                hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre), "cita")
+                hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre)), "cita")
         if (no_cabe := self._si_no_cabe(que)) is not None:
             # Entre la comprobacion de antes y ahora ha podido entrar otra
             # llamada. Se vuelve a mirar; la agenda lo mira otra vez al reservar.
@@ -410,16 +452,21 @@ class Conversacion:
 
     # -- anular --------------------------------------------------------------
 
-    def _anular(self, frase: str) -> Respuesta:
-        """Quitar una cita. Sin agenda se toma nota; con agenda se quita."""
+    def _anular(self, frase: str, nombre: str | None = None) -> Respuesta:
+        """Quitar una cita. Sin agenda se toma nota; con agenda se quita.
+
+        El nombre que trae la frase («la cita de Lucía») manda sobre el que
+        se recordaba: quien llama puede estar anulando la de otra persona.
+        """
         if self.agenda is None:
             self.esperando = None
             return Respuesta(self.frases.decir("sin_agenda_anular"), "cita",
                              aviso=f"Quiere anular una cita: «{frase}»", tipo_aviso="cita")
-        if not self.nombre:
+        nombre = nombre or self.nombre
+        if not nombre:
             self.esperando = "anular_nombre"
             return Respuesta(self.frases.decir("anular_nombre"), "cita")
-        return self._anular_de(self.nombre, frase)
+        return self._anular_de(nombre, frase)
 
     def _anular_de(self, nombre: str, frase: str) -> Respuesta:
         suyas = self.agenda.citas_de(nombre)
@@ -492,9 +539,9 @@ class Conversacion:
                 hora=fechas.hora_en_palabras(quitada["hora"])), "cita",
                 aviso=aviso + " — pidió cambiarla", tipo_aviso="cita")
 
-        return Respuesta(self.frases.decir(
+        return Respuesta(self._y_algo_mas(self.frases.decir(
             "anulada", servicio=que, fecha=self._dicha(quitada["fecha"]),
-            hora=fechas.hora_en_palabras(quitada["hora"])), "cita",
+            hora=fechas.hora_en_palabras(quitada["hora"]))), "cita",
             aviso=aviso, tipo_aviso="cita")
 
     def ahora(self):
@@ -517,12 +564,45 @@ class Conversacion:
         reservada = self.agenda.reservar(cita.fecha, cita.hora, self._duracion(),
                                          cita.servicio, cita.nombre)
         cita.cerrada = True
-        self.esperando = None
-        return Respuesta(self.frases.decir(
+        self._ultima_reserva = reservada["id"]
+        return Respuesta(self._y_algo_mas(self.frases.decir(
             "reservada", servicio=que, fecha=self._dicha(cita.fecha),
-            hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre),
+            hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre)),
             "cita", aviso=f"Reservada: {cita.resumen()} (id {reservada['id']})",
             tipo_aviso="cita")
+
+    def _y_algo_mas(self, texto: str) -> str:
+        """Cierra un asunto y pregunta si hay otro. Un «no» aquí es la despedida.
+
+        Sin la pregunta, tras «reservada, le esperamos» el teléfono se queda
+        escuchando en silencio y quien llama no sabe si tiene que colgar o
+        si se ha cortado. Se puede quitar dejando `algo_mas` vacío.
+        """
+        self.esperando = "algo_mas"
+        return f"{texto} {self.frases.decir('algo_mas')}".strip()
+
+    def _renombrar(self, nombre: str) -> Respuesta | None:
+        """«A nombre de Lucía» después de reservar: se corrige, no se abre otra."""
+        if self.agenda is not None:
+            if self._ultima_reserva is None \
+                    or self.agenda.renombrar(self._ultima_reserva, nombre) is None:
+                return None
+        self.cita.nombre = nombre
+        return Respuesta(self.frases.decir("renombrada", nombre=nombre), "cita",
+                         aviso=f"La cita {self._ultima_reserva or ''} pasa a nombre de "
+                               f"{nombre}".replace("  ", " "), tipo_aviso="cita")
+
+    def _con_lo_pendiente(self, respuesta: Respuesta) -> Respuesta:
+        """Una pregunta suelta en mitad de una cita: se contesta y se retoma.
+
+        «¿Aceptáis tarjeta?» cuando se estaba preguntando la hora se contesta
+        y, en la misma frase, se vuelve a preguntar la hora. Si no, la cita
+        se queda a medias y quien llama cree que ya está.
+        """
+        if self.cita is None or self.cita.cerrada or self.esperando == "cual":
+            return respuesta
+        siguiente = self._seguir_cita()
+        return replace(respuesta, texto=f"{respuesta.texto} {siguiente.texto}")
 
     def _si_no_cabe(self, que: str) -> Respuesta | None:
         """None si el hueco pedido cabe. Si no, la respuesta que ofrece otros.
@@ -614,6 +694,14 @@ class Conversacion:
             cita.hora, cita.acotada = h
             puesto = True
 
+        # «Por la tarde» se recuerda aunque venga sin hora: cuando llegue «a
+        # las cinco», ya son las cinco de la tarde y no hay que preguntarlo.
+        if (franja := fechas.franja_en(frase)) is not None and not cita.acotada:
+            cita.franja = franja
+            puesto = puesto or self.esperando in ("hora", "fecha")
+        if cita.hora and not cita.acotada and cita.franja:
+            cita.hora, cita.acotada = fechas.acotar(cita.hora, cita.franja), True
+
         if self.esperando == "nombre" and not cita.nombre:
             if (nombre := _nombre_a_secas(frase)) is not None:
                 cita.nombre = self.nombre = nombre
@@ -650,15 +738,32 @@ class Conversacion:
             return Respuesta(self.frases.decir("no_le_oigo"), "recado")
 
         respuesta = self._decidir(limpia)
-        if respuesta.intencion != "recado":
+        if respuesta.intencion != "recado" or respuesta.cuelga:
             self._sin_entender = 0
         self.turnos.append((limpia, respuesta.texto))
         return respuesta
 
     def _decidir(self, limpia: str) -> Respuesta:
         comparable = _sin_tildes(limpia)
-        ahora_mismo = self._recordar(limpia)
+        ahora_mismo, nombre_dado = self._recordar(limpia)
         viva = self.cita is not None and not self.cita.cerrada
+
+        # «¿Algo más?» → «no, gracias» es la despedida; «sí» es «dígame».
+        # Cualquier otra cosa se atiende como lo que sea.
+        if self.esperando == "algo_mas":
+            self.esperando = None
+            corta = len(comparable.split()) <= 4
+            if self.frases.reconoce("colgar", comparable) \
+                    or (corta and self.frases.reconoce("no", comparable)):
+                return self._despedida()
+            if corta and self.frases.reconoce("si", comparable):
+                return Respuesta(self.frases.decir("digame"), "saludo")
+
+        # Nombre dado después de reservar: corrige la reserva, no abre otra.
+        if nombre_dado and self.cita is not None and self.cita.cerrada \
+                and not self._pide_otra_cosa(comparable):
+            if (hecho := self._renombrar(nombre_dado)) is not None:
+                return hecho
 
         # Acabo de ofrecer varias opciones y me acaban de decir cuál. Eso es
         # una pregunta de precio, aunque la frase sea solo «el tinte».
@@ -676,6 +781,13 @@ class Conversacion:
             if ahora_mismo is not None:
                 self.servicio = ahora_mismo
                 return _precio_de(ahora_mismo, self.frases)
+            if not conocimiento._palabras(limpia) - RELLENO:
+                # «¿Y cuánto tarda?» sin decir cuál: se vuelve a preguntar cuál.
+                self.esperando = "cual"
+                if self._opciones:
+                    opciones = "; ".join(f"{s['servicio']} {s['precio']}" for s in self._opciones)
+                    return Respuesta(self.frases.decir("precio_varios", opciones=opciones), "precio")
+                return Respuesta(self.frases.decir("cual_servicio"), "precio")
             if not (self.frases.reconoce("cita", comparable)
                     or self.frases.reconoce("horario", comparable)
                     or self.frases.reconoce("colgar", comparable)):
@@ -705,9 +817,10 @@ class Conversacion:
         # anular cuelga con una cita NUEVA, creyendo que la ha quitado. Dos
         # huecos ocupados y nadie enterado hasta que no aparece.
         if (self.frases.reconoce("anular", comparable)
-                or self.frases.reconoce("cambiar", comparable)):
+                or self.frases.reconoce("cambiar", comparable)) \
+                and not HIPOTETICA.match(comparable):
             self._cambiando = self.frases.reconoce("cambiar", comparable)
-            return self._anular(limpia)
+            return self._anular(limpia, nombre_dado)
 
         # Una frase que trae el dato que se acababa de pedir. Va antes que las
         # intenciones: «el jueves» no lleva la palabra «cita» y aun así lo es.
@@ -719,23 +832,31 @@ class Conversacion:
             self._rellenar_con(limpia)
             return self._seguir_cita()
 
-        if self.frases.reconoce("precio", comparable):
+        if self.frases.reconoce("precio", comparable) \
+                or self.frases.reconoce("duracion", comparable):
             if not conocimiento.tarifas(self.base):
                 return Respuesta(self.frases.decir("sin_tarifas"), "precio",
                                  aviso=f"Sin tarifas cargadas. Preguntó: «{limpia}»",
                                  tipo_aviso="fallo")
-            respuesta = _responder_precio(limpia, self.base)
-            # Si he ofrecido varias, la siguiente frase será cuál de ellas.
-            encontrados = conocimiento.buscar(limpia, self.base)
-            self._opciones = encontrados if len(encontrados) > 1 else []
-            self.esperando = "cual" if self._opciones else None
-            return respuesta
+            return self._con_lo_pendiente(self._precio(limpia))
 
         if self.frases.reconoce("horario", comparable):
-            return _responder_horario(limpia, self.base)
+            return self._con_lo_pendiente(_responder_horario(limpia, self.base))
+
+        # Lo demás que esté escrito en la FAQ: tarjeta, dónde, si hace falta
+        # cita… Se contesta con el texto del dueño, tal cual.
+        if (faq := conocimiento.faq(limpia, self.base)) is not None:
+            return self._con_lo_pendiente(Respuesta(faq[1], "faq"))
 
         if self.frases.reconoce("colgar", comparable):
-            return Respuesta(self.frases.decir("despedida"), "recado")
+            return self._despedida()
+
+        # «Hola, buenas» a secas: se le invita a hablar, no se toma nota. Con
+        # una cita a medias se repite lo que faltaba.
+        if self.frases.reconoce("saludo", comparable) and len(comparable.split()) <= 4:
+            if viva:
+                return self._seguir_cita()
+            return Respuesta(self.frases.decir("digame"), "saludo")
 
         # Nada que reconocer por reglas. Antes de rendirse, el LLM, si lo hay:
         # devuelve intencion y datos con forma fija, y se atiende como si las
@@ -755,7 +876,44 @@ class Conversacion:
         self._sin_entender += 1
         clave = "recado_insistente" if self._sin_entender >= 3 else "recado"
         return Respuesta(self.frases.decir(clave), "recado",
-                         aviso=f"Recado: «{limpia}»")
+                         aviso=f"Recado: «{limpia}»", cuelga=clave == "recado_insistente")
+
+    def _despedida(self) -> Respuesta:
+        return Respuesta(self.frases.decir("despedida"), "recado", cuelga=True)
+
+    def _pide_otra_cosa(self, comparable: str) -> bool:
+        """¿La frase trae, además, alguna de las peticiones que se atienden?"""
+        return any(self.frases.reconoce(clave, comparable)
+                   for clave in ("cita", "precio", "duracion", "horario", "anular", "cambiar"))
+
+    def _precio(self, limpia: str) -> Respuesta:
+        """El precio de lo que se nombra AHORA; si no se nombra nada, el de antes.
+
+        La regla sigue siendo que el precio sale de la tabla o no sale. Lo que
+        cambia es qué se hace cuando la frase no nombra ningún servicio:
+
+        - «¿y cuánto me va a costar?» tras hablar del tinte → el del tinte.
+        - «¿cuánto vale?» sin haber hablado de nada → se pregunta el qué.
+        - «¿cuánto vale un masaje?» → no está, y se dice. Aquí NO vale el de
+          antes: nombra otra cosa, y el precio de otra cosa no se canta.
+        """
+        encontrados = conocimiento.buscar(limpia, self.base)
+        if encontrados:
+            # Si he ofrecido varias, la siguiente frase será cuál de ellas.
+            self._opciones = encontrados if len(encontrados) > 1 else []
+            self.esperando = "cual" if self._opciones else None
+            if len(encontrados) == 1:
+                self.servicio = encontrados[0]
+            return _responder_precio(limpia, self.base)
+        if conocimiento._palabras(limpia) - RELLENO:
+            return Respuesta(
+                self.frases.decir("precio_no_esta"), "precio",
+                aviso=f"Preguntó un precio que no está en tarifas: «{limpia}»",
+                tipo_aviso="fallo")
+        if self.servicio is not None:
+            return _precio_de(self.servicio, self.frases)
+        self._opciones, self.esperando = [], "cual"
+        return Respuesta(self.frases.decir("cual_servicio"), "precio")
 
     def _segun_el_modelo(self, entendido, limpia: str) -> Respuesta | None:
         """Lo que el modelo entendio, atendido por el mismo camino que las reglas."""
@@ -785,7 +943,7 @@ class Conversacion:
         if entendido.intencion == "horario":
             return _responder_horario(limpia, self.base)
         if entendido.intencion == "despedida":
-            return Respuesta(self.frases.decir("despedida"), "recado")
+            return self._despedida()
         return None
 
     # -- el final ------------------------------------------------------------

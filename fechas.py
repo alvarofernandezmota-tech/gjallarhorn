@@ -138,10 +138,44 @@ def _buscar_hora(texto: str) -> tuple[str, bool, str] | None:
                   15 if (m.group(2) or "").strip() == "y cuarto" else 0
         # Con franja de tarde o noche, «las cinco» son las 17:00. Sin franja
         # NO se traduce: se devuelve tal cual y se marca como sin acotar.
-        acotada = franja in ("tarde", "noche") and hora < 12
-        if acotada:
-            hora += 12
-        return f"{hora:02d}:{minutos:02d}", bool(franja), m.group(0)
+        hora = acotar(f"{hora:02d}:{minutos:02d}", franja)
+        return hora, bool(franja), m.group(0)
+    return None
+
+
+def acotar(hora: str, franja: str | None) -> str:
+    """«Las cinco» con «tarde» son las 17:00. Sin franja se devuelve tal cual.
+
+    «Las dos del mediodía» son las 14:00: el mediodía va de las doce a las
+    tres, y antes se apuntaba a las 02:00 dándolo por acotado. Por la
+    mañana no se toca nada.
+    """
+    h, m = hora.split(":")
+    h = int(h)
+    if franja in ("tarde", "noche") and h < 12:
+        h += 12
+    elif franja == "mediodia" and h < 4:
+        h += 12
+    return f"{h:02d}:{m}"
+
+
+# Como se dice cada franja al repetirsela a quien la ha dicho.
+FRANJAS_DICHAS = {"manana": "por la mañana", "tarde": "por la tarde",
+                  "noche": "por la noche", "mediodia": "a mediodía"}
+
+
+def franja_en(frase: str) -> str | None:
+    """La franja que dice la frase («por la tarde»), aunque no diga hora.
+
+    Con preposición delante, siempre: «mañana» a secas es el día siguiente,
+    no la franja. Sirve para recordarla: quien dice «el jueves por la tarde»
+    y luego «a las cinco» ya ha dicho que son las cinco de la tarde, y
+    volver a preguntárselo es no haberle escuchado.
+    """
+    texto = sin_tildes(frase or "")
+    for franja in FRANJAS:
+        if re.search(rf"\b(?:por|de|a|al|esta|este)\s+(?:la\s+|el\s+)?{franja}\b", texto):
+            return franja
     return None
 
 

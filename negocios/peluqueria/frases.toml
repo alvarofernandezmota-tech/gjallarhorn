@@ -24,14 +24,28 @@ precio_varios = "Tengo varias opciones: {opciones}. ¿Cuál le interesa?"
 precio_no_esta = "No tengo ese servicio en la lista de precios. Le tomo el recado y se lo confirmamos."
 no_le_oigo = "Perdone, no le he oído. ¿Me lo repite?"
 recado = "Tomo nota y le devolvemos la llamada en cuanto podamos."
+digame = "Dígame, ¿en qué puedo ayudarle?"
+algo_mas = "¿Le puedo ayudar en algo más?"
+cual_servicio = "¿De qué servicio? Así le digo el precio y lo que se tarda."
 despedida = "Gracias a usted. ¡Hasta luego!"
 
 [entiende]
 
-precio = ["precio", "precios", "cuanto", "cuesta", "cuestan", "vale", "valen",
-          "tarifa", "tarifas", "cobrais", "cobran", "sale", "me saldria",
+# «vale» a secas NO va aquí: es la muletilla de «vale, pues nada, gracias» y
+# se tomaba por «¿cuánto vale?». Con «cuanto» o «que» delante sí es un precio.
+precio = ["precio", "precios", "cuanto", "cuesta", "cuestan", "cuanto vale",
+          "cuanto valen", "que vale", "lo que vale", "tarifa", "tarifas",
+          "cobrais", "cobran", "cobra", "sale", "me saldria",
           "cuanto me costaria", "que precio tiene", "es caro", "es barato",
           "me podeis decir el precio"]
+
+# «¿Cuánto tarda?» se contesta con el servicio, su precio y lo que dura.
+duracion = ["cuanto tarda", "cuanto dura", "cuanto tiempo", "cuanto se tarda",
+            "tardais", "tarda mucho", "cuanto lleva"]
+
+# Un saludo a secas: se le invita a hablar en vez de tomar nota.
+saludo = ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
+          "oiga", "diga", "digame", "perdone"]
 
 cita = ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
         "pedir hora", "disponible", "disponibilidad", "libre", "sitio",
@@ -47,7 +61,8 @@ si = ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale", "perfecto",
       "por supuesto", "genial"]
 
 no = ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
-      "para nada", "en absoluto", "mejor no"]
+      "para nada", "en absoluto", "mejor no", "nada", "nada mas", "eso es todo",
+      "ya esta"]
 
 colgar = ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
           "eso es todo", "colgar", "chao", "venga", "vale gracias",

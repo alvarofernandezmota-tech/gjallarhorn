@@ -60,6 +60,16 @@ DICE = {
     # Tercera vez sin entender: se deja de repetir y se toma el recado.
     "recado_insistente": ("Perdone, no acabo de entenderle. Le tomo el recado "
                           "y le devolvemos la llamada en cuanto podamos."),
+    # A un «hola, buenas» se contesta invitando a hablar, no tomando nota.
+    "digame": "Dígame, ¿en qué puedo ayudarle?",
+    # «Por la mañana» tras el dia: la hora, pero ya dentro de esa franja.
+    "pide_hora_franja": "Perfecto, {fecha} {franja}. ¿A qué hora?",
+    # Nombre dado despues de reservar: se corrige la reserva, no se abre otra.
+    "renombrada": "Anotado: la cita queda a nombre de {nombre}.",
+    # «¿Cuánto vale?» sin decir el qué, y sin que se haya hablado de nada.
+    "cual_servicio": "¿De qué servicio? Así le digo el precio y lo que se tarda.",
+    # Tras reservar o anular. Un «no» a esto es la despedida.
+    "algo_mas": "¿Le puedo ayudar en algo más?",
     "precio_uno": "{servicio}: {precio}{duracion}.",
     "precio_varios": "Tengo varias opciones: {opciones}. ¿Cuál le interesa?",
     "precio_no_esta": ("No tengo ese servicio en la lista de precios. "
@@ -84,6 +94,8 @@ HUECOS = {
     "ocupado": {"fecha", "alternativas"},
     "pasado": {"fecha", "alternativas"},   # {fecha} se admite; la de fábrica no la usa
     "anular_cual": {"citas"},
+    "pide_hora_franja": {"fecha", "franja"},
+    "renombrada": {"nombre"},
     "anular_no_hay": {"nombre"},
     "anulada": {"servicio", "fecha", "hora"},
     "anulada_y_otra": {"servicio", "fecha", "hora"},
@@ -94,15 +106,26 @@ HUECOS = {
 # Lo que puede decir quien llama. Son trozos de palabra sueltos: se buscan
 # enteros, sin tildes y sin distinguir mayusculas.
 ENTIENDE = {
-    "precio": ["precio", "precios", "cuanto", "cuesta", "cuestan", "vale",
-               "valen", "tarifa", "tarifas", "cobrais", "cobran", "sale"],
+    # «vale» a secas NO esta: es la muletilla mas comun del castellano («vale,
+    # pues nada, gracias») y se tomaba por «¿cuanto vale?». Solo con «cuanto»
+    # o «que» delante es un precio.
+    "precio": ["precio", "precios", "cuanto", "cuesta", "cuestan", "cuanto vale",
+               "cuanto valen", "que vale", "lo que vale", "tarifa", "tarifas",
+               "cobrais", "cobran", "cobra", "sale"],
+    # «¿cuanto tarda?» se contesta con el servicio y su duracion, que van juntos.
+    "duracion": ["cuanto tarda", "cuanto dura", "cuanto tiempo", "cuanto se tarda",
+                 "tardais", "tarda mucho"],
+    # Un saludo a secas no es un recado: se le invita a hablar.
+    "saludo": ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
+               "oiga", "diga", "digame", "perdone"],
     "cita": ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
              "pedir hora", "disponible", "disponibilidad", "libre"],
     "horario": ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
                 "cerrado", "hasta que hora", "a que hora"],
     "si": ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale",
            "perfecto", "por la tarde", "de la tarde"],
-    "no": ["no", "nop", "que va", "negativo", "por la manana", "de la manana"],
+    "no": ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
+           "nada", "nada mas", "eso es todo", "ya esta"],
     "colgar": ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
                "eso es todo", "colgar", "chao"],
     # Anular va ANTES que cita al decidir: «anular mi cita» lleva las dos
