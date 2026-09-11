@@ -74,6 +74,9 @@ DICE = {
     "renombrada": "Anotado: la cita queda a nombre de {nombre}.",
     # «¿Cuánto vale?» sin decir el qué, y sin que se haya hablado de nada.
     "cual_servicio": "¿De qué servicio? Así le digo el precio y lo que se tarda.",
+    # A quien viene siempre a lo mismo se le ofrece, no se le interroga.
+    "lo_de_siempre": "Muy bien, {servicio} como siempre. ¿Qué día le viene bien?",
+    "no_se_lo_de_siempre": ("Todavía no sé qué suele pedir. ¿Qué servicio quiere?"),
     # Tras reservar o anular. Un «no» a esto es la despedida.
     "algo_mas": "¿Le puedo ayudar en algo más?",
     "precio_uno": "{servicio}: {precio}{duracion}.",
@@ -108,6 +111,7 @@ HUECOS = {
     "sin_huecos_dia": {"fecha", "alternativas"},
     "primeros_huecos": {"alternativas"},
     "pide_hora_franja": {"fecha", "franja"},
+    "lo_de_siempre": {"servicio"},
     "renombrada": {"nombre"},
     "anular_no_hay": {"nombre"},
     "anulada": {"servicio", "fecha", "hora"},
@@ -138,6 +142,10 @@ ENTIENDE = {
     "disponibilidad": ["hueco", "huecos", "disponible", "disponibilidad", "libre",
                        "sitio", "teneis algo", "tienes algo", "hay algo", "que horas"],
     # «Cuando podáis»: se ofrecen huecos en vez de insistir con «¿a qué hora?».
+    # «Lo de siempre», de quien viene cada mes a lo mismo.
+    "siempre": ["lo de siempre", "lo mismo de siempre", "como siempre",
+                "lo mismo que la ultima vez", "lo mismo que siempre",
+                "lo de la ultima vez", "lo habitual", "lo mio de siempre"],
     "cualquiera": ["cuando podais", "cuando pueda", "cuando puedas", "cuando tengais",
                    "cuando tengas", "la que tengais", "lo que tengais", "el que tengais",
                    "la que tengas", "lo que tengas", "me da igual", "me es igual",

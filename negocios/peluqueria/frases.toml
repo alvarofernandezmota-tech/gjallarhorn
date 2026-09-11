@@ -28,6 +28,7 @@ digame = "Dígame, ¿en qué puedo ayudarle?"
 humano = "Soy un asistente automático. Puedo darle precios, horario y citas. Si prefiere hablar con una persona, le tomo el recado y le devuelven la llamada en cuanto puedan."
 algo_mas = "¿Le puedo ayudar en algo más?"
 cual_servicio = "¿De qué servicio? Así le digo el precio y lo que se tarda."
+lo_de_siempre = "Muy bien, {servicio} como siempre. ¿Qué día le viene bien?"
 despedida = "Gracias a usted. ¡Hasta luego!"
 
 # Cómo llama la gente a lo que hay en tarifas.md. Lo de la izquierda tiene que
@@ -61,6 +62,10 @@ precio = ["precio", "precios", "cuanto", "cuesta", "cuestan", "cuanto vale",
 # «¿Cuánto tarda?» se contesta con el servicio, su precio y lo que dura.
 duracion = ["cuanto tarda", "cuanto dura", "cuanto tiempo", "cuanto se tarda",
             "tardais", "tarda mucho", "cuanto lleva"]
+
+# «Lo de siempre», de quien viene cada mes a lo mismo.
+siempre = ["lo de siempre", "lo mismo de siempre", "como siempre",
+           "lo mismo que la ultima vez", "lo de la ultima vez", "lo habitual"]
 
 # Un saludo a secas: se le invita a hablar en vez de tomar nota.
 saludo = ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",

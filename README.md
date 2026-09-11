@@ -213,6 +213,40 @@ python3 rag.py --todo                           # los párrafos indexados
 Los precios **no** salen de ahí: las filas de la tabla se quitan antes de
 indexar, para que ningún camino pueda acabar leyendo un precio «por parecido».
 
+### Lo que recuerda de quien llama, y lo que olvida
+
+Quien ya llamó tiene una ficha: su nombre, cuántas veces ha llamado, qué
+suele pedir y a qué hora suele venir. Con eso, la segunda llamada no empieza
+de cero:
+
+```
+— (suena)                   Hola, Marta. Ha llamado a la peluquería…
+— Quería lo de siempre      Muy bien, tinte como siempre. ¿Qué día le viene bien?
+— El jueves, cuando podáis  El jueves 17 por la tarde tengo las cuatro y media,
+                            las cinco o las cinco y media. ¿Cuál le viene bien?
+```
+
+«Lo de siempre» son **dos veces el mismo servicio**, no una: que alguien se
+tiñera una vez no lo convierte en su costumbre. Y la tabla manda sobre la
+ficha: si el servicio ya no está en `tarifas.md`, no se le ofrece.
+
+Esto son datos personales, así que `memoria.py` tiene tres reglas escritas en
+el código:
+
+| | |
+|---|---|
+| solo lo que sirve | nombre, servicio, franja y cuentas. Ni transcripciones ni texto libre |
+| se olvida solo | `caducar()` borra las fichas con dos años sin llamar |
+| se borra de verdad | `make olvidar TELEFONO=+34600…` quita la ficha entera |
+
+Y lo de siempre: **un informe no lleva nombres**. `make diagnostico` dice
+cuántas fichas hay, no de quién.
+
+```bash
+make clientes                        # las fichas (esto sí lleva nombres: es para ti)
+make olvidar TELEFONO=+34600000000   # borrar una entera
+```
+
 ### El aviso de que es automático no se puede quitar
 
 Puedes poner tu propio saludo. Si **no** dice que se habla con un sistema

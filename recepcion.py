@@ -386,10 +386,37 @@ class Conversacion:
         self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
         self._candidatas: list[dict] = []     # citas entre las que hay que elegir al anular
         self._ofrecidos: list = []            # huecos ofrecidos; «sí» o «el primero» elige uno
+        self.recuerdos = None                 # memoria.Ficha de quien llama, si se le conoce
+        self.reservadas: list[dict] = []      # lo que se ha cerrado en esta llamada
+        self.anulaciones = 0                  # y lo que se ha quitado
         self._opciones: list[dict] = []       # servicios ofrecidos en «¿cuál le interesa?»
         self._cambiando = False               # anular para poner otra, no solo anular
         self._sin_entender = 0                # seguidas; a la tercera se toma el recado
         self.turnos: list[tuple[str, str]] = []
+
+    def recordar(self, ficha) -> None:
+        """La ficha de quien llama, de una llamada anterior.
+
+        Se usa para dos cosas y ninguna más: saber su nombre sin preguntarlo
+        y poder ofrecerle lo de siempre. No decide nada por él.
+        """
+        self.recuerdos = ficha
+        if ficha is not None and ficha.nombre:
+            self.nombre = ficha.nombre
+
+    def _servicio_habitual(self) -> dict | None:
+        """El servicio que suele pedir, buscado en la tabla de hoy.
+
+        Se busca por el nombre guardado: si el dueño quitó ese servicio de
+        `tarifas.md`, deja de existir y no se le ofrece. La tabla manda,
+        también sobre lo que recuerda la ficha.
+        """
+        if self.recuerdos is None or not self.recuerdos.habitual:
+            return None
+        for servicio in conocimiento.tarifas(self.base):
+            if servicio["servicio"] == self.recuerdos.habitual:
+                return servicio
+        return None
 
     # -- lo que se recuerda de cada frase, se pregunte lo que se pregunte ----
 
@@ -441,6 +468,11 @@ class Conversacion:
         no queda nada, se ofrecen los primeros de los días siguientes.
         """
         cita, duracion = self.cita, self._duracion()
+        # Si no ha dicho franja pero siempre viene a la misma, se empieza por
+        # ahí. Es una preferencia, no una regla: si ahí no queda nada, se le
+        # ofrece lo que haya.
+        if cita.franja is None and self.recuerdos is not None:
+            cita.franja = self.recuerdos.franja
         desde = hasta = None
         if cita.franja in ("tarde", "noche"):
             desde = 14 * 60
@@ -530,6 +562,8 @@ class Conversacion:
             # Sin agenda se apunta, no se confirma: prometer un hueco que
             # nadie ha mirado es peor que no cogerlo.
             cita.cerrada = True
+            self.reservadas.append({"servicio": cita.servicio, "hora": cita.hora,
+                                    "fecha": cita.fecha})
             return Respuesta(self._y_algo_mas(self.frases.decir(
                 "cierra_cita", servicio=que, fecha=self._dicha(cita.fecha),
                 hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre)), "cita")
@@ -613,6 +647,7 @@ class Conversacion:
             return Respuesta(self.frases.decir("anular_no_hay", nombre=self.nombre or ""),
                              "cita", aviso=f"Intentó anular la cita {cita['id']}, "
                                            "que ya no estaba", tipo_aviso="fallo")
+        self.anulaciones += 1
         que = f" de {quitada['servicio'].lower()}" if quitada.get("servicio") else ""
         aviso = (f"ANULADA: {quitada.get('servicio') or 'cita'}, el {quitada['fecha']} "
                  f"a las {quitada['hora']}, a nombre de {quitada.get('nombre')}")
@@ -654,6 +689,7 @@ class Conversacion:
                                          cita.servicio, cita.nombre)
         cita.cerrada = True
         self._ultima_reserva = reservada["id"]
+        self.reservadas.append(reservada)
         return Respuesta(self._y_algo_mas(self.frases.decir(
             "reservada", servicio=que, fecha=self._dicha(cita.fecha),
             hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre)),
@@ -937,6 +973,25 @@ class Conversacion:
                 return self._coger_hueco(hueco)
             if len(comparable.split()) <= 4 and self.frases.reconoce("si", comparable):
                 return Respuesta(self.frases.decir("cual_hueco"), "cita")
+
+        # «Lo de siempre»: lo que pidió las otras veces, sin hacerle repetirlo.
+        # Salvo que nombre otra cosa en la misma frase, que entonces manda esa:
+        # «como siempre, pero esta vez unas mechas» son mechas.
+        if self.frases.reconoce("siempre", comparable) and ahora_mismo is None:
+            habitual = self._servicio_habitual()
+            if habitual is not None:
+                self.servicio = habitual
+                if not viva:
+                    self._abrir_cita()
+                self.cita.servicio = habitual["servicio"]
+                self._rellenar_con(limpia)
+                if self.cita.fecha:
+                    return self._seguir_cita()
+                self.esperando = "fecha"
+                return Respuesta(self.frases.decir(
+                    "lo_de_siempre", servicio=habitual["servicio"].lower()), "cita")
+            if not self._pide_otra_cosa(comparable):
+                return Respuesta(self.frases.decir("no_se_lo_de_siempre"), "cita")
 
         # «Cuando podáis», «el que tengáis»: se ofrecen huecos en vez de
         # insistir con «¿a qué hora?». Solo con agenda: sin ella no hay huecos.
