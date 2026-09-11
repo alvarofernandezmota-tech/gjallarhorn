@@ -67,11 +67,16 @@ import avisar
 import avisos
 import datos
 import memoria
+import firmas
 import recepcion
 import voz as voz_
 
 RAIZ = Path(__file__).resolve().parent
 VOZ_POR_DEFECTO = "Polly.Lucia"      # castellano de España, en el proveedor
+CABECERA_TWILIO = "X-Twilio-Signature"
+CABECERA_TELNYX = "telnyx-signature-ed25519"
+CABECERA_MARCA_TELNYX = "telnyx-timestamp"
+VENTANA_TELNYX = 300                 # 5 min, lo que recomienda Telnyx
 IDIOMA = "es-ES"
 _LOCK = threading.Lock()
 
@@ -94,13 +99,36 @@ def token_de_mentira(token: str) -> bool:
 
 
 def configuracion() -> dict | None:
-    """Token del proveedor y voz. None si no hay token: entonces no hay webhook."""
+    """Con que se comprueban las llamadas, y con que voz se contesta.
+
+    Vale una de las dos, o las dos:
+
+    - `GJALLARHORN_TELEFONO_TOKEN`, el Auth Token de Twilio.
+    - `GJALLARHORN_TELEFONO_CLAVE_PUBLICA`, la clave publica de Telnyx.
+
+    None si no hay ninguna: entonces el webhook no arranca, que es lo que
+    tiene que pasar. Un webhook sin con que comprobar la firma es un
+    telefono que atiende a cualquiera que sepa la URL.
+    """
     avisar._leer_env()
     token = os.environ.get("GJALLARHORN_TELEFONO_TOKEN", "").strip()
-    if not token:
+    clave = os.environ.get("GJALLARHORN_TELEFONO_CLAVE_PUBLICA", "").strip()
+    if not token and not clave:
         return None
-    return {"token": token,
+    return {"token": token, "clave_publica": clave,
             "voz": os.environ.get("GJALLARHORN_TELEFONO_VOZ", "").strip() or VOZ_POR_DEFECTO}
+
+
+def proveedores(config: dict) -> list[str]:
+    """Cuales estan configurados de verdad, sin contar los huecos sin rellenar."""
+    puestos = []
+    if config.get("token") and not token_de_mentira(config["token"]):
+        puestos.append("twilio")
+    clave = config.get("clave_publica") or ""
+    # 32 bytes es lo que mide una clave Ed25519: si no, esta a medio pegar.
+    if clave and not token_de_mentira(clave) and len(firmas.de_base64(clave)) == 32:
+        puestos.append("telnyx")
+    return puestos
 
 
 # ---- la firma ------------------------------------------------------------
@@ -118,6 +146,62 @@ def firma_valida(token: str, url: str, campos: dict[str, str], firma: str | None
         hmac.new(token.encode("utf-8"), base.encode("utf-8"), hashlib.sha1).digest()
     ).decode("ascii")
     return hmac.compare_digest(esperada, firma)
+
+
+def firma_valida_telnyx(clave_publica: str, cuerpo: bytes, firma: str | None,
+                        marca: str | None, ahora: float | None = None,
+                        ventana: int = VENTANA_TELNYX) -> bool:
+    """La firma de Telnyx: Ed25519 sobre «marca|cuerpo», con clave publica.
+
+    Telnyx no firma como Twilio y no se parece en nada:
+
+    - Twilio hace un HMAC-SHA1 con el **Auth Token**, que es un secreto
+      compartido, sobre la URL mas los campos ordenados.
+    - Telnyx firma con su clave **privada** y publica la **publica**. Lo
+      que se pone en el `.env` no es ninguna clave de API: es la clave
+      publica del portal (Keys & Credentials > Public Key). Poner ahi la
+      API Key da 403 en todas las llamadas, y es un sitio malisimo para
+      enterarse.
+
+    El mensaje firmado es la marca de tiempo, una barra vertical y el
+    **cuerpo crudo** —tal como llego, sin volver a montarlo desde los
+    campos: cualquier reordenacion cambia los bytes y tira la firma—.
+
+    La marca de tiempo no es decoracion. Sin mirarla, una peticion buena
+    grabada vale para siempre: quien la capture puede repetirla y colar la
+    misma llamada mil veces. Se aceptan `ventana` segundos a cada lado; a
+    cada lado porque los relojes de dos maquinas no van iguales.
+    """
+    if not firma or not marca:
+        return False
+    try:
+        cuando = float(marca)
+    except (TypeError, ValueError):
+        return False
+    if abs((time.time() if ahora is None else ahora) - cuando) > ventana:
+        return False
+    clave = firmas.de_base64(clave_publica)
+    bruta = firmas.de_base64(firma)
+    if not clave or not bruta:
+        return False
+    try:
+        return firmas.valida(clave, marca.encode("utf-8") + b"|" + cuerpo, bruta)
+    except firmas.ClavePublicaMala:
+        return False           # quien revisa lo dice con todas las letras
+
+
+def quien_firma(cabeceras) -> str:
+    """«twilio», «telnyx» o «» segun la cabecera que traiga la peticion.
+
+    Se mira la peticion y no la configuracion a proposito: asi una maquina
+    con las dos cosas puestas atiende a los dos, y sobre todo el que no
+    corresponde no se valida «por si acaso».
+    """
+    if cabeceras.get(CABECERA_TWILIO):
+        return "twilio"
+    if cabeceras.get(CABECERA_TELNYX):
+        return "telnyx"
+    return ""
 
 
 # ---- los clientes que ya han llamado -----------------------------------

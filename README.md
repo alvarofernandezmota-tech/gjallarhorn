@@ -423,8 +423,36 @@ con lo que decir y se queda escuchando. **Cada llamada es su conversación**:
 pueden entrar dos a la vez. Quien ya llamó y dio su nombre, la próxima vez
 oye «Hola, Marta» y no se le vuelve a preguntar.
 
+#### Los dos proveedores no firman igual
+
+Esto es lo que más tiempo hace perder, porque falla en silencio: el webhook
+arranca, y luego **todas** las llamadas se caen con un 403.
+
+| | Twilio | Telnyx |
+|---|---|---|
+| Qué firma | HMAC-SHA1 de la URL + los campos | Ed25519 sobre `marca\|cuerpo` |
+| Con qué | el Auth Token (secreto compartido) | su clave privada |
+| Qué pones tú | ese mismo Auth Token | la **clave pública** del portal |
+| En el `.env` | `GJALLARHORN_TELEFONO_TOKEN` | `GJALLARHORN_TELEFONO_CLAVE_PUBLICA` |
+
+En Telnyx la clave pública está en Keys & Credentials > Public Key. **No es
+la API Key**: la API Key (`KEY0197…`) ahí no vale para nada. `make revisar`
+distingue los dos casos y te lo dice antes de dar el número a nadie.
+
+No hay que elegir en la configuración: se mira la cabecera que trae cada
+petición (`X-Twilio-Signature` o `telnyx-signature-ed25519`) y se valida con
+la que corresponda. Una petición sin firma ninguna no se valida «con lo que
+haya»: se rechaza.
+
+De Telnyx se comprueba además la marca de tiempo, con cinco minutos de
+margen. Sin eso, una petición buena que alguien grabe vale para siempre y se
+puede repetir la misma llamada mil veces.
+
 ```bash
-# .env: GJALLARHORN_TELEFONO_TOKEN=<el Auth Token del proveedor>
+# .env, según tu proveedor:
+#   GJALLARHORN_TELEFONO_TOKEN=<el Auth Token de Twilio>
+#   GJALLARHORN_TELEFONO_CLAVE_PUBLICA=<la clave pública de Telnyx>
+make revisar         # dice cuál ha cogido, y si lo que has puesto sirve
 make arrancar
 make funnel          # publica SOLO el puerto del teléfono, sin abrir el router
 ```

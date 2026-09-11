@@ -167,7 +167,7 @@ class CasoHandler(unittest.TestCase):
         servidor.Comun.centralita = telefonia.Centralita(servidor.Comun.negocio)
 
     def peticion(self, clase, metodo, ruta, campos=None, firma=None,
-                 host="maquina.tailnet.ts.net", funnel=False):
+                 host="maquina.tailnet.ts.net", funnel=False, cabeceras=None):
         from urllib.parse import urlencode
         cuerpo = urlencode(campos or {}).encode()
         h = clase.__new__(clase)
@@ -175,6 +175,7 @@ class CasoHandler(unittest.TestCase):
                      "X-Forwarded-Proto": "https"}
         if firma:
             h.headers["X-Twilio-Signature"] = firma
+        h.headers.update(cabeceras or {})
         if funnel:
             h.headers["Tailscale-Funnel-Request"] = "?1"
         h.path = ruta
@@ -274,7 +275,7 @@ class TestLaDemoNoAtiendeAInternet(CasoHandler):
     def test_sin_la_marca_la_pagina_se_sirve_normal(self):
         salida = self.peticion(servidor.Recepcion, "do_GET", "/")
         self.assertEqual(salida["codigo"], 200)
-        self.assertIn(b"Peluquer", salida["cuerpo"])
+        self.assertIn("peluquería".encode(), salida["cuerpo"])
 
     def test_el_webhook_no_vive_en_el_puerto_de_la_demo(self):
         # Si estuviera en los dos, publicar cualquiera publicaria el webhook,
@@ -287,3 +288,92 @@ class TestLaDemoNoAtiendeAInternet(CasoHandler):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElWebhookConTelnyx(CasoHandler):
+    """La misma puerta, con el otro proveedor.
+
+    Telnyx firma con Ed25519 y clave pública, no con el HMAC del Auth Token
+    de Twilio. Estas pruebas van por el servidor entero —no por la función
+    de la firma— porque lo que se puede romper sin enterarse está en medio:
+    que el cuerpo que se verifica sea el crudo que llegó y no uno vuelto a
+    montar desde los campos, y que la cabecera elija el validador bueno.
+    """
+
+    def setUp(self):
+        super().setUp()
+        import base64
+        import ed25519_de_mentira as telnyx_falso
+        self.falso = telnyx_falso
+        self.semilla, publica = telnyx_falso.clave(b"la peluqueria")
+        self.publica = base64.b64encode(publica).decode("ascii")
+        servidor.Comun.config_telefono = {"token": "", "clave_publica": self.publica,
+                                          "voz": "Polly.Lucia"}
+        servidor.Comun.centralita = telefonia.Centralita(servidor.Comun.negocio)
+
+    def firmado(self, campos, marca=None, semilla=None):
+        """Las cabeceras que mandaría Telnyx para ese cuerpo exacto."""
+        import base64
+        import time
+        from urllib.parse import urlencode
+        marca = marca or str(int(time.time()))
+        cuerpo = urlencode(campos).encode()
+        firma = self.falso.firmar(semilla or self.semilla,
+                                  marca.encode("utf-8") + b"|" + cuerpo)
+        return {telefonia.CABECERA_TELNYX: base64.b64encode(firma).decode("ascii"),
+                telefonia.CABECERA_MARCA_TELNYX: marca}
+
+    def webhook(self, campos=None, cabeceras=None, ruta="/telefono/entrada"):
+        campos = campos or {"CallSid": "CA1", "From": "+34600111222"}
+        return self.peticion(servidor.Telefono, "do_POST", ruta, campos,
+                             cabeceras=cabeceras if cabeceras is not None
+                             else self.firmado(campos))
+
+    def test_una_llamada_bien_firmada_contesta_twiml(self):
+        salida = self.webhook()
+        self.assertEqual(salida["codigo"], 200)
+        self.assertIn(b"<Response>", salida["cuerpo"])
+        self.assertIn("peluquería".encode(), salida["cuerpo"])
+
+    def test_sin_firma_es_403(self):
+        self.assertEqual(self.webhook(cabeceras={})["codigo"], 403)
+
+    def test_con_la_firma_de_otra_clave_es_403(self):
+        otra, _ = self.falso.clave(b"otro negocio")
+        campos = {"CallSid": "CA1", "From": "+34600111222"}
+        self.assertEqual(
+            self.webhook(campos, self.firmado(campos, semilla=otra))["codigo"], 403)
+
+    def test_firmar_un_cuerpo_y_mandar_otro_es_403(self):
+        # Lo que pasaría si se verificara sobre los campos vueltos a montar
+        # en vez de sobre los bytes que llegaron.
+        firmadas = self.firmado({"CallSid": "CA1", "From": "+34600111222"})
+        self.assertEqual(
+            self.webhook({"CallSid": "CA1", "From": "+34600999999"}, firmadas)["codigo"],
+            403)
+
+    def test_una_peticion_vieja_grabada_es_403(self):
+        import time
+        campos = {"CallSid": "CA1", "From": "+34600111222"}
+        vieja = self.firmado(campos, marca=str(int(time.time()) - 3600))
+        self.assertEqual(self.webhook(campos, vieja)["codigo"], 403)
+
+    def test_la_cabecera_de_twilio_con_clave_de_telnyx_es_403(self):
+        # Ni se valida «con lo que haya»: sin token de Twilio puesto, una
+        # petición que dice venir de Twilio no entra.
+        campos = {"CallSid": "CA1"}
+        self.assertEqual(
+            self.peticion(servidor.Telefono, "do_POST", "/telefono/entrada",
+                          campos, firma="loquesea")["codigo"], 403)
+
+    def test_la_llamada_entera_por_telnyx(self):
+        # Entrada, un turno hablando y el fin: los tres firmados.
+        salida = self.webhook()
+        self.assertEqual(salida["codigo"], 200)
+        campos = {"CallSid": "CA1", "SpeechResult": "¿cuánto vale un tinte?"}
+        turno = self.webhook(campos, self.firmado(campos), ruta="/telefono/turno")
+        self.assertEqual(turno["codigo"], 200)
+        self.assertIn(b"45", turno["cuerpo"])
+        fin = {"CallSid": "CA1"}
+        self.assertEqual(
+            self.webhook(fin, self.firmado(fin), ruta="/telefono/fin")["codigo"], 200)

@@ -221,8 +221,23 @@ class Comun(BaseHTTPRequestHandler):
         host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
         esquema = self.headers.get("X-Forwarded-Proto", "https")
         url = f"{esquema}://{host}{self.path}"
-        if not telefonia.firma_valida(self.config_telefono["token"], url, campos,
-                                      self.headers.get("X-Twilio-Signature")):
+
+        # Cada proveedor firma a su manera, y se mira la cabecera que trae la
+        # peticion, no lo que haya en el .env: si viene sin firma ninguna, no
+        # se valida «con lo que haya», se rechaza.
+        quien = telefonia.quien_firma(self.headers)
+        if quien == "twilio":
+            vale = telefonia.firma_valida(
+                self.config_telefono.get("token", ""), url, campos,
+                self.headers.get(telefonia.CABECERA_TWILIO))
+        elif quien == "telnyx":
+            vale = telefonia.firma_valida_telnyx(
+                self.config_telefono.get("clave_publica", ""), cuerpo,
+                self.headers.get(telefonia.CABECERA_TELNYX),
+                self.headers.get(telefonia.CABECERA_MARCA_TELNYX))
+        else:
+            vale = False
+        if not vale:
             Comun.avisar_firma_mala(self.headers.get("X-Forwarded-For")
                                     or self.client_address[0])
             return self._responder(403, b"firma no valida", "text/plain; charset=utf-8")

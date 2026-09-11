@@ -107,19 +107,47 @@ def _agenda_y_datos(negocio, hoy: date) -> list[Punto]:
     return puntos
 
 
+def _el_telefono() -> list[Punto]:
+    """Con qué se comprueba la firma de cada llamada, y si sirve.
+
+    Son dos proveedores que no se parecen: Twilio firma con un HMAC del
+    Auth Token y Telnyx con Ed25519 y clave pública. Poner la de uno
+    creyendo que vale para el otro da 403 en todas las llamadas, así que
+    aquí se dice cuál está puesto por su nombre.
+    """
+    puesto = telefonia.configuracion()
+    if not puesto:
+        return [Punto(FALLO, "teléfono: sin nada con que comprobar la firma",
+                      "en .env: GJALLARHORN_TELEFONO_TOKEN (Auth Token de Twilio) "
+                      "o GJALLARHORN_TELEFONO_CLAVE_PUBLICA (clave pública de "
+                      "Telnyx). Sin una de las dos no hay webhook")]
+    sirven = telefonia.proveedores(puesto)
+    if sirven:
+        return [Punto(BIEN, f"teléfono: {' y '.join(sirven)}, el webhook arranca")]
+
+    # Hay algo puesto y no vale. Decir cuál y por qué, que es lo que cuesta.
+    if puesto.get("token") and telefonia.token_de_mentira(puesto["token"]):
+        return [Punto(FALLO, "teléfono: el token es el hueco del ejemplo",
+                      "GJALLARHORN_TELEFONO_TOKEN en .env tiene el texto de "
+                      "relleno; el webhook arranca y luego cada llamada se cae "
+                      "con un 403")]
+    clave = puesto.get("clave_publica") or ""
+    if clave and telefonia.token_de_mentira(clave):
+        return [Punto(FALLO, "teléfono: la clave pública es el hueco del ejemplo",
+                      "GJALLARHORN_TELEFONO_CLAVE_PUBLICA en .env tiene el texto "
+                      "de relleno; la sacas del portal de Telnyx, en Keys & "
+                      "Credentials > Public Key")]
+    if clave:
+        return [Punto(FALLO, "teléfono: la clave pública de Telnyx no es una clave",
+                      "tiene que ser base64 de 32 bytes; comprueba que la "
+                      "pegaste entera y sin espacios")]
+    return [Punto(FALLO, "teléfono: sin nada con que comprobar la firma",
+                  "GJALLARHORN_TELEFONO_TOKEN o GJALLARHORN_TELEFONO_CLAVE_PUBLICA")]
+
+
 def _por_donde_habla() -> list[Punto]:
     puntos = []
-    puesto = telefonia.configuracion()
-    if puesto and telefonia.token_de_mentira(puesto["token"]):
-        puntos.append(Punto(FALLO, "teléfono: el token es el hueco del ejemplo",
-                            "GJALLARHORN_TELEFONO_TOKEN en .env tiene el texto de "
-                            "relleno; el webhook arranca y luego cada llamada se "
-                            "cae con un 403"))
-    elif puesto:
-        puntos.append(Punto(BIEN, "teléfono: token puesto, el webhook arranca"))
-    else:
-        puntos.append(Punto(FALLO, "teléfono: sin token",
-                            "GJALLARHORN_TELEFONO_TOKEN en .env; sin él no hay webhook"))
+    puntos.extend(_el_telefono())
     repetidas = avisar.repetidas_en_env()
     if repetidas:
         puntos.append(Punto(AVISO, f".env: {', '.join(repetidas)} está puesto dos veces",
