@@ -25,6 +25,11 @@ ayuda:  ## esta lista
 $(PY):
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip >/dev/null
+	@# ruff es el lint del repo: sin el, `make pruebas` moria con un
+	@# "command not found" en un clon recien hecho. Si no hay red, se avisa
+	@# y se sigue: las pruebas no lo necesitan.
+	@$(PIP) install ruff >/dev/null 2>&1 || \
+	  echo "⚠️  no he podido instalar ruff (¿sin red?). Las pruebas van igual."
 
 instalar: $(PY)  ## venv + dependencias + modelos de voz, de una vez
 	$(PIP) install faster-whisper piper-tts anthropic
@@ -131,7 +136,13 @@ telegram-prueba: $(PY)  ## ¿llega un mensaje al movil? comprueba token y chat
 
 pruebas: $(PY)  ## las pruebas y el lint
 	$(PY) -m unittest discover -s tests
-	$(VENV)/bin/ruff check . 2>/dev/null || ruff check .
+	@# Una comprobacion saltada NO es una comprobacion pasada: si no hay
+	@# ruff se dice con todas las letras en vez de morir con un
+	@# "command not found" que parece que el codigo esta mal.
+	@if [ -x $(VENV)/bin/ruff ]; then $(VENV)/bin/ruff check .; \
+	 elif command -v ruff >/dev/null 2>&1; then ruff check .; \
+	 else echo "⚠️  SIN RUFF: las pruebas han pasado pero el lint NO se ha corrido."; \
+	      echo "   Para tenerlo:  .venv/bin/pip install ruff"; fi
 
 # ---- como servicio: arranca con la maquina, se reinicia si cae, con log ----
 
