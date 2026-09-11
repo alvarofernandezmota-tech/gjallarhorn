@@ -1168,6 +1168,19 @@ class Conversacion:
         if viva:
             return self._seguir_cita()
 
+        # Decir **cuándo** y nada más es pedir hora. «Vale, pues el sábado a
+        # las diez», después de preguntar un precio, acababa en «tomo nota y
+        # le devolvemos la llamada»: quien llamaba colgaba creyendo que tenía
+        # cita y no la tenía.
+        #
+        # El último de todos, y por eso: por encima han pasado el horario, el
+        # precio, anular, la FAQ y el modelo, así que lo que llega aquí
+        # diciendo un día es alguien pidiendo hora y nada más.
+        if fechas.interpretar(limpia, self.ahora()) is not None:
+            self._abrir_cita()
+            self._rellenar_con(limpia)
+            return self._seguir_cita()
+
         # A la tercera seguida sin entender se deja de repetir la misma frase.
         # Un contestador que contesta lo mismo tres veces es un contestador;
         # una persona dice «mire, le tomo el recado y le llamamos».

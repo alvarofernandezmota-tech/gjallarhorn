@@ -395,3 +395,34 @@ class TestUnValeSueltoNoEsUnRecado(CasoProfesional):
 
     def test_y_vale_gracias_sigue_siendo_la_despedida(self):
         self.assertTrue(self.decir("vale, gracias").cuelga)
+
+
+class TestDecirCuandoEsPedirHora(CasoProfesional):
+    """«Vale, pues el sábado a las diez», después de preguntar un precio,
+    acababa en «tomo nota y le devolvemos la llamada»: quien llamaba colgaba
+    creyendo que tenía cita. Salió de leer seis conversaciones enteras."""
+
+    def test_despues_de_un_precio_el_dia_suelto_abre_la_cita(self):
+        dicho = self.texto("¿cuánto vale el corte infantil?", "vale, pues el jueves a las diez")
+        self.assertIn("¿A nombre de quién", dicho)
+        self.assertEqual(self.llamada.cita.fecha, "2026-09-17")
+        self.assertEqual(self.llamada.cita.hora, "10:00")
+
+    def test_y_se_reserva_de_verdad(self):
+        self.texto("¿cuánto vale el corte infantil?", "vale, pues el jueves a las diez", "Nuria")
+        citas = self.agenda.citas()
+        self.assertEqual(len(citas), 1)
+        self.assertEqual(citas[0]["nombre"], "Nuria")
+
+    def test_hoy_mismo_tambien(self):
+        dicho = self.texto("necesito que me atiendan hoy mismo")
+        self.assertNotIn("Tomo nota", dicho)
+
+    def test_pero_lo_que_ya_entienden_las_reglas_no_se_toca(self):
+        # Todas estas llevan un día dentro y NO son una cita nueva.
+        self.agenda.reservar(JUEVES, "17:00", 90, "Tinte", "Marta")
+        self.llamada.nombre = "Marta"
+        self.assertIn("anulo", self.texto("no voy a poder ir el jueves").lower())
+
+    def test_ni_una_pregunta_de_horario_con_dia(self):
+        self.assertIn("martes a viernes", self.texto("¿abrís el sábado?"))
