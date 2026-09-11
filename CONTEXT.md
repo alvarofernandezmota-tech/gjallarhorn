@@ -145,6 +145,26 @@ Whisper la escucha. Si `escuchar + pensar + hablar` no cabe holgado por debajo
 de dos segundos, esta arquitectura no vale para el teléfono, y más vale
 saberlo antes de pagar por un número.
 
+**Estado (2026-09-11)**: medido. Whisper `small` tarda 2898 ms en oír 3,2 s
+de audio en la máquina de casa: no cabe en el presupuesto. Decisión tomada
+en consecuencia, la 7 bis.
+
+### 7 bis. Al teléfono oye y habla el proveedor; piensa esto
+
+**Decisión**: para el número de verdad, el proveedor transcribe y sintetiza
+(`Gather input="speech"` + `Say`). Whisper y Piper se quedan para la demo del
+navegador y para cuando haya una máquina que los corra en menos de un
+segundo. La conversación, los precios y la agenda no salen de aquí.
+
+**Razón**: el número lo dijo: casi tres segundos solo en oír, contra dos de
+presupuesto para el turno entero. Y la privacidad del audio no cambia con
+esta decisión: en cuanto hay un número, quien da la línea oye la línea. Lo
+que sí es de aquí y sigue siéndolo es todo lo que se decide y se dice.
+
+Cada petición al webhook viene firmada con el token del proveedor; sin firma
+válida, 403. Sin token, el webhook no arranca. Y el webhook se publica con
+`tailscale funnel`: una conexión de salida, el router intacto (decisión 8).
+
 ### 8. En el router no se abre nada
 
 **Decisión**: para llegar desde el móvil, `tailscale serve`. No un puerto

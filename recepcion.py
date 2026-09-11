@@ -535,7 +535,8 @@ class Conversacion:
             if ahora_mismo is not None:
                 return _precio_de(ahora_mismo, self.frases)
             if not (self.frases.reconoce("cita", comparable)
-                    or self.frases.reconoce("horario", comparable)):
+                    or self.frases.reconoce("horario", comparable)
+                    or self.frases.reconoce("colgar", comparable)):
                 # Han nombrado algo que no está en la tabla. Decirlo es más
                 # útil que un «tomo nota» genérico, y sigue sin inventarse
                 # ningún precio.

@@ -55,6 +55,7 @@ import avisos
 import frases
 import negocio as negocios
 import recepcion
+import telefonia
 import voz
 
 # Cada navegador graba en lo suyo: Chrome y Firefox en webm, **Safari en iOS
@@ -90,6 +91,8 @@ class Recepcion(BaseHTTPRequestHandler):
     transcriptor = None
     locutor = None
     conversacion = None   # la llamada en curso; se reinicia en /colgar
+    centralita = None     # telefonia.Centralita si hay token; si no, sin webhook
+    config_telefono = None
 
     @classmethod
     def charla(cls) -> "recepcion.Conversacion":
@@ -135,6 +138,8 @@ class Recepcion(BaseHTTPRequestHandler):
         self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
     def do_POST(self):
+        if telefonia.RUTAS.match(self.path):
+            return self._telefono()
         if self.path == "/colgar":
             # Colgar apunta en que quedo la llamada y empieza otra de cero.
             # Sin esto, la segunda prueba hereda la cita a medias de la
@@ -166,6 +171,34 @@ class Recepcion(BaseHTTPRequestHandler):
                          "audio": None, "error": str(error)}
         self._responder(200, json.dumps(resultado, ensure_ascii=False).encode("utf-8"),
                         "application/json; charset=utf-8")
+
+    def _telefono(self) -> None:
+        """El webhook del proveedor de telefonia. Firmado o nada."""
+        if Recepcion.centralita is None:
+            return self._responder(404, b"sin telefonia configurada", "text/plain; charset=utf-8")
+        largo = int(self.headers.get("Content-Length") or 0)
+        cuerpo = self.rfile.read(min(largo, TOPE_AUDIO))
+        campos = telefonia.campos_de(cuerpo)
+
+        # La URL que firmo el proveedor es la publica, con esquema y host.
+        host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
+        esquema = self.headers.get("X-Forwarded-Proto", "https")
+        url = f"{esquema}://{host}{self.path}"
+        if not telefonia.firma_valida(Recepcion.config_telefono["token"], url, campos,
+                                      self.headers.get("X-Twilio-Signature")):
+            avisos.registrar("fallo", f"Petición al webhook de teléfono con firma mala desde {self.client_address[0]}")
+            return self._responder(403, b"firma no valida", "text/plain; charset=utf-8")
+
+        ruta, _, consulta = self.path.partition("?")
+        ruta_turno = f"{esquema}://{host}/telefono/turno"
+        if ruta.endswith("/entrada"):
+            xml = Recepcion.centralita.entrada(campos, ruta_turno)
+        elif ruta.endswith("/turno"):
+            xml = Recepcion.centralita.turno(campos, ruta_turno, silencio="silencio=1" in consulta)
+        else:
+            Recepcion.centralita.fin(campos)
+            xml = telefonia._twiml()
+        self._responder(200, xml.encode("utf-8"), "text/xml; charset=utf-8")
 
     def _atender(self, cuerpo: bytes) -> dict:
         tipo = self.headers.get("Content-Type", "")
@@ -232,6 +265,14 @@ def main() -> int:
     if avisar.configuracion() is None:
         print("ℹ️  sin Telegram: las citas y recados se quedan en avisos.json "
               "(python3 avisar.py explica cómo configurarlo)")
+    Recepcion.config_telefono = telefonia.configuracion()
+    if Recepcion.config_telefono is None:
+        print("ℹ️  sin teléfono: no hay webhook (GJALLARHORN_TELEFONO_TOKEN en .env lo enciende)")
+    else:
+        Recepcion.centralita = telefonia.Centralita(Recepcion.negocio,
+                                                    Recepcion.config_telefono["voz"])
+        print("☎️  webhook de teléfono en /telefono/entrada · publícalo: tailscale funnel --bg "
+              f"{args.puerto}")
 
     if not args.sin_voz:
         Recepcion.transcriptor, Recepcion.locutor = voz.Whisper(), voz.Piper()
