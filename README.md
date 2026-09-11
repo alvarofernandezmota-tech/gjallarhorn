@@ -79,7 +79,9 @@ cliente y lo que el cliente cuenta. Las dos detrás de una interfaz de una
 función, para poder probar todo lo de encima sin descargar modelos de cientos
 de megas.
 
-En la máquina donde corra: `pip install faster-whisper piper-tts`.
+En la máquina donde corra: `pip install faster-whisper piper-tts`. Los dos
+**descargan su modelo la primera vez**, así que ese arranque es lento y necesita
+salida a internet. Después ya no.
 
 Si la síntesis revienta, **la llamada sigue registrada**. Perder la
 contestación es malo; perder el rastro de que alguien llamó preguntando un

@@ -106,25 +106,45 @@ class Locutor(Protocol):
 class Piper:
     """Piper en local: texto a voz sin mandar nada fuera.
 
+    Dos cosas que solo se ven instalándolo de verdad, y que estaban mal
+    escritas de memoria:
+
+    - `PiperVoice.load()` quiere **la ruta de un `.onnx`**, no el nombre de la
+      voz. Hay que bajarla antes con `download_voice`, y se cachea.
+    - El método es `synthesize_wav(texto, fichero)`, no `synthesize`, que
+      devuelve trozos de audio y deja el `wave` sin cabecera («# channels not
+      specified»).
+
     Local por lo mismo que Whisper: por aquí pasa lo que se le dice a un
     cliente y, del otro lado, lo que el cliente cuenta de su vida. El import
     va dentro porque descarga la voz la primera vez.
     """
 
-    def __init__(self, voz: str = VOZ_POR_DEFECTO):
+    def __init__(self, voz: str = VOZ_POR_DEFECTO, carpeta: str | Path | None = None):
         self.voz = voz
+        self.carpeta = Path(carpeta) if carpeta else Path.home() / ".cache" / "piper"
         self._motor = None
 
     def _cargar(self):
         if self._motor is None:
             try:
                 from piper import PiperVoice
+                from piper.download_voices import download_voice
             except ImportError as error:
                 raise RuntimeError(
                     "falta piper-tts: pip install piper-tts. Va en la maquina "
                     "donde corre el agente, no en la de desarrollo."
                 ) from error
-            self._motor = PiperVoice.load(self.voz)
+            # `load` quiere la ruta de un .onnx, no el nombre de la voz. Se
+            # descarga la primera vez y se queda en cache: pedirle a alguien
+            # que baje el modelo a mano antes de arrancar es una forma segura
+            # de que no lo arranque.
+            carpeta = Path(self.carpeta)
+            carpeta.mkdir(parents=True, exist_ok=True)
+            modelo = carpeta / f"{self.voz}.onnx"
+            if not modelo.exists():
+                download_voice(self.voz, carpeta)
+            self._motor = PiperVoice.load(modelo)
         return self._motor
 
     def decir(self, texto: str, destino: Path) -> Path:
@@ -133,7 +153,7 @@ class Piper:
         destino = Path(destino)
         destino.parent.mkdir(parents=True, exist_ok=True)
         with wave.open(str(destino), "wb") as salida:
-            self._cargar().synthesize(texto, salida)
+            self._cargar().synthesize_wav(texto, salida)
         return destino
 
 
