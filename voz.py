@@ -161,7 +161,15 @@ class Piper:
             carpeta.mkdir(parents=True, exist_ok=True)
             modelo = carpeta / f"{self.voz}.onnx"
             if not modelo.exists():
-                download_voice(self.voz, carpeta)
+                try:
+                    download_voice(self.voz, carpeta)
+                except Exception as error:  # noqa: BLE001 — red y nombres de voz
+                    raise RuntimeError(
+                        f"no se pudo bajar la voz {self.voz!r} a {carpeta}: "
+                        f"{error}. Las que hay se listan con "
+                        f"`{sys.executable} -m piper.download_voices --help`; "
+                        "sin red, copia el .onnx y su .onnx.json a esa carpeta."
+                    ) from error
             self._motor = PiperVoice.load(modelo)
         return self._motor
 
@@ -245,7 +253,13 @@ def hablar(texto: str, destino: Path, locutor: Locutor) -> Path | None:
 # que es lo primero que se pregunta cuando no funciona.
 
 
-def _version(modulo) -> str:
+def _version(modulo, paquete: str) -> str:
+    """La version instalada. Del paquete primero: piper no publica __version__."""
+    import importlib.metadata
+    try:
+        return importlib.metadata.version(paquete)
+    except importlib.metadata.PackageNotFoundError:
+        pass
     for atributo in ("__version__", "VERSION", "version"):
         if (valor := getattr(modulo, atributo, None)) is not None:
             return str(valor)
@@ -266,7 +280,7 @@ def _probar_boca(frase: str, destino: Path) -> dict:
 
     crudo, tasa, ancho, canales = locutor._audio(frase)
     segundos = len(crudo) / (tasa * ancho * canales) if tasa else 0
-    return {"version": _version(piper), "api": api, "ms": ms, "bytes": len(crudo),
+    return {"version": _version(piper, "piper-tts"), "api": api, "ms": ms, "bytes": len(crudo),
             "segundos": segundos, "tasa": tasa, "voz": locutor.voz}
 
 
@@ -277,7 +291,8 @@ def _probar_oreja(audio: Path) -> dict:
 
     arranque = time.perf_counter()
     oido = escuchar(audio, transcriptor)
-    return {"version": _version(faster_whisper), "modelo": transcriptor.modelo,
+    return {"version": _version(faster_whisper, "faster-whisper"),
+            "modelo": transcriptor.modelo,
             "ms": (time.perf_counter() - arranque) * 1000, "oido": oido}
 
 

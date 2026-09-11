@@ -42,6 +42,7 @@
   <input id="texto" placeholder="Escribe lo que dirías…" autocomplete="off">
   <button id="enviar">Enviar</button>
   <button id="mic" hidden>🎤</button>
+  <button id="colgar" title="Colgar y empezar otra llamada">📞</button>
 </footer>
 
 <script>
@@ -50,6 +51,7 @@ const chat = document.getElementById("chat");
 const campo = document.getElementById("texto");
 const enviar = document.getElementById("enviar");
 const mic = document.getElementById("mic");
+const colgar = document.getElementById("colgar");
 
 function di(texto, clase) {
   const d = document.createElement("div");
@@ -153,5 +155,17 @@ mic.onclick = async () => {
   mic.classList.add("grabando");
   mic.textContent = "⏹";
 };
+// Colgar cierra la llamada: apunta en que quedo y empieza otra de cero. Sin
+// esto, la segunda prueba hereda la cita a medias de la primera.
+colgar.onclick = async () => {
+  try {
+    const r = await fetch("/colgar", { method: "POST" });
+    const datos = await r.json();
+    if (datos.colgado) di("apuntado: " + datos.colgado, "nota");
+  } catch (e) { /* colgar nunca debe romper la pagina */ }
+  di("— llamada nueva —", "nota");
+  di({{SALUDO_JSON}}, "suyo");
+};
+
 campo.focus();
 </script>

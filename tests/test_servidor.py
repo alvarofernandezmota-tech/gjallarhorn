@@ -32,6 +32,7 @@ class CasoServidor(unittest.TestCase):
         servidor.Recepcion.negocio = negocios.cargar("peluqueria")
         servidor.Recepcion.transcriptor = None   # modo texto
         servidor.Recepcion.locutor = None
+        servidor.Recepcion.conversacion = None   # cada caso, llamada nueva
         cls.servidor = HTTPServer(("127.0.0.1", 0), servidor.Recepcion)
         cls.puerto = cls.servidor.server_address[1]
         cls.hilo = threading.Thread(target=cls.servidor.serve_forever, daemon=True)
@@ -41,6 +42,12 @@ class CasoServidor(unittest.TestCase):
     def tearDownClass(cls):
         cls.servidor.shutdown()
         cls.servidor.server_close()
+
+    def setUp(self):
+        # La conversación recuerda, que es justo para lo que está. Sin esto,
+        # un caso heredaría la cita a medias del anterior y fallaría por algo
+        # que no tiene nada que ver con lo que prueba.
+        servidor.Recepcion.conversacion = None
 
     def url(self, ruta=""):
         return f"http://127.0.0.1:{self.puerto}{ruta}"

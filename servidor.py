@@ -87,6 +87,14 @@ class Recepcion(BaseHTTPRequestHandler):
     negocio = None
     transcriptor = None
     locutor = None
+    conversacion = None   # la llamada en curso; se reinicia en /colgar
+
+    @classmethod
+    def charla(cls) -> "recepcion.Conversacion":
+        """La llamada en curso. Se crea sola si hace falta."""
+        if cls.conversacion is None:
+            cls.conversacion = recepcion.Conversacion(cls.negocio.conocimiento)
+        return cls.conversacion
 
     def log_message(self, formato, *args):
         # El log por defecto ensucia la medición de tiempos con una línea por
@@ -118,6 +126,15 @@ class Recepcion(BaseHTTPRequestHandler):
         self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
     def do_POST(self):
+        if self.path == "/colgar":
+            # Colgar apunta en que quedo la llamada y empieza otra de cero.
+            # Sin esto, la segunda prueba hereda la cita a medias de la
+            # primera y contesta cosas que no vienen a cuento.
+            quedo = Recepcion.charla().colgar()
+            Recepcion.conversacion = recepcion.Conversacion(self.negocio.conocimiento)
+            return self._responder(
+                200, json.dumps({"colgado": quedo}, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8")
         if self.path != "/hablar":
             return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
@@ -157,7 +174,9 @@ class Recepcion(BaseHTTPRequestHandler):
         if not oido:
             return {"oido": "", "dicho": "No le he oído. ¿Me lo repite?", "audio": None}
 
-        respuesta = recepcion.atender(oido, self.negocio.conocimiento)
+        # La misma conversación mientras dure la llamada: es lo que hace que
+        # «el jueves» y «a las cinco» signifiquen algo dos turnos despues.
+        respuesta = Recepcion.charla().atender(oido)
         if respuesta.aviso:
             avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
         print(f"🎙️  {oido}\n  → {respuesta.texto}", flush=True)
@@ -189,6 +208,7 @@ def main() -> int:
     except FileNotFoundError as error:
         print(f"❌ {error}")
         return 1
+    Recepcion.conversacion = recepcion.Conversacion(Recepcion.negocio.conocimiento)
 
     faltan = __import__("conocimiento").que_falta(Recepcion.negocio.conocimiento)
     if faltan:
