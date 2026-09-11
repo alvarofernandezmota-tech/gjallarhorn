@@ -91,24 +91,44 @@ def tarifas(base: Path | None = None) -> list[dict]:
     return servicios
 
 
-def buscar(consulta: str, base: Path | None = None, tope: int = 3) -> list[dict]:
-    """Los servicios que mejor encajan con lo que han preguntado. **Sin LLM.**
+VACIAS = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
+          "vale", "precio", "que", "por", "para", "y", "a", "me", "mi", "quiero"}
 
-    Puntúa por palabras compartidas, ignorando tildes y palabras vacías. Es
-    tosco a propósito: para veinte servicios funciona, y un precio exacto
-    sacado de la tabla vale más que uno bien redactado por un modelo.
+
+def _palabras(texto: str) -> set[str]:
+    return {p for p in re.findall(r"\w+", _sin_tildes(texto)) if p not in VACIAS}
+
+
+def buscar(consulta: str, base: Path | None = None, tope: int = 3) -> list[dict]:
+    """Los servicios que encajan con lo que han preguntado. **Sin LLM.**
+
+    La regla, que no es cosmética: un servicio solo cuenta si lo que se ha
+    preguntado coincide en **más de la mitad de sus palabras con contenido**.
+
+    Con una sola palabra compartida no basta, y ese fue un fallo real: «cambio
+    de parabrisas» devolvía «Cambio de aceite y filtro, 60 €» porque las dos
+    llevan «cambio», y el agente le cantaba a un cliente el precio de un
+    servicio que no existe. Ahora la cobertura es 1 de 2 —no pasa de la mitad—
+    y devuelve nada, que es la respuesta correcta.
+
+    Primero probé a descartar las palabras que salen en muchos servicios. No
+    servía: con cinco servicios, «cambio» sale en dos y no llega a «muchas».
+    Complejidad que no arreglaba el caso, así que fuera.
+
+    El precio de esta regla es que «quiero cambiar las ruedas» no encuentra
+    «Cambio de neumáticos»: no comparten ninguna palabra. Se prefiere así.
+    Callar cuando no se está seguro es barato; cantar el precio de otra cosa,
+    no.
     """
-    vacias = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
-              "vale", "precio", "que", "el", "por", "para", "y", "a"}
-    palabras = {p for p in re.findall(r"\w+", _sin_tildes(consulta)) if p not in vacias}
+    palabras = _palabras(consulta)
     if not palabras:
         return []
     puntuados = []
     for servicio in tarifas(base):
-        suyas = set(re.findall(r"\w+", _sin_tildes(servicio["servicio"])))
-        comunes = palabras & suyas
-        if comunes:
-            puntuados.append((len(comunes) / len(suyas), servicio))
+        comunes = palabras & _palabras(servicio["servicio"])
+        cobertura = len(comunes) / len(palabras)
+        if cobertura > 0.5:
+            puntuados.append((cobertura, servicio))
     puntuados.sort(key=lambda p: p[0], reverse=True)
     return [servicio for _, servicio in puntuados[:tope]]
 
