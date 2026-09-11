@@ -102,8 +102,8 @@ olvidar: $(PY)  ## borrar la ficha de un numero: make olvidar TELEFONO=+34600...
 
 funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@$(PY) -c "import telefonia, sys; c = telefonia.configuracion(); \
-	  sys.exit(0 if c and not telefonia.token_de_mentira(c['token']) else 1)" || \
-	  { echo "❌ sin un GJALLARHORN_TELEFONO_TOKEN bueno en .env no hay webhook que publicar."; \
+	  sys.exit(0 if c and telefonia.proveedores(c) else 1)" || \
+	  { echo "❌ sin nada valido en .env con que comprobar la firma no hay webhook que publicar."; \
 	    echo "   Publicar esto ahora solo abriria la demo a internet. Mira «make revisar»."; \
 	    exit 1; }
 	tailscale funnel --bg $(PUERTO_TELEFONO)
@@ -111,8 +111,7 @@ funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@echo "Se ha publicado el puerto $(PUERTO_TELEFONO), que sirve SOLO /telefono/*."
 	@echo "El $(PUERTO) (la pagina, /hablar, /colgar) sigue sin salir de tu tailnet."
 	@echo
-	@echo "→ en el proveedor, webhook de voz:  https://<esta-maquina>.<tailnet>.ts.net/telefono/entrada"
-	@echo "  y status callback:                https://<esta-maquina>.<tailnet>.ts.net/telefono/fin"
+	@$(PY) urlpublica.py --para-el-proveedor
 
 sin-funnel:  ## dejar de publicar: nada sale a internet
 	tailscale funnel --https=443 off
