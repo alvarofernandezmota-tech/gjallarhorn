@@ -67,6 +67,7 @@ from pathlib import Path
 
 import avisar
 import avisos
+import datos
 import frases
 import negocio as negocios
 import panel as _panel
@@ -462,6 +463,10 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    # A partir de aquí, los datos son **de este negocio**: su agenda, sus
+    # clientes y sus avisos. Ver `datos.py`.
+    for movido in datos.usar(Comun.negocio):
+        print(f"📦 {movido} movido a la carpeta de {Comun.negocio.ruta.name}")
     Comun.conversacion = recepcion.conversacion_de(Comun.negocio)
     if Comun.negocio.horario is None:
         print("⚠️  sin [horario] en negocio.toml: se toma nota, no se reserva")

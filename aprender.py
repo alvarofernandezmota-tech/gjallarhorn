@@ -43,6 +43,7 @@ from pathlib import Path
 import re
 
 import avisos
+import datos
 import conocimiento
 
 # Cuánto se mira hacia atrás. Un mes: lo de hace medio año o ya lo escribió
@@ -224,6 +225,7 @@ def main(argumentos: list[str] | None = None) -> int:
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    datos.usar(negocio)
 
     lista = faltas(negocio.conocimiento, dias=args.dias, minimo=args.minimo)
     if not lista:

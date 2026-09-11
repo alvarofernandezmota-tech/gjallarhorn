@@ -56,6 +56,7 @@ from pathlib import Path
 
 import agenda as _agenda
 import avisos
+import datos
 import cerebro
 import conocimiento
 import fechas
@@ -1305,6 +1306,7 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    datos.usar(negocio)
 
     faltan = conocimiento.que_falta(negocio.conocimiento)
     if faltan:

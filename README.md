@@ -266,6 +266,24 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+### Cada bot es suyo
+
+Un negocio es un bot, y **todo lo suyo es suyo**:
+
+| | |
+|---|---|
+| `negocio.toml` | su nombre, su saludo, su despedida, su voz, su horario |
+| `frases.toml` | lo que dice y lo que entiende: su forma de hablar y sus sinónimos |
+| `tarifas.md`, `faq.md`, cualquier `.md` | lo que sabe |
+| `datos/<negocio>/agenda.json` | sus citas |
+| `datos/<negocio>/clientes.json` | quién le llama y qué suele pedir |
+| `datos/<negocio>/avisos.json` | su registro de llamadas |
+
+Dos negocios son dos carpetas y dos procesos, y no se mezclan: la peluquería
+no saluda por su nombre a quien llamó al taller, y los avisos de cada uno van
+a su sitio. Antes los datos eran de la máquina y no del negocio; si vienes de
+esa versión, la primera vez que arranques se mudan solos y te lo dice.
+
 ### Tu negocio no tiene por qué vivir dentro del repo
 
 `negocios/peluqueria/` es el **ejemplo** que viene con el código. Tu negocio

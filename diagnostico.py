@@ -66,6 +66,7 @@ def negocio_y_datos(negocio: str) -> list[str]:
     sys.path.insert(0, str(RAIZ))
     import agenda
     import avisos
+    import datos
     import fechas
     import conocimiento
     import frases
@@ -75,6 +76,7 @@ def negocio_y_datos(negocio: str) -> list[str]:
     lineas = []
     try:
         n = negocios.cargar(negocio)
+        datos.usar(n)
     except (FileNotFoundError, ValueError) as error:
         return [f"negocio: ❌ {error}"]
     lineas.append(f"negocio: {n.nombre} ({n.ruta.name}) · "

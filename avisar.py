@@ -34,6 +34,7 @@ import urllib.request
 from pathlib import Path
 
 import avisos
+import datos
 
 RAIZ = Path(__file__).resolve().parent
 TIPOS_POR_DEFECTO = ("cita", "llamada", "fallo")
@@ -145,7 +146,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Avisos al movil por Telegram")
     parser.add_argument("--prueba", action="store_true",
                         help="mandar un mensaje de prueba para ver que llega")
+    parser.add_argument("--negocio", default="peluqueria",
+                        help="de qué negocio son los avisos que se mandan")
     args = parser.parse_args()
+
+    # Los avisos son de un negocio, así que hay que decir de cuál: sin esto
+    # se leería la carpeta de datos a secas, que es donde no hay nada.
+    datos.usar(args.negocio)
 
     if configuracion() is None:
         print("Telegram no esta configurado. Hacen falta dos variables, en un .env "

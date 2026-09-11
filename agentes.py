@@ -41,6 +41,7 @@ from datetime import date, datetime, timedelta
 import agenda as _agenda
 import aprender
 import avisos
+import datos
 import conocimiento
 import fechas
 import frases as _frases
@@ -352,6 +353,7 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    datos.usar(negocio)
 
     resultados = correr(negocio, args.agente, registrar=not args.seco)
     if not resultados:

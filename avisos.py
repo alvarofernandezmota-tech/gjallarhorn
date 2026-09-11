@@ -27,11 +27,11 @@ El fichero se escribe con `almacen.py`, que es de aquí: versión de esquema y
 escritura atómica. gjallarhorn no depende de ningún otro repo.
 """
 
-import os
 import threading
 from pathlib import Path
 
 import almacen
+import datos
 import fechas
 
 VARIABLE = "GJALLARHORN_DATOS"
@@ -53,12 +53,12 @@ TOPE_TELEGRAM = 3800
 
 
 def raiz() -> Path:
-    valor = os.environ.get(VARIABLE, "").strip()
-    return Path(valor).expanduser().resolve() if valor else Path(__file__).resolve().parent / "datos"
+    """La carpeta de datos de este bot. Ver `datos.py`: uno por negocio."""
+    return datos.carpeta()
 
 
 def _ruta(ruta: Path | None = None) -> Path:
-    return ruta if ruta is not None else raiz() / "avisos.json"
+    return ruta if ruta is not None else datos.fichero("avisos.json")
 
 
 def cargar(ruta: Path | None = None) -> list[dict]:

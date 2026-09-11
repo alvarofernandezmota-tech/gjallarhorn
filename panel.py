@@ -40,6 +40,7 @@ from pathlib import Path
 import agenda as _agenda
 import aprender
 import avisos
+import datos as _datos
 import conocimiento
 import fechas
 import memoria
@@ -212,10 +213,12 @@ def main(argumentos: list[str] | None = None) -> int:
     args = parser.parse_args(argumentos)
 
     try:
-        datos = vista(negocios.cargar(args.negocio))
+        negocio = negocios.cargar(args.negocio)
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    _datos.usar(negocio)
+    datos = vista(negocio)
     print(f"{datos['negocio']} · {datos['ahora']}")
     for jornada in datos["dias"]:
         cabeza = jornada["dicho"][0].upper() + jornada["dicho"][1:]

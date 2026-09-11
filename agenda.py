@@ -24,7 +24,6 @@ minutos, no cuando empiezan a la misma hora: un tinte de 90 min a las 10
 ocupa hasta las 11:30, y un corte a las 11 no cabe.
 """
 
-import os
 import re
 import threading
 from dataclasses import dataclass
@@ -32,6 +31,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import almacen
+import datos
 import fechas
 
 ESQUEMA = 1
@@ -324,9 +324,8 @@ class Agenda:
 
 
 def _ruta(negocio: str) -> Path:
-    valor = os.environ.get(VARIABLE, "").strip()
-    base = Path(valor).expanduser() if valor else Path(__file__).resolve().parent / "datos"
-    return base / "agenda" / f"{negocio}.json"
+    """Las citas de un negocio, en su carpeta. Ver `datos.py`."""
+    return datos.carpeta_de(negocio) / "agenda.json"
 
 
 def main() -> int:
