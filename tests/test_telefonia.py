@@ -196,10 +196,18 @@ class TestElWebhookEnElServidor(CasoHandler):
     def test_sin_configurar_es_404(self):
         self.assertEqual(self.webhook()["codigo"], 404)
 
-    def test_sin_firma_es_403_y_queda_aviso(self):
+    def test_sin_firma_es_403_y_queda_constancia_una_vez(self):
+        # Una sola anotación por arranque, no una por golpe: desde un puerto
+        # público, un aviso por petición es dejar que cualquiera engorde el
+        # fichero de datos del negocio sin límite.
+        servidor.Comun._firmas_malas = 0
         self.con_telefono()
-        self.assertEqual(self.webhook()["codigo"], 403)
-        self.assertIn("firma mala", avisos.listar()[0]["texto"])
+        antes = len(avisos.listar())
+        for _ in range(5):
+            self.assertEqual(self.webhook()["codigo"], 403)
+        self.assertEqual(len(avisos.listar()), antes + 1)
+        self.assertIn("sin firma válida", avisos.listar()[0]["texto"])
+        self.assertEqual(servidor.Comun._firmas_malas, 5)
 
     def test_con_firma_contesta_twiml(self):
         self.con_telefono()

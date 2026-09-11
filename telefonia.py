@@ -58,6 +58,7 @@ import hmac
 import os
 import re
 import threading
+import time
 from html import escape
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -155,18 +156,44 @@ def _colgar(texto: str, voz: str) -> str:
 class Centralita:
     """Las conversaciones abiertas, una por llamada, y lo que se contesta en cada paso."""
 
-    def __init__(self, negocio, voz: str = VOZ_POR_DEFECTO):
+    # Una llamada de telefono no dura dos horas. Lo que siga vivo despues de
+    # eso es una llamada que acabo y de la que nunca llego el aviso.
+    CADUCA = 2 * 60 * 60
+
+    def __init__(self, negocio, voz: str = VOZ_POR_DEFECTO, ahora=None):
         self.negocio = negocio
         self.voz = voz
+        self._ahora = ahora
         self._llamadas: dict[str, recepcion.Conversacion] = {}
         self._numeros: dict[str, str] = {}
+        self._empezadas: dict[str, float] = {}
+
+    def ahora(self) -> float:
+        return self._ahora() if self._ahora else time.monotonic()
+
+    def _barrer(self) -> list[str]:
+        """Cierra las llamadas que llevan demasiado abiertas. Cuáles ha cerrado.
+
+        `/telefono/fin` es lo que limpia una llamada, y **nada garantiza que
+        llegue**: lo tiene que llamar el proveedor, y solo lo hace si alguien
+        lo configuró. Sin esto, cada llamada que se cae deja su conversación
+        en memoria para siempre y su cita a medias sin apuntar, que es
+        justamente lo que no puede pasar aquí.
+        """
+        limite = self.ahora() - self.CADUCA
+        viejas = [sid for sid, cuando in self._empezadas.items() if cuando < limite]
+        for sid in viejas:
+            self.fin({"CallSid": sid})
+        return viejas
 
     def entrada(self, campos: dict[str, str], ruta_turno: str) -> str:
         """Suena el telefono: saludo y a escuchar."""
+        self._barrer()
         sid, numero = campos.get("CallSid", ""), campos.get("From", "")
         with _LOCK:
             self._llamadas[sid] = recepcion.conversacion_de(self.negocio)
             self._numeros[sid] = numero
+            self._empezadas[sid] = self.ahora()
         saludo = self.negocio.saludo
         if (conocido := cliente(numero)) is not None:
             # Se le saluda por su nombre y la conversacion ya lo sabe: no se
@@ -186,6 +213,7 @@ class Centralita:
             # servidor a mitad): se abre sobre la marcha en vez de colgar.
             llamada = self._llamadas[sid] = recepcion.conversacion_de(self.negocio)
             self._numeros[sid] = campos.get("From", "")
+            self._empezadas[sid] = self.ahora()
 
         dicho = (campos.get("SpeechResult") or "").strip()
         if not dicho:
@@ -210,6 +238,7 @@ class Centralita:
         with _LOCK:
             llamada = self._llamadas.pop(sid, None)
             numero = self._numeros.pop(sid, "")
+            self._empezadas.pop(sid, None)
         if llamada is None:
             return None
         recordar_cliente(numero, llamada.nombre)

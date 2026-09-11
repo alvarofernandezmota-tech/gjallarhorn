@@ -28,6 +28,7 @@ escritura atómica. gjallarhorn no depende de ningún otro repo.
 """
 
 import os
+import threading
 from pathlib import Path
 
 import almacen
@@ -35,6 +36,10 @@ import fechas
 
 VARIABLE = "GJALLARHORN_DATOS"
 VERSION = 1
+
+# Dos llamadas a la vez registran avisos a la vez, y el id sale de mirar el
+# maximo de los que hay: sin esto se repiten ids y se pisa una escritura.
+_ESCRIBIENDO = threading.Lock()
 
 TIPOS = {
     "llamada": "📞",
@@ -78,6 +83,11 @@ def registrar(tipo: str, texto: str, datos: dict | None = None,
     if not texto.strip():
         raise ValueError("un aviso sin texto no sirve de nada")
     momento = ahora or fechas.ahora()
+    with _ESCRIBIENDO:
+        return _apuntar(tipo, texto, datos, ruta, momento)
+
+
+def _apuntar(tipo, texto, datos, ruta, momento) -> dict:
     avisos = cargar(ruta)
     aviso = {
         "id": max((a["id"] for a in avisos), default=0) + 1,
@@ -127,40 +137,59 @@ def _linea(aviso: dict) -> str:
     return f"{marca}{TIPOS[aviso['tipo']]} {aviso['hora']}  {aviso['texto']}"
 
 
+AVISO_RECORTE = "\n\n… hay más. Se mandan en el siguiente mensaje."
+
+
+def encajar(avisos: list[dict], tope: int = TOPE_TELEGRAM) -> list[dict]:
+    """Los avisos que caben enteros en un mensaje de `tope` caracteres.
+
+    Se cuenta **aviso a aviso**, no bloque a bloque. Antes se descartaba el
+    bloque de un día entero si no cabía, así que un día con muchas llamadas se
+    mandaba vacío —y `avisar.py` los marcaba como vistos igual—. Medido: con
+    400 avisos del mismo día no cabía **ninguno**, se decía haber mandado 400,
+    y los 400 desaparecían para siempre. Perder el rastro de una llamada es lo
+    peor que puede pasar aquí, y estaba pasando en silencio.
+
+    Siempre devuelve al menos uno: un aviso larguísimo se recorta al leerlo,
+    pero no puede bloquear la cola detrás de él.
+    """
+    cabidos, usados, dia = [], 40, None
+    for aviso in avisos:
+        coste = len(_linea(aviso)) + 1
+        if aviso["fecha"] != dia:
+            coste += len(aviso["fecha"]) + 4
+        if cabidos and usados + coste > tope:
+            break
+        cabidos.append(aviso)
+        usados += coste
+        dia = aviso["fecha"]
+    return cabidos
+
+
 def formato(avisos: list[dict], tope: int = TOPE_TELEGRAM) -> str:
     """Los avisos como se leen en el chat: agrupados por día, el de hoy arriba.
 
-    Recorta por arriba si no cabe —lo viejo es lo que sobra— y **lo dice**. Un
-    resumen recortado en silencio hace creer que no hubo más llamadas.
+    Recorta si no cabe —lo viejo es lo que sobra— y **lo dice**. Un resumen
+    recortado en silencio hace creer que no hubo más llamadas.
     """
     if not avisos:
         return "Sin avisos."
 
+    cabidos = encajar(avisos, tope - len(AVISO_RECORTE))
     nuevos = sum(1 for a in avisos if not a.get("visto"))
     cabecera = f"{len(avisos)} aviso(s)" + (f", {nuevos} sin ver" if nuevos else "")
 
-    bloques, dia_actual, lineas = [], None, []
-    for aviso in avisos:
+    partes, dia_actual = [], None
+    for aviso in cabidos:
         if aviso["fecha"] != dia_actual:
-            if lineas:
-                bloques.append((dia_actual, lineas))
-            dia_actual, lineas = aviso["fecha"], []
-        lineas.append(_linea(aviso))
-    if lineas:
-        bloques.append((dia_actual, lineas))
+            dia_actual = aviso["fecha"]
+            partes.append(f"\n*{dia_actual}*")
+        partes.append(_linea(aviso))
 
-    partes, usados, recortado = [], len(cabecera), False
-    for dia, lineas_dia in bloques:
-        bloque = f"\n*{dia}*\n" + "\n".join(lineas_dia)
-        if usados + len(bloque) > tope:
-            recortado = True
-            break
-        partes.append(bloque)
-        usados += len(bloque)
-
-    texto = cabecera + "".join(partes)
-    if recortado:
-        texto += "\n\n… hay más, pero no caben. Filtra por tipo o mira los nuevos."
+    texto = cabecera + "".join(
+        p if p.startswith("\n") else f"\n{p}" for p in partes)
+    if len(cabidos) < len(avisos):
+        texto += AVISO_RECORTE
     return texto
 
 
