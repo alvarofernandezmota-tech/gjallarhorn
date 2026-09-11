@@ -1,0 +1,12 @@
+# Reglas de lint de gjallarhorn, las mismas que midgaror y bifrost.
+# Sin este fichero cada maquina aplica su configuracion global y el mismo
+# codigo da un numero distinto de avisos segun donde se corra.
+target-version = "py312"
+line-length = 100
+# El entorno virtual vive dentro del repo y no es codigo nuestro.
+exclude = ["venv"]
+
+[lint]
+# E4/E7/E9/F son las reglas por defecto de ruff. EXE por los scripts con
+# shebang: un shebang sin permiso de ejecucion es una trampa silenciosa.
+select = ["E4", "E7", "E9", "F", "EXE"]
