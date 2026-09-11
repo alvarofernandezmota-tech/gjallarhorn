@@ -161,7 +161,9 @@ def main() -> int:
             turnos = [turno(f, negocio, transcriptor, locutor, carpeta) for f in FRASES]
     except RuntimeError as error:
         print(f"❌ {error}")
-        print("\n   Esto se corre en la máquina donde vaya a vivir el agente,")
+        print("\n   `python3 voz.py` comprueba la oreja y la boca por separado")
+        print("   y dice qué versión hay de cada cosa. Empieza por ahí.")
+        print("\n   Y esto se corre en la máquina donde vaya a vivir el agente,")
         print("   que es la única cuyo tiempo importa.")
         return 1
 

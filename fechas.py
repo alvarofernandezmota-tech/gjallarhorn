@@ -1,13 +1,12 @@
 """Cuándo quiere la cita quien llama. Siempre hacia delante.
 
-gjallarhorn es independiente: no importa nada de midgaror. Esto podría haber
-sido `from midgaror import fechas`, y durante unas horas lo fue, pero hay un
-motivo de diseño para que no lo sea —además del de no depender—:
+Este parser es propio. Durante unas horas se importaba el de otro repo, y hay
+un motivo de diseño para no hacerlo —además del de no depender de nadie—:
 
-**El `interpretar` de midgaror resuelve hacia atrás por defecto.** Un diario
-habla del pasado: «el lunes» es el lunes que pasó. Un recepcionista es al
-revés: **nadie reserva cita para el martes pasado**. Usar el del diario aquí
-era heredar exactamente la suposición contraria a la buena.
+**El parser de un diario resuelve hacia atrás por defecto.** Un diario habla
+del pasado: «el lunes» es el lunes que pasó. Un recepcionista es al revés:
+**nadie reserva cita para el martes pasado**. Reusar uno de diario aquí era
+heredar exactamente la suposición contraria a la buena.
 
 ## Qué entiende
 
@@ -144,6 +143,86 @@ def _buscar_hora(texto: str) -> tuple[str, bool, str] | None:
             hora += 12
         return f"{hora:02d}:{minutos:02d}", bool(franja), m.group(0)
     return None
+
+
+# ---- decirlo, que es distinto de entenderlo -----------------------------
+#
+# Por teclado, «2026-09-17» se lee de un vistazo. Por telefono es una ristra de
+# numeros: Piper lee «dos mil veintiseis guion cero nueve guion diecisiete» y
+# quien llama no se entera de que es el jueves. Un recepcionista dice «el
+# jueves 17 de septiembre», asi que eso es lo que hay que decir.
+
+DIAS_DICHOS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado",
+               "domingo"]
+MESES_DICHOS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+                "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+HORAS_DICHAS = ["doce", "una", "dos", "tres", "cuatro", "cinco", "seis",
+                "siete", "ocho", "nueve", "diez", "once"]
+
+
+def en_palabras(fecha: str, hoy_: date | None = None) -> str:
+    """`2026-09-17` → «el jueves 17 de septiembre». Y «hoy» y «mañana» si lo son.
+
+    Decir «mañana» cuando es mañana no es un adorno: es lo que hace que quien
+    llama sepa de qué día se habla sin tener que contar.
+    """
+    try:
+        dia = date.fromisoformat(fecha)
+    except (TypeError, ValueError):
+        return str(fecha)
+
+    hoy_ = hoy_ or ahora().date()
+    if dia == hoy_:
+        return "hoy"
+    if dia == hoy_ + timedelta(days=1):
+        return "mañana"
+    if dia == hoy_ + timedelta(days=2):
+        return "pasado mañana"
+
+    dicho = f"el {DIAS_DICHOS[dia.weekday()]} {dia.day}"
+    # El mes solo si no es obvio: dentro de la semana que viene, sobra.
+    if (dia - hoy_).days > 7 or dia.month != hoy_.month:
+        dicho += f" de {MESES_DICHOS[dia.month - 1]}"
+    return dicho
+
+
+def hora_en_palabras(hora: str) -> str:
+    """`17:00` → «las cinco de la tarde». Con la franja, que es lo que importa.
+
+    Devolver «las 17:00» obliga al que escucha a traducir, y devolverlo sin
+    franja reabre justo la ambigüedad que se acaba de cerrar preguntando.
+    """
+    try:
+        h, m = (int(parte) for parte in hora.split(":"))
+    except (AttributeError, ValueError):
+        return str(hora)
+
+    franja = ("de la mañana" if h < 12 else "del mediodía" if h == 12
+              else "de la tarde" if h < 21 else "de la noche")
+    dicha = HORAS_DICHAS[h % 12]
+    articulo = "la" if h % 12 == 1 else "las"
+
+    if m == 0:
+        minutos = ""
+    elif m == 15:
+        minutos = " y cuarto"
+    elif m == 30:
+        minutos = " y media"
+    else:
+        minutos = f" y {m}"
+    return f"{articulo} {dicha}{minutos} {franja}"
+
+
+def hora_suelta(frase: str) -> tuple[str, bool] | None:
+    """(hora, ¿acotada?) de una frase que solo dice la hora, o None.
+
+    «A las cinco» a secas no es una cita —eso lo sigue diciendo `interpretar`,
+    devolviendo None sin día—. Pero en mitad de una conversación **sí** lo es:
+    el día se dijo dos frases antes y quien lleva la cuenta lo recuerda. Esta
+    función es solo el trozo de reconocer la hora, sin opinar sobre si basta.
+    """
+    encontrada = _buscar_hora(sin_tildes(frase or ""))
+    return (encontrada[0], encontrada[1]) if encontrada else None
 
 
 def interpretar(frase: str, ahora_=None) -> tuple[str, str | None, bool, str] | None:

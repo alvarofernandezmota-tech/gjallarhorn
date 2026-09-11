@@ -29,8 +29,8 @@ el móvil por IP no va a funcionar, y no es un fallo: es la política del
 navegador.
 
 La salida limpia es `tailscale serve`, que pone HTTPS de verdad sobre la red
-Tailscale **sin abrir nada en el router** —es una conexión de salida, así que
-el ADR-015 de midgaror se queda como está—:
+Tailscale **sin abrir nada en el router** —es una conexión de salida, no un
+puerto expuesto a internet—:
 
     tailscale serve --bg 8080
 
@@ -43,6 +43,7 @@ verdad, no. Se cambia cuando exista la telefonía, que es cuando importará.
 
 import argparse
 import base64
+import errno
 import json
 import sys
 import tempfile
@@ -53,6 +54,20 @@ import avisos
 import negocio as negocios
 import recepcion
 import voz
+
+# Cada navegador graba en lo suyo: Chrome y Firefox en webm, **Safari en iOS
+# en mp4**. Antes esto se escribia siempre como `.webm`, asi que una llamada
+# desde el movil llegaba como un mp4 con nombre de webm. El decodificador
+# suele olfatear el contenido y salir del paso, pero no siempre, y cuando no
+# lo hace el sintoma es «no le he oido» sin ninguna pista de por que.
+EXTENSIONES = {"audio/webm": ".webm", "audio/mp4": ".m4a", "audio/mpeg": ".mp3",
+               "audio/ogg": ".ogg", "audio/wav": ".wav", "audio/x-wav": ".wav",
+               "audio/aac": ".aac", "audio/flac": ".flac"}
+
+
+def _extension(tipo: str) -> str:
+    """La extension que le toca a un Content-Type. `.webm` si no se reconoce."""
+    return EXTENSIONES.get(tipo.split(";")[0].strip().lower(), ".webm")
 
 RAIZ = Path(__file__).resolve().parent
 PAGINA = RAIZ / "web" / "index.html"
@@ -72,6 +87,14 @@ class Recepcion(BaseHTTPRequestHandler):
     negocio = None
     transcriptor = None
     locutor = None
+    conversacion = None   # la llamada en curso; se reinicia en /colgar
+
+    @classmethod
+    def charla(cls) -> "recepcion.Conversacion":
+        """La llamada en curso. Se crea sola si hace falta."""
+        if cls.conversacion is None:
+            cls.conversacion = recepcion.Conversacion(cls.negocio.conocimiento)
+        return cls.conversacion
 
     def log_message(self, formato, *args):
         # El log por defecto ensucia la medición de tiempos con una línea por
@@ -103,6 +126,15 @@ class Recepcion(BaseHTTPRequestHandler):
         self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
     def do_POST(self):
+        if self.path == "/colgar":
+            # Colgar apunta en que quedo la llamada y empieza otra de cero.
+            # Sin esto, la segunda prueba hereda la cita a medias de la
+            # primera y contesta cosas que no vienen a cuento.
+            quedo = Recepcion.charla().colgar()
+            Recepcion.conversacion = recepcion.Conversacion(self.negocio.conocimiento)
+            return self._responder(
+                200, json.dumps({"colgado": quedo}, ensure_ascii=False).encode("utf-8"),
+                "application/json; charset=utf-8")
         if self.path != "/hablar":
             return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
@@ -131,7 +163,7 @@ class Recepcion(BaseHTTPRequestHandler):
         else:
             if self.transcriptor is None:
                 raise RuntimeError("el servidor está en modo texto: arráncalo sin --sin-voz")
-            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as entrada:
+            with tempfile.NamedTemporaryFile(suffix=_extension(tipo), delete=False) as entrada:
                 entrada.write(cuerpo)
                 ruta = Path(entrada.name)
             try:
@@ -142,7 +174,9 @@ class Recepcion(BaseHTTPRequestHandler):
         if not oido:
             return {"oido": "", "dicho": "No le he oído. ¿Me lo repite?", "audio": None}
 
-        respuesta = recepcion.atender(oido, self.negocio.conocimiento)
+        # La misma conversación mientras dure la llamada: es lo que hace que
+        # «el jueves» y «a las cinco» signifiquen algo dos turnos despues.
+        respuesta = Recepcion.charla().atender(oido)
         if respuesta.aviso:
             avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
         print(f"🎙️  {oido}\n  → {respuesta.texto}", flush=True)
@@ -174,6 +208,7 @@ def main() -> int:
     except FileNotFoundError as error:
         print(f"❌ {error}")
         return 1
+    Recepcion.conversacion = recepcion.Conversacion(Recepcion.negocio.conocimiento)
 
     faltan = __import__("conocimiento").que_falta(Recepcion.negocio.conocimiento)
     if faltan:
@@ -181,6 +216,20 @@ def main() -> int:
 
     if not args.sin_voz:
         Recepcion.transcriptor, Recepcion.locutor = voz.Whisper(), voz.Piper()
+
+    try:
+        servidor = HTTPServer(("0.0.0.0", args.puerto), Recepcion)
+    except OSError as error:
+        if error.errno != errno.EADDRINUSE:
+            raise
+        # Casi siempre es un servidor.py anterior que se quedo vivo. El
+        # traceback de socketserver no lo dice, y es lo unico que hace falta.
+        print(f"❌ El puerto {args.puerto} ya esta ocupado.")
+        print("   Casi siempre es otro servidor.py que se quedo corriendo.")
+        print(f"   Quien lo tiene:  ss -ltnp | grep :{args.puerto}")
+        print("   Matarlo:         pkill -f servidor.py")
+        print(f"   U otro puerto:   python3 servidor.py --puerto {args.puerto + 1}")
+        return 1
 
     modo = "TEXTO (sin modelos)" if args.sin_voz else "VOZ"
     print(f"{Recepcion.negocio.nombre} · modo {modo}")
@@ -190,7 +239,6 @@ def main() -> int:
               f"{args.puerto}")
     print("   Ctrl+C para parar.\n")
 
-    servidor = HTTPServer(("0.0.0.0", args.puerto), Recepcion)
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:

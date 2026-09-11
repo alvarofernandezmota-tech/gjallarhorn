@@ -21,12 +21,9 @@ puede hacer esto.
 ## Cuándo tocará RAG de verdad
 
 Cuando el conocimiento deje de caber. `cabe_en()` lo dice con números en vez
-de a ojo. Ese día hay una decisión pendiente que **no se puede tomar sola**:
-el ADR-011 de midgaror reserva el RAG para `mimir`, con dos índices —`vida` y
-`codigo`— y el argumento explícito de no duplicar el andamiaje. Unas tarifas
-de negocio no son ninguno de los dos índices, así que hará falta un ADR que
-diga si esto es un tercer índice de mimir o algo aparte. No se decide por
-inercia.
+de a ojo, y ese día la decisión **no se toma por inercia**: un RAG es otra
+pieza que mantener y otro sitio donde equivocarse de precio. Se decide por
+escrito, con el número de `cabe_en()` delante.
 
 ## El formato
 
@@ -158,14 +155,35 @@ def buscar(consulta: str, base: Path | None = None, tope: int = 3) -> list[dict]
     «Cambio de neumáticos»: no comparten ninguna palabra. Se prefiere así.
     Callar cuando no se está seguro es barato; cantar el precio de otra cosa,
     no.
+
+    ## La cobertura se mide por los dos lados
+
+    Medirla solo sobre lo preguntado rompía por teléfono, que es donde esto
+    vive. Nadie dice «tinte»: dice «buenas, mire, quería saber cuánto vale un
+    tinte». Sobre lo preguntado eso es 1 palabra de 4 —no llega a la mitad— y
+    el agente contestaba «no tengo ese servicio» teniéndolo en la tabla. Con
+    Whisper transcribiendo frases enteras, era el caso normal, no el raro.
+
+    Así que vale con que **cualquiera de los dos lados** pase de la mitad: lo
+    preguntado cubierto por el servicio, o el servicio cubierto por lo
+    preguntado. Y el caso que originó la regla sigue rechazado, que es lo que
+    había que conservar:
+
+        «cambio de parabrisas» vs «Cambio de aceite»
+            por lo preguntado: {cambio} de {cambio, parabrisas} = 50 %
+            por el servicio:   {cambio} de {cambio, aceite}     = 50 %
+            ninguno pasa de la mitad → no se dice nada. Correcto.
     """
     palabras = _palabras(consulta)
     if not palabras:
         return []
     puntuados = []
     for servicio in tarifas(base):
-        comunes = palabras & _palabras(servicio["servicio"])
-        cobertura = len(comunes) / len(palabras)
+        suyas = _palabras(servicio["servicio"])
+        comunes = palabras & suyas
+        if not comunes:
+            continue
+        cobertura = max(len(comunes) / len(palabras), len(comunes) / len(suyas))
         if cobertura > 0.5:
             puntuados.append((cobertura, servicio))
     puntuados.sort(key=lambda p: p[0], reverse=True)

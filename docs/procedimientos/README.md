@@ -8,15 +8,10 @@ repo: gjallarhorn
 
 Un `.md` por procedimiento, paso a paso, y un script con el **mismo nombre
 base** en [`scripts/`](../../scripts/) cuando el procedimiento esté
-automatizado (ADR-004 de midgaror).
-
-| Procedimiento | Script |
-|---|---|
-| `docs/procedimientos/transcribir.md` | `scripts/transcribir.py` |
-
-Así, quien lee el `.md` sabe sin buscar dónde está el código que lo ejecuta.
+automatizado: `algo.md` ↔ `algo.py`. Así, quien lee el `.md` sabe sin buscar
+dónde está el código que lo ejecuta.
 
 ## Índice
 
-Vacío: todavía no hay ningún procedimiento. El primero será el de la
-transcripción local, cuando haya algo que transcribir.
+Vacío: todavía no hay ningún procedimiento escrito. El primero será el de dar
+de alta un negocio en producción, cuando haya un negocio en producción.

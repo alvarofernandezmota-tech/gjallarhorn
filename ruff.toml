@@ -1,4 +1,4 @@
-# Reglas de lint de gjallarhorn, las mismas que midgaror y bifrost.
+# Reglas de lint de gjallarhorn.
 # Sin este fichero cada maquina aplica su configuracion global y el mismo
 # codigo da un numero distinto de avisos segun donde se corra.
 target-version = "py312"

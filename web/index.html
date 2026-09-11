@@ -42,6 +42,7 @@
   <input id="texto" placeholder="Escribe lo que dirías…" autocomplete="off">
   <button id="enviar">Enviar</button>
   <button id="mic" hidden>🎤</button>
+  <button id="colgar" title="Colgar y empezar otra llamada">📞</button>
 </footer>
 
 <script>
@@ -50,6 +51,7 @@ const chat = document.getElementById("chat");
 const campo = document.getElementById("texto");
 const enviar = document.getElementById("enviar");
 const mic = document.getElementById("mic");
+const colgar = document.getElementById("colgar");
 
 function di(texto, clase) {
   const d = document.createElement("div");
@@ -86,7 +88,7 @@ async function mandar(cuerpo, tipo, loQueDije) {
     esperando.textContent = datos.dicho;
     const ms = Math.round(performance.now() - arranque);
     di(`${ms} ms`, "nota");
-    if (datos.audio) new Audio("data:audio/wav;base64," + datos.audio).play().catch(() => {});
+    if (datos.audio) sonar("data:audio/wav;base64," + datos.audio);
   } catch (e) {
     esperando.textContent = "No he podido contestar: " + e.message;
   } finally {
@@ -104,22 +106,66 @@ function mandarTexto() {
 enviar.onclick = mandarTexto;
 campo.onkeydown = (e) => { if (e.key === "Enter") mandarTexto(); };
 
+// En iOS el audio solo suena si el elemento se ha "desbloqueado" dentro de un
+// gesto del usuario. Como la contestacion llega despues del fetch, el gesto ya
+// paso y `new Audio(...).play()` se queda mudo sin dar error: el agente
+// contesta y no se oye nada. Se reserva UN elemento y se desbloquea al primer
+// toque; luego solo se le cambia el src.
+const altavoz = new Audio();
+let desbloqueado = false;
+function desbloquear() {
+  if (desbloqueado) return;
+  desbloqueado = true;
+  // Un wav de silencio minimo: basta para que iOS de por buena la reproduccion.
+  altavoz.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9"
+              + "AAACABAAZGF0YQAAAAA=";
+  altavoz.play().catch(() => {});
+}
+function sonar(src) {
+  altavoz.src = src;
+  altavoz.play().catch(() => {});
+}
+document.addEventListener("pointerdown", desbloquear, { once: true });
+
+// Safari en iOS NO graba webm: saca audio/mp4. Chrome y Firefox sacan webm.
+// Hardcodear "audio/webm" mandaba un mp4 con etiqueta de webm.
+function formatoGrabable() {
+  const candidatos = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
+  return candidatos.find((t) => MediaRecorder.isTypeSupported?.(t)) || "";
+}
+
 let grabadora = null;
 mic.onclick = async () => {
+  desbloquear();
   if (grabadora && grabadora.state === "recording") { grabadora.stop(); return; }
   const pista = await navigator.mediaDevices.getUserMedia({ audio: true });
   const trozos = [];
-  grabadora = new MediaRecorder(pista);
+  const formato = formatoGrabable();
+  grabadora = new MediaRecorder(pista, formato ? { mimeType: formato } : undefined);
   grabadora.ondataavailable = (e) => trozos.push(e.data);
   grabadora.onstop = () => {
     pista.getTracks().forEach((t) => t.stop());
     mic.classList.remove("grabando");
     mic.textContent = "🎤";
-    mandar(new Blob(trozos), "audio/webm", "🎤 …");
+    // El tipo que de verdad eligio el navegador, no el que suponiamos.
+    const tipo = (grabadora.mimeType || formato || "audio/webm").split(";")[0];
+    mandar(new Blob(trozos, { type: tipo }), tipo, "🎤 …");
   };
   grabadora.start();
   mic.classList.add("grabando");
   mic.textContent = "⏹";
 };
+// Colgar cierra la llamada: apunta en que quedo y empieza otra de cero. Sin
+// esto, la segunda prueba hereda la cita a medias de la primera.
+colgar.onclick = async () => {
+  try {
+    const r = await fetch("/colgar", { method: "POST" });
+    const datos = await r.json();
+    if (datos.colgado) di("apuntado: " + datos.colgado, "nota");
+  } catch (e) { /* colgar nunca debe romper la pagina */ }
+  di("— llamada nueva —", "nota");
+  di({{SALUDO_JSON}}, "suyo");
+};
+
 campo.focus();
 </script>

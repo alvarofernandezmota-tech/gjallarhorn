@@ -103,9 +103,7 @@ gjallarhorn/
 └─ conocimiento/           en blanco a propósito
 ```
 
-## Relación con el ecosistema
+## Dónde guarda sus datos
 
-- Submódulo de **midgaror**, en `proyectos/`, igual que bifrost.
-- Escribe por `bifrost_bridge.escribir_entrada` (ADR-009).
-- Respeta `MIDGAROR_DATOS` (ADR-016) sin saber nada de él: eso lo resuelve
-  midgaror.
+- `GJALLARHORN_DATOS` para los avisos; `GJALLARHORN_CONOCIMIENTO` para las
+  tarifas. Sin ellas, dentro del repo.

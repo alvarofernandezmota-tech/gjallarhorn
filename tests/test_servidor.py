@@ -32,6 +32,7 @@ class CasoServidor(unittest.TestCase):
         servidor.Recepcion.negocio = negocios.cargar("peluqueria")
         servidor.Recepcion.transcriptor = None   # modo texto
         servidor.Recepcion.locutor = None
+        servidor.Recepcion.conversacion = None   # cada caso, llamada nueva
         cls.servidor = HTTPServer(("127.0.0.1", 0), servidor.Recepcion)
         cls.puerto = cls.servidor.server_address[1]
         cls.hilo = threading.Thread(target=cls.servidor.serve_forever, daemon=True)
@@ -41,6 +42,12 @@ class CasoServidor(unittest.TestCase):
     def tearDownClass(cls):
         cls.servidor.shutdown()
         cls.servidor.server_close()
+
+    def setUp(self):
+        # La conversación recuerda, que es justo para lo que está. Sin esto,
+        # un caso heredaría la cita a medias del anterior y fallaría por algo
+        # que no tiene nada que ver con lo que prueba.
+        servidor.Recepcion.conversacion = None
 
     def url(self, ruta=""):
         return f"http://127.0.0.1:{self.puerto}{ruta}"
@@ -129,3 +136,83 @@ class TestNoSeRompeCaro(CasoServidor):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElFormatoDelAudio(unittest.TestCase):
+    """Safari en iOS graba mp4, no webm. Antes todo se escribía como `.webm`.
+
+    El síntoma de acertar el contenido y fallar la extensión es el peor que
+    hay: «No le he oído», sin ninguna pista de por qué. Y justo desde el móvil,
+    que es donde se prueba la llamada.
+    """
+
+    def test_cada_navegador_lleva_su_extension(self):
+        self.assertEqual(servidor._extension("audio/webm"), ".webm")      # Chrome
+        self.assertEqual(servidor._extension("audio/mp4"), ".m4a")        # Safari iOS
+        self.assertEqual(servidor._extension("audio/ogg"), ".ogg")        # Firefox
+
+    def test_los_parametros_del_tipo_no_estorban(self):
+        # MediaRecorder devuelve «audio/webm;codecs=opus».
+        self.assertEqual(servidor._extension("audio/webm;codecs=opus"), ".webm")
+        self.assertEqual(servidor._extension("audio/mp4; codecs=mp4a.40.2"), ".m4a")
+
+    def test_da_igual_como_venga_escrito(self):
+        self.assertEqual(servidor._extension("  AUDIO/MP4  "), ".m4a")
+
+    def test_un_tipo_desconocido_no_revienta(self):
+        # Preferible una extensión de más a un 500 por un navegador raro.
+        self.assertEqual(servidor._extension("audio/loquesea"), ".webm")
+        self.assertEqual(servidor._extension(""), ".webm")
+
+
+class TestElPuertoOcupado(unittest.TestCase):
+    """Arrancar dos veces es el error más común, y daba un traceback.
+
+    `HTTPServer` levanta un `OSError` de `socketserver` que habla de bind y de
+    direcciones. Lo único que hace falta saber es que ya hay uno corriendo y
+    cómo matarlo, así que eso es lo que se dice.
+    """
+
+    def arrancar_en(self, puerto):
+        import contextlib
+        import io
+
+        argv = sys.argv
+        sys.argv = ["servidor.py", "--sin-voz", "--puerto", str(puerto)]
+        salida = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(salida):
+                codigo = servidor.main()
+        finally:
+            sys.argv = argv
+        return codigo, salida.getvalue()
+
+    def test_lo_dice_en_vez_de_reventar(self):
+        import socket
+
+        ocupado = socket.socket()
+        self.addCleanup(ocupado.close)
+        ocupado.bind(("0.0.0.0", 0))
+        ocupado.listen(1)
+        puerto = ocupado.getsockname()[1]
+
+        codigo, dicho = self.arrancar_en(puerto)
+
+        self.assertEqual(codigo, 1)
+        self.assertIn(str(puerto), dicho)
+        self.assertIn("ocupado", dicho)
+        self.assertIn("pkill", dicho)      # cómo salir del paso
+        self.assertIn("--puerto", dicho)   # o cómo esquivarlo
+
+    def test_no_anuncia_una_url_que_no_esta_sirviendo(self):
+        # Antes el banner se imprimía antes de coger el puerto: salía
+        # «→ http://localhost:8080» y justo debajo el traceback.
+        import socket
+
+        ocupado = socket.socket()
+        self.addCleanup(ocupado.close)
+        ocupado.bind(("0.0.0.0", 0))
+        ocupado.listen(1)
+
+        _, dicho = self.arrancar_en(ocupado.getsockname()[1])
+        self.assertNotIn("http://localhost", dicho)

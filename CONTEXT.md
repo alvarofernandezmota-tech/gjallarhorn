@@ -2,59 +2,113 @@
 
 ## Propósito
 
-gjallarhorn convierte voz en entradas del diario de midgaror.
+gjallarhorn atiende el teléfono de un negocio: coge la llamada, informa de
+tarifas y toma la cita. Por voz, y en local.
 
 ## Decisiones
 
-### 1. Proyecto aparte, no una fase de bifrost
+### 1. Proyecto independiente, sin dependencias de ningún otro repo
 
-**Decisión**: repo propio y submódulo de midgaror, como bifrost.
+**Decisión**: repo propio, con sus propios `fechas.py`, `almacen.py` y
+`voz.py`. No importa nada de fuera.
 
-**Razón**: bifrost está en producción escribiendo el diario. La voz es otro
-oficio, con otro ciclo de vida —prueba y error durante semanas frente a un
-bot que se toca poco y con miedo—, y un fallo aquí no puede dejarlo mudo.
+**Razón**: hubo unas horas en las que esto tiraba de otro repo y **se cortó a
+propósito**. Un recepcionista de peluquería no tiene por qué arrastrar el repo
+del diario personal de nadie para arrancar, y un fallo en un lado no puede
+dejar mudo el otro. Si alguna vez hace falta algo de fuera, **se copia**: son
+treinta líneas frente a una dependencia entre proyectos.
 
-Decidido por Álvaro el 2026-09-11 (ADR-017 de midgaror). La propuesta
-anterior era meter la transcripción dentro de bifrost y crear este repo solo
-si no bastaba; quedó descartada.
+### 2. `fechas.py` mira hacia delante
 
-### 2. Un solo camino de escritura al diario
+**Decisión**: el parser de fechas es propio y resuelve **siempre hacia
+delante**.
 
-**Decisión**: se escribe por `bifrost_bridge.escribir_entrada` (ADR-009 de
-midgaror). No se abre otro.
+**Razón**: el parser de un diario hace lo contrario —«el lunes» es el lunes que
+pasó— porque un diario habla del pasado. Un recepcionista es al revés: **nadie
+reserva cita para el martes pasado**. Reusar uno de diario aquí era heredar
+exactamente la suposición contraria a la buena.
 
-**Razón**: es lo que mantiene `organizar_diario.py` como único sitio por el
-que entra texto en el diario. Cada arreglo que se haga allí vale aquí sin
-tocar nada.
+Y no decide por su cuenta si «a las cinco» son las 17:00: devuelve `05:00` y
+marca que la hora venía sin franja. Quien la confirma es el cliente,
+preguntando. Es la regla que evitó citar a alguien de madrugada.
 
-### 3. La transcripción es local
+### 3. Un precio sale de la tabla o no sale
 
-**Decisión**: el audio se transcribe en el servidor de casa. No se manda a
-una API de terceros.
+**Decisión**: el número lo pone `conocimiento.buscar()` sobre una tabla de
+Markdown, no un modelo generativo. Si el servicio no está, el agente dice que
+no lo sabe y toma el recado.
 
-**Razón**: es el diario personal. Sacarlo de casa contradice lo decidido en
-el ADR-016 sobre dónde viven estos datos. El audio original no se guarda
-salvo decisión explícita: es dato personal y pesa.
+**Razón**: cantar un precio equivocado por teléfono cuesta dinero y
+credibilidad, y ese error no se ve en las pruebas: se ve en la factura. Un LLM
+podrá redactar mejor la frase, **el número no lo pone él**.
 
-### 4. La telefonía no se empieza sin su ADR
+Por lo mismo esto **no es un RAG**. Con veinte servicios el conocimiento entero
+cabe en el prompt y no hay paso de recuperación que pueda recuperar el trozo
+equivocado. `conocimiento.cabe_en()` dirá con números cuándo deja de caber.
 
-**Decisión**: nada de telefonía hasta que exista un ADR que resuelva cómo
-entra un webhook sin contradecir el ADR-015.
+### 4. La voz es local
 
-**Razón**: el ADR-015 decidió que en el router no se abre nada. Separar este
-repo no cambia el router. Las salidas plausibles —un relé en la nube, o
-Tailscale Funnel— modifican esa decisión, y eso se escribe antes, no después.
+**Decisión**: Whisper para oír y Piper para hablar, los dos en la máquina de
+casa. El audio no se manda a una API de terceros.
 
-## Relación con midgaror
+**Razón**: por ahí pasa lo que un cliente cuenta por teléfono y lo que se le
+contesta. El audio original no se guarda salvo decisión explícita: es dato
+personal y pesa.
 
-- Submódulo en `proyectos/`, igual que bifrost.
-- Necesita el `diario/` de midgaror disponible para importarlo.
-- Respeta `MIDGAROR_DATOS` (ADR-016) sin saber nada de él.
+### 5. Un negocio es una carpeta
+
+**Decisión**: dar de alta un cliente es `cp -r negocios/peluqueria
+negocios/otro` y editar dos Markdown. No se toca código.
+
+**Razón**: quien lleva el negocio tiene que poder cambiar un precio sin llamar
+a nadie, y eso solo es cierto si no hay que abrir un `.py`.
+
+### 6. El aviso de que es automático no se puede quitar
+
+**Decisión**: `negocio.toml` deja personalizar el saludo, pero si el saludo
+propio no dice que se habla con un sistema automático, **se le añade al
+cargarlo**.
+
+**Razón**: informar de eso no es opcional, y la única forma de garantizarlo es
+que no dependa de que alguien se acuerde al editar un fichero de texto.
+
+### 7. La telefonía va después de medir
+
+**Decisión**: primero `medir_voz.py`, después el número de teléfono.
+
+**Razón**: la telefonía es la parte **conocida** —un proveedor entrega la
+llamada en unos cientos de milisegundos y eso no lo cambia nadie—. Lo
+desconocido, y lo que puede tumbar el proyecto, es cuánto tarda Whisper en el
+hardware de casa. Y eso se mide **gratis**: Piper fabrica la voz del cliente y
+Whisper la escucha. Si `escuchar + pensar + hablar` no cabe holgado por debajo
+de dos segundos, esta arquitectura no vale para el teléfono, y más vale
+saberlo antes de pagar por un número.
+
+### 8. En el router no se abre nada
+
+**Decisión**: para llegar desde el móvil, `tailscale serve`. No un puerto
+abierto.
+
+**Razón**: el navegador no da micrófono sin HTTPS salvo en `localhost`, así que
+por IP a pelo no hay demo. `tailscale serve` da HTTPS de verdad con una
+conexión **de salida**. Abrir un puerto en el router es exponer una máquina de
+casa a internet a cambio de nada.
+
+## Dónde guarda sus datos
+
+`GJALLARHORN_DATOS` para los avisos, `GJALLARHORN_CONOCIMIENTO` para las
+tarifas. Sin ellas, dentro del repo, en carpetas que están en el `.gitignore`:
+esto son datos, no código.
 
 ## Estado actual
 
-✅ **El agente funciona**: audio (o texto) → cerebro → acción → una frase. 43
-pruebas contra los módulos reales de midgaror, con las rutas en temporales.
+✅ **Funciona de punta a punta, por texto y por voz.** `servidor.py` levanta el
+MVP en el navegador; con `--sin-voz` se prueba el recepcionista hoy, sin
+instalar ningún modelo.
 
-Pendiente: instalar Whisper en la máquina donde corra, y decidir si el cerebro
-de reglas se sustituye por un LLM (ADR-018).
+Pendiente, por orden:
+
+1. Correr `medir_voz.py` en la máquina donde vaya a vivir, después de `pip
+   install faster-whisper piper-tts`. Hasta que haya un número medido, la
+   latencia es una suposición.
+2. Decidir la telefonía a la vista de ese número.

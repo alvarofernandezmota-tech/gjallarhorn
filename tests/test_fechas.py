@@ -2,8 +2,8 @@
 
 Dos propiedades por encima de las demás, y las dos salieron de fallos reales:
 
-1. **Siempre hacia delante.** Nadie reserva para el martes pasado. El parser
-   del diario de midgaror hace lo contrario, y por eso este es propio.
+1. **Siempre hacia delante.** Nadie reserva para el martes pasado. Un parser
+   de diario hace lo contrario, y por eso este es propio.
 2. **Una hora sin acotar se marca como tal.** «A las cinco» no se convierte en
    las 17:00 por su cuenta: devuelve 05:00 y avisa de que nadie dijo si era
    mañana o tarde. Confirmarla es del recepcionista, preguntando.
