@@ -148,6 +148,20 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+## Operarlo: `make`
+
+```
+make instalar      venv + dependencias + modelos, de una vez
+make voz           ¿oye y habla esta máquina? versiones y milisegundos
+make medir         cuánto tarda en contestar · MODELO=base para el modelo pequeño
+make arrancar      servicio systemd: siempre encendido, se reinicia si cae
+make estado        ¿vivo? ¿qué modelo? últimas citas y avisos
+make diagnostico   el informe entero, para pegarlo de una vez
+make log           el log del servicio, en vivo
+```
+
+`make` a secas lista todo. Tras un `git pull` o editar el negocio: `make reiniciar`.
+
 ## La voz, de punta a punta
 
 ```

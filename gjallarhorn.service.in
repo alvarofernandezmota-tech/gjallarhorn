@@ -1,0 +1,15 @@
+# Plantilla: `make arrancar` la rellena y la deja en ~/.config/systemd/user/.
+# Sin rutas ni nombres de maquina aqui a proposito: el repo es publico.
+[Unit]
+Description=gjallarhorn — recepcionista telefonico (@NEGOCIO@)
+After=network-online.target
+
+[Service]
+WorkingDirectory=@RAIZ@
+ExecStart=@RAIZ@/.venv/bin/python servidor.py --negocio @NEGOCIO@ --puerto @PUERTO@
+Restart=on-failure
+RestartSec=3
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
