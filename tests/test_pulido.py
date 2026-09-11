@@ -147,6 +147,13 @@ class TestRepetirYPersona(CasoPeluqueria):
         self.assertFalse(respuesta.cuelga)
 
 
+class TestElRelojSeLee(unittest.TestCase):
+    def test_las_horas_del_horario_no_se_leen_como_reloj(self):
+        import voz
+        dicho = voz.para_decir("De 10:00 a 14:00 y de 16:30 a 20:00. Sábados de 9:15 a 13:45.")
+        self.assertEqual(dicho, "De 10 a 14 y de 16 y media a 20. Sábados de 9 y cuarto a 13 y 45.")
+
+
 class TestPistasAlProveedor(unittest.TestCase):
     def setUp(self):
         entorno.aislar(self)

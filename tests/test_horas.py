@@ -63,6 +63,14 @@ class TestLaHoraComoSeDice(unittest.TestCase):
     def test_una_hora_imposible_no_es_una_hora(self):
         self.assertEqual(self.hora("a las 25"), (None, False))
 
+    def test_manana_por_la_manana_es_el_dia_siguiente(self):
+        # Lleva «mañana» dos veces: la primera es el día, la segunda la franja.
+        # Antes la franja tapaba al día y no se entendía ninguna fecha.
+        fecha, hora, _, _ = fechas.interpretar("hueco mañana por la mañana", VIERNES)
+        self.assertEqual((fecha, hora), ("2026-09-12", None))
+        self.assertEqual(fechas.franja_en("mañana por la mañana"), "manana")
+        self.assertIsNone(fechas.interpretar("el sábado por la mañana", VIERNES)[1])
+
     def test_esta_tarde_es_hoy(self):
         fecha, hora, acotada, _ = fechas.interpretar("esta tarde a las seis", VIERNES)
         self.assertEqual((fecha, hora, acotada), ("2026-09-11", "18:00", True))

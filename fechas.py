@@ -87,11 +87,11 @@ def _buscar_fecha(texto: str, hoy_: date) -> tuple[date, str] | None:
     # «Esta tarde» es hoy, y la franja la recoge `franja_en` por su cuenta.
     if m := re.search(r"\best[ae]\s+(?:tarde|noche|manana|mediodia)\b", texto):
         return hoy_, m.group(0)
-    if m := re.search(r"\bmanana\b", texto):
-        # «mañana» es el día siguiente; «por la mañana» es una franja. La
-        # preposición delante es lo único que las distingue.
-        if not re.search(r"\b(por|de|la|esta)\s+manana\b", texto):
-            return hoy_ + timedelta(days=1), m.group(0)
+    # «mañana» es el día siguiente; «por la mañana» es una franja. La
+    # preposición delante es lo único que las distingue, y se mira en CADA
+    # aparición: «mañana por la mañana» lleva las dos y es el día siguiente.
+    if m := re.search(r"(?<!\bla )(?<!esta )(?<!este )\bmanana\b", texto):
+        return hoy_ + timedelta(days=1), m.group(0)
     if m := re.search(r"\bhoy\b", texto):
         return hoy_, m.group(0)
 
