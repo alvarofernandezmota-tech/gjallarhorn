@@ -22,7 +22,11 @@ NEGOCIOS = Path(__file__).resolve().parent / "negocios"
 
 
 def _negocio_de_pruebas() -> None:
-    os.environ.setdefault("GJALLARHORN_NEGOCIOS", str(NEGOCIOS))
+    # Sin `setdefault`: las pruebas usan **su** negocio pase lo que pase. Con
+    # setdefault, correr la suite en una terminal donde estuviera exportada la
+    # variable —cosa que pasa en cuanto pruebas algo a mano— hacía que la
+    # suite mirase otros ficheros y fallara por algo que no era el código.
+    os.environ["GJALLARHORN_NEGOCIOS"] = str(NEGOCIOS)
 
 
 def _datos_de_mentira() -> None:

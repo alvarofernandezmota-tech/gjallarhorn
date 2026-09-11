@@ -70,6 +70,9 @@ aprender: $(PY)  ## que te preguntan y no supo contestar
 frases: $(PY)  ## todo lo que dice tu bot, y si trata de tu o de usted
 	$(PY) frases.py --negocio $(NEGOCIO)
 
+revisar: $(PY)  ## ¿esta el bot listo para coger llamadas? (sale 1 si no)
+	$(PY) revisar.py --negocio $(NEGOCIO)
+
 copia: $(PY)  ## copia de hoy de las citas, los clientes y los avisos
 	$(PY) copias.py --negocio $(NEGOCIO)
 

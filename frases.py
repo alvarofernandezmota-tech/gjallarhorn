@@ -369,6 +369,34 @@ def mezcla_de_tratos(dice: dict) -> tuple[str | None, list[str]]:
     return suyo, sorted(clave for clave, trato in tratos.items() if trato != suyo)
 
 
+def propias_de(base: Path | None = None) -> dict:
+    """Las frases que ha escrito el negocio, sin las de fábrica."""
+    fichero = Path(base) / "frases.toml" if base else None
+    if not fichero or not fichero.exists():
+        return {}
+    try:
+        return tomllib.loads(fichero.read_text(encoding="utf-8")).get("dice", {})
+    except tomllib.TOMLDecodeError:
+        return {}
+
+
+def como_trata(base: Path | None = None) -> tuple[str | None, list[str]]:
+    """(cómo trata este bot, qué frases no van con eso).
+
+    El trato lo marcan **sus** frases, no las de fábrica. Quien escribe dos
+    frases tuteando ya ha dicho cómo quiere hablar, aunque las otras cuarenta
+    salgan de aquí tratando de usted: entonces las descolgadas son esas
+    cuarenta, no sus dos. Medido al revés, el aviso decía justo lo contrario
+    de lo que había que hacer.
+    """
+    dice = cargar(base).dice
+    trato, _ = mezcla_de_tratos(propias_de(base) or dice)
+    if trato is None:
+        return None, []
+    return trato, sorted(clave for clave, plantilla in dice.items()
+                         if (tratamiento(str(plantilla)) or trato) != trato)
+
+
 def main(argumentos: list[str] | None = None) -> int:
     """`python3 frases.py`: todo lo que va a decir el bot, y cómo trata."""
     import argparse
@@ -391,9 +419,7 @@ def main(argumentos: list[str] | None = None) -> int:
         print(f"⚠️  {problema}")
 
     suyas = cargar(negocio.conocimiento).dice
-    fichero = Path(negocio.conocimiento) / "frases.toml"
-    propias = set(tomllib.loads(fichero.read_text(encoding="utf-8")).get("dice", {})) \
-        if fichero.exists() else set()
+    propias = set(propias_de(negocio.conocimiento))
 
     print(f"{negocio.nombre}: así saluda y así habla\n")
     print(f"  saludo    {negocio.saludo}")
@@ -406,7 +432,7 @@ def main(argumentos: list[str] | None = None) -> int:
         print(f"\n  (· son suyas; {len(set(suyas) - propias)} más las usa de fábrica, "
               "se ven con --todas)")
 
-    trato, descolgadas = mezcla_de_tratos(suyas)
+    trato, descolgadas = como_trata(negocio.conocimiento)
     if descolgadas:
         como = "de tú" if trato == "tu" else "de usted"
         print(f"\n⚠️  este bot trata {como}, pero estas frases no: "

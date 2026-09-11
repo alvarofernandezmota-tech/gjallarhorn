@@ -345,6 +345,30 @@ diagnóstico se pega en un chat, y el panel es la libreta del dueño dentro de
 su tailnet. El puerto que se publica en internet no tiene ni ruta para esto,
 y hay pruebas que lo comprueban.
 
+## ¿Está listo para coger llamadas?
+
+Antes de dar un número hay seis cosas que mirar, repartidas en seis sitios.
+Una orden las junta:
+
+```bash
+make revisar
+```
+```
+ ✅ tarifas: 9 servicio(s)
+ ✅ conocimiento: 10 párrafo(s) que puede contestar
+ ✅ frases: trata de usted en todo
+ ✅ horario: abre 5 día(s) por semana
+ ⚠️  copias: ninguna todavía
+ ❌ teléfono: sin token
+      GJALLARHORN_TELEFONO_TOKEN en .env; sin él no hay webhook
+
+❌ No está listo para coger llamadas: 1 cosa(s) rotas.
+```
+
+Sale 1 si algo está roto, así que vale para un gancho o un cron. Un **fallo**
+es lo que hace que una llamada salga mal; un **aviso** es lo que funciona
+pero conviene mirar.
+
 ## Copias: lo peor es perder las citas
 
 Una copia al día de las citas, los clientes y los avisos, dentro de la
