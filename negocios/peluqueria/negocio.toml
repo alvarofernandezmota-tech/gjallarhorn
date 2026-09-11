@@ -1,0 +1,16 @@
+# Un negocio de ejemplo. Copia esta carpeta entera para dar de alta otro:
+#
+#     cp -r negocios/peluqueria negocios/mi-negocio
+#
+# y cambia el nombre, tarifas.md y faq.md. No hay que tocar código.
+
+nombre = "Peluquería"
+
+# El saludo es opcional. Si no lo pones, se usa el genérico.
+#
+# OJO: pongas lo que pongas, al cargarlo se comprueba que avisa de que se
+# habla con un sistema automático, y si no lo dice SE LE AÑADE. No es un
+# descuido que se pueda cometer editando este fichero.
+saludo = "Hola, ha llamado a la peluquería. Puedo darle precios y tomarle una cita."
+
+despedida = "Gracias por llamar. ¡Hasta luego!"

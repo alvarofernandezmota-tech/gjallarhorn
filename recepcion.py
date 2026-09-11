@@ -34,7 +34,10 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
+import avisos
 import conocimiento
+import negocio as negocios
+import voz
 from midgaror import modulo
 
 fechas = modulo("fechas")
@@ -194,22 +197,78 @@ def atender(frase: str, base: Path | None = None) -> Respuesta:
         "recado", aviso=f"Recado: «{limpia}»")
 
 
+def llamada(audio: Path, negocio, transcriptor, locutor=None,
+            carpeta_audio: Path | None = None) -> dict:
+    """Un turno de llamada entero: audio → texto → respuesta → audio.
+
+    Devuelve lo que hace falta para saber qué pasó: lo que se oyó, lo que se
+    contestó y dónde quedó el audio. **Se registra el aviso siempre**, incluso
+    si la síntesis de voz falla: perder el rastro de una llamada es peor que
+    perder la contestación.
+    """
+    dicho = voz.escuchar(Path(audio), transcriptor)
+    if not dicho:
+        respuesta = Respuesta("Perdone, no le he oído. ¿Me lo repite?", "recado")
+    else:
+        respuesta = atender(dicho, negocio.conocimiento)
+
+    if respuesta.aviso:
+        avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
+
+    salida = None
+    if locutor is not None:
+        destino = (carpeta_audio or Path(audio).parent) / f"{Path(audio).stem}-respuesta.wav"
+        try:
+            salida = voz.hablar(respuesta.texto, destino, locutor)
+        except Exception as error:  # noqa: BLE001 — el motor de voz es de fuera
+            avisos.registrar("fallo", f"No se pudo sintetizar la respuesta: {error}")
+    return {"oido": dicho, "dicho": respuesta.texto,
+            "intencion": respuesta.intencion, "audio": salida}
+
+
 def main() -> int:
-    """Una conversación de prueba por teclado, sin teléfono ni modelo."""
+    """Atiende por teclado, o un audio suelto con `--audio`."""
+    import argparse
     import sys
 
-    if not conocimiento.esta_configurado():
-        print(f"⚠️  Sin conocimiento cargado: falta {', '.join(conocimiento.que_falta())}")
-        print("   Prueba con: GJALLARHORN_CONOCIMIENTO=ejemplos/peluqueria\n")
-    print(SALUDO)
+    parser = argparse.ArgumentParser(description="El recepcionista")
+    parser.add_argument("--negocio", default="peluqueria",
+                        help=f"carpeta en negocios/ (hay: {', '.join(negocios.listar()) or 'ninguno'})")
+    parser.add_argument("--audio", type=Path, help="un fichero de audio en vez del teclado")
+    parser.add_argument("--hablar", action="store_true", help="contestar en voz, no en texto")
+    args = parser.parse_args()
+
+    try:
+        negocio = negocios.cargar(args.negocio)
+    except FileNotFoundError as error:
+        print(f"❌ {error}")
+        return 1
+
+    faltan = conocimiento.que_falta(negocio.conocimiento)
+    if faltan:
+        print(f"⚠️  {negocio.nombre}: sin rellenar {', '.join(faltan)}. "
+              f"No podrá dar esa información.\n")
+
+    locutor = voz.Piper(negocio.voz or voz.VOZ_POR_DEFECTO) if args.hablar else None
+
+    if args.audio:
+        resultado = llamada(args.audio, negocio, voz.Whisper(), locutor)
+        print(f"🎙️  {resultado['oido'] or '(no se oyó nada)'}")
+        print(f"  → {resultado['dicho']}")
+        if resultado["audio"]:
+            print(f"  🔊 {resultado['audio']}")
+        return 0
+
+    print(negocio.saludo)
     for linea in sys.stdin:
         linea = linea.strip()
         if not linea:
             continue
-        respuesta = atender(linea)
+        respuesta = atender(linea, negocio.conocimiento)
         print(f"  → {respuesta.texto}")
         if respuesta.aviso:
             print(f"     [{respuesta.tipo_aviso}] {respuesta.aviso}")
+    print(negocio.despedida)
     return 0
 
 

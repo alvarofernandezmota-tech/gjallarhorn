@@ -5,7 +5,7 @@
   `conocimiento/`, que está en blanco a propósito.
 
   Para probar con esto:
-      GJALLARHORN_CONOCIMIENTO=ejemplos/peluqueria python3 recepcion.py
+      python3 recepcion.py --negocio peluqueria
 -->
 
 | Servicio | Precio | Duración |

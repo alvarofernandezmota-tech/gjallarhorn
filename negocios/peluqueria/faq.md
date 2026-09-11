@@ -1,6 +1,6 @@
 # Preguntas frecuentes
 
-<!-- EJEMPLO de peluquería. Lo de verdad va en `conocimiento/`. -->
+<!-- Negocio de ejemplo. Copia la carpeta para dar de alta otro. -->
 
 **¿Qué horario tenéis?**
 De martes a viernes, de 10:00 a 14:00 y de 16:30 a 20:00. Sábados de 9:00 a

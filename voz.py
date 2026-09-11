@@ -85,3 +85,77 @@ class TranscriptorFalso:
 def escuchar(audio: Path, transcriptor: Transcriptor) -> str:
     """El texto de un audio, limpio de espacios. Cadena vacía si no se oyó nada."""
     return (transcriptor.transcribir(Path(audio)) or "").strip()
+
+
+# ---- la boca -----------------------------------------------------------
+#
+# Misma idea que la oreja: detrás de una interfaz de una función, para poder
+# probar todo lo de encima sin descargar una voz de cientos de megas y para
+# poder cambiar de motor sin tocar nada más.
+
+VOZ_POR_DEFECTO = "es_ES-sharvard-medium"
+
+
+class Locutor(Protocol):
+    """Cualquier cosa que convierta texto en un fichero de audio."""
+
+    def decir(self, texto: str, destino: Path) -> Path:
+        ...
+
+
+class Piper:
+    """Piper en local: texto a voz sin mandar nada fuera.
+
+    Local por lo mismo que Whisper: por aquí pasa lo que se le dice a un
+    cliente y, del otro lado, lo que el cliente cuenta de su vida. El import
+    va dentro porque descarga la voz la primera vez.
+    """
+
+    def __init__(self, voz: str = VOZ_POR_DEFECTO):
+        self.voz = voz
+        self._motor = None
+
+    def _cargar(self):
+        if self._motor is None:
+            try:
+                from piper import PiperVoice
+            except ImportError as error:
+                raise RuntimeError(
+                    "falta piper-tts: pip install piper-tts. Va en la maquina "
+                    "donde corre el agente, no en la de desarrollo."
+                ) from error
+            self._motor = PiperVoice.load(self.voz)
+        return self._motor
+
+    def decir(self, texto: str, destino: Path) -> Path:
+        import wave
+
+        destino = Path(destino)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        with wave.open(str(destino), "wb") as salida:
+            self._cargar().synthesize(texto, salida)
+        return destino
+
+
+class LocutorFalso:
+    """Escribe el texto en vez de hablarlo. Para probar lo de encima."""
+
+    def __init__(self):
+        self.dicho: list[str] = []
+
+    def decir(self, texto: str, destino: Path) -> Path:
+        self.dicho.append(texto)
+        destino = Path(destino)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(texto, encoding="utf-8")
+        return destino
+
+
+def hablar(texto: str, destino: Path, locutor: Locutor) -> Path | None:
+    """El audio de una frase. `None` si no hay nada que decir.
+
+    Devolver None y no un wav de silencio es a propósito: quien llama no tiene
+    por qué oír medio segundo de nada y pensar que se ha cortado.
+    """
+    texto = (texto or "").strip()
+    return locutor.decir(texto, Path(destino)) if texto else None
