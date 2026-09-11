@@ -126,13 +126,30 @@ class TestLoQueNoSeSabeSeApunta(CasoRecepcion):
 
 
 class TestElAvisoLegal(unittest.TestCase):
-    def test_el_saludo_dice_que_es_automatico(self):
-        # No es decorativo: informar de que se habla con un sistema automático
-        # no es opcional. Si alguien «mejora» el saludo y quita esto, la prueba
-        # se queja.
-        saludo = recepcion.SALUDO.lower()
+    """Informar de que se habla con un sistema automático no es opcional.
+
+    Antes esto miraba una constante `recepcion.SALUDO` que **no usaba nadie**:
+    el saludo de verdad sale de `negocio.cargar()`. O sea que se podía quitar
+    el aviso del saludo real y la prueba seguía en verde. Ahora mira el camino
+    por el que pasa lo que oye quien llama.
+    """
+
+    def test_el_saludo_que_se_oye_dice_que_es_automatico(self):
+        import negocio as negocios
+
+        saludo = negocios.cargar("peluqueria").saludo.lower()
         self.assertTrue("automático" in saludo or "automatico" in saludo,
-                        "el saludo ya no avisa de que es un sistema automático")
+                        f"el saludo ya no avisa de que es automático: {saludo!r}")
+
+    def test_las_frases_editables_no_pueden_tocar_el_saludo(self):
+        # `frases.toml` deja cambiar lo que contesta el agente, pero el saludo
+        # NO está entre esas frases: si lo estuviera, se podría quitar el aviso
+        # editando un fichero de texto.
+        import frases
+
+        self.assertNotIn("saludo", frases.DICE)
+        self.assertTrue(frases.revisar({"saludo": "Hola y ya está"}),
+                        "frases.toml acepta una clave «saludo»")
 
 
 if __name__ == "__main__":
