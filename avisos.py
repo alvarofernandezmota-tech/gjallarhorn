@@ -11,17 +11,17 @@ Guarda cuatro cosas:
     tarifa    preguntaron un precio, y cuál se dio
     fallo     algo salió mal: el modelo no contestó, la cita chocaba…
 
-## Por qué no va en el diario de midgaror
+## Por qué esto no va en una agenda personal
 
-Porque **no son tuyas**. Una reserva de un cliente en tu `agenda.json`
-personal mezcla tu vida con la de un negocio en el mismo fichero en el que
-escribe el bot del diario. Los avisos viven aquí, en su sitio.
+Porque estas llamadas **no son tuyas**. La reserva de un cliente en tu agenda
+mezcla tu vida con la de un negocio en el mismo fichero, y el día que dejes el
+negocio hay que separarlas a mano. Los avisos viven aquí, con el negocio.
 
 ## Dónde se guardan
 
 En `GJALLARHORN_DATOS` si está puesta; si no, en `datos/` dentro del repo —que
-está en el `.gitignore`, porque esto son datos, no código—. Es la misma idea
-que `MIDGAROR_DATOS` del ADR-016.
+está en el `.gitignore`, porque esto son datos, no código—. La ruta se
+configura; no se clava en el código.
 
 El fichero se escribe con `almacen.py`, que es de aquí: versión de esquema y
 escritura atómica. gjallarhorn no depende de ningún otro repo.

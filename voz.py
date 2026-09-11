@@ -1,31 +1,31 @@
-"""La oreja: audio → texto. Capa 3 del ADR-018, la mitad que sí se puede hacer.
+"""La oreja y la boca: audio → texto → audio. Las dos **en local**.
 
-La transcripción es **local**, sobre el hardware de casa. El audio del diario
-no sale de casa: mandarlo a una API de terceros es lo que el ADR-016 y el repo
-privado del diario tratan de evitar.
+Whisper oye y Piper habla, los dos sobre el hardware de casa. Por aquí pasa lo
+que un cliente cuenta por teléfono y lo que se le contesta: mandarlo a una API
+de terceros es justo lo que se quiere evitar.
 
-El motor está detrás de una interfaz de una sola función a propósito. No es
-ceremonia: permite que todo lo de arriba —el cerebro, las acciones, el
-agente— se pruebe sin descargar un modelo de varios cientos de megas, y permite
-cambiar Whisper por otra cosa sin tocar nada más.
+Los dos motores están detrás de una interfaz de una sola función a propósito.
+No es ceremonia: permite probar todo lo de encima —el recepcionista, el
+servidor— sin descargar modelos de varios cientos de megas, y permite cambiar
+de motor sin tocar nada más.
 
     from voz import Whisper, escuchar
-    escuchar(Path("nota.ogg"), Whisper())
+    escuchar(Path("llamada.ogg"), Whisper())
 
-En las pruebas se le pasa un `TranscriptorFalso`, que devuelve lo que se le
-diga. Lo que se prueba ahí no es Whisper —eso es de Whisper—, es que la tubería
-de encima haga lo correcto con lo que oye.
+En las pruebas se les pasa un `TranscriptorFalso` y un `LocutorFalso`, que
+devuelven lo que se les diga. Lo que se prueba ahí no es Whisper —eso es de
+Whisper—, es que la tubería de encima haga lo correcto con lo que oye.
 """
 
 from pathlib import Path
 from typing import Protocol
 
-# Español. El diario está en español y forzarlo evita que una frase corta se
+# Español. Forzarlo evita que una frase corta —«hola», «cuánto vale»— se
 # detecte como portugués o gallego, que es el fallo típico de estos modelos.
 IDIOMA = "es"
 
-# `small` es el equilibrio razonable en una máquina sin GPU. Se mide en Madre
-# antes de darlo por bueno: el ADR-018 dice que la carga se mide, no se supone.
+# `small` es el equilibrio razonable en una máquina sin GPU. Se cronometra con
+# `medir_voz.py` antes de darlo por bueno: la latencia se mide, no se supone.
 MODELO_POR_DEFECTO = "small"
 
 
@@ -41,8 +41,8 @@ class Whisper:
 
     El import va dentro y no arriba a propósito: `faster_whisper` arrastra
     `ctranslate2` y descarga el modelo la primera vez. Importarlo al cargar el
-    módulo haría que las pruebas —y cualquiera que solo quiera el catálogo de
-    acciones— pagaran eso sin usarlo.
+    módulo haría que las pruebas —y cualquiera que solo quiera el recepcionista
+    por texto— pagaran eso sin usarlo.
     """
 
     def __init__(self, modelo: str = MODELO_POR_DEFECTO, idioma: str = IDIOMA):

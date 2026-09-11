@@ -21,12 +21,9 @@ puede hacer esto.
 ## Cuándo tocará RAG de verdad
 
 Cuando el conocimiento deje de caber. `cabe_en()` lo dice con números en vez
-de a ojo. Ese día hay una decisión pendiente que **no se puede tomar sola**:
-el ADR-011 de midgaror reserva el RAG para `mimir`, con dos índices —`vida` y
-`codigo`— y el argumento explícito de no duplicar el andamiaje. Unas tarifas
-de negocio no son ninguno de los dos índices, así que hará falta un ADR que
-diga si esto es un tercer índice de mimir o algo aparte. No se decide por
-inercia.
+de a ojo, y ese día la decisión **no se toma por inercia**: un RAG es otra
+pieza que mantener y otro sitio donde equivocarse de precio. Se decide por
+escrito, con el número de `cabe_en()` delante.
 
 ## El formato
 

@@ -3,7 +3,7 @@
 Se importa el primero en cada fichero de pruebas, antes que nada, porque las
 rutas se resuelven al importar los módulos.
 
-gjallarhorn no depende de midgaror: aquí solo se desvían **sus** datos.
+gjallarhorn no depende de ningún otro repo: aquí solo se desvían **sus** datos.
 """
 
 import atexit

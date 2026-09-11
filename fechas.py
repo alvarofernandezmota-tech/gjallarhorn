@@ -1,13 +1,12 @@
 """Cuándo quiere la cita quien llama. Siempre hacia delante.
 
-gjallarhorn es independiente: no importa nada de midgaror. Esto podría haber
-sido `from midgaror import fechas`, y durante unas horas lo fue, pero hay un
-motivo de diseño para que no lo sea —además del de no depender—:
+Este parser es propio. Durante unas horas se importaba el de otro repo, y hay
+un motivo de diseño para no hacerlo —además del de no depender de nadie—:
 
-**El `interpretar` de midgaror resuelve hacia atrás por defecto.** Un diario
-habla del pasado: «el lunes» es el lunes que pasó. Un recepcionista es al
-revés: **nadie reserva cita para el martes pasado**. Usar el del diario aquí
-era heredar exactamente la suposición contraria a la buena.
+**El parser de un diario resuelve hacia atrás por defecto.** Un diario habla
+del pasado: «el lunes» es el lunes que pasó. Un recepcionista es al revés:
+**nadie reserva cita para el martes pasado**. Reusar uno de diario aquí era
+heredar exactamente la suposición contraria a la buena.
 
 ## Qué entiende
 

@@ -29,8 +29,8 @@ el móvil por IP no va a funcionar, y no es un fallo: es la política del
 navegador.
 
 La salida limpia es `tailscale serve`, que pone HTTPS de verdad sobre la red
-Tailscale **sin abrir nada en el router** —es una conexión de salida, así que
-el ADR-015 de midgaror se queda como está—:
+Tailscale **sin abrir nada en el router** —es una conexión de salida, no un
+puerto expuesto a internet—:
 
     tailscale serve --bg 8080
 

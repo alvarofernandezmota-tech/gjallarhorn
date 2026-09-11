@@ -42,8 +42,8 @@ class CasoAvisos(unittest.TestCase):
 class TestDondeCaen(unittest.TestCase):
     def test_los_avisos_van_a_la_raiz_de_gjallarhorn_y_a_ningun_otro_sitio(self):
         # Estos son datos de un negocio. Antes había aquí una prueba de que no
-        # cayeran en el diario personal de midgaror; ya no hace falta, porque
-        # gjallarhorn no sabe que midgaror existe.
+        # cayeran en un diario personal; ya no hace falta, porque gjallarhorn
+        # no sabe que exista ningún otro repo.
         import os
         self.assertTrue(str(avisos.raiz()).startswith(os.environ["GJALLARHORN_DATOS"]))
 
