@@ -27,10 +27,6 @@ from typing import Protocol
 # detecte como portugués o gallego, que es el fallo típico de estos modelos.
 IDIOMA = "es"
 
-# A partir de aqui conviene avisar de que las ruedas pueden no existir todavia.
-# No es un tope: es el punto en el que «no se instala» deja de ser raro.
-VERSION_SIN_RUEDAS = (3, 13)
-
 # `small` es el equilibrio razonable en una máquina sin GPU. Se cronometra con
 # `medir_voz.py` antes de darlo por bueno: la latencia se mide, no se supone.
 MODELO_POR_DEFECTO = "small"
@@ -288,18 +284,12 @@ def _probar_oreja(audio: Path) -> dict:
 def main() -> int:
     frase = "Hola, ha llamado a la peluquería. ¿En qué puedo ayudarle?"
     print(f"Python {sys.version.split()[0]} · {sys.executable}")
-    if sys.version_info >= VERSION_SIN_RUEDAS:
-        # Esto no se deduce de un «No module named piper», y es la causa mas
-        # probable en una maquina recien actualizada.
-        print(f"\n⚠️  Python {'.'.join(map(str, sys.version_info[:2]))} es nuevo. "
-              "Piper y Whisper tiran de `onnxruntime` y")
-        print("   `ctranslate2`, que son extensiones en C y tardan meses en")
-        print("   publicar ruedas para cada version. Si `pip install` se pone a")
-        print("   compilar o dice «no matching distribution», es esto y no tu")
-        print("   maquina. La salida es un entorno con un Python que si tenga:")
-        print("\n      python3.12 -m venv .venv")
-        print("      .venv/bin/pip install faster-whisper piper-tts")
-        print("      .venv/bin/python voz.py")
+    if sys.prefix == sys.base_prefix:
+        # Fuera de un entorno virtual, y esa es la causa numero uno de «lo
+        # instale y dice que falta»: en Arch, Debian y compania `pip install`
+        # sobre el Python del sistema o lo bloquea (externally-managed) o deja
+        # el paquete en ~/.local, donde otro interprete no lo ve.
+        print("   (sin entorno virtual)")
     print()
 
     with tempfile.TemporaryDirectory() as tmp:

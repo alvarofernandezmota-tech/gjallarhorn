@@ -131,6 +131,33 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestElFormatoDelAudio(unittest.TestCase):
+    """Safari en iOS graba mp4, no webm. Antes todo se escribía como `.webm`.
+
+    El síntoma de acertar el contenido y fallar la extensión es el peor que
+    hay: «No le he oído», sin ninguna pista de por qué. Y justo desde el móvil,
+    que es donde se prueba la llamada.
+    """
+
+    def test_cada_navegador_lleva_su_extension(self):
+        self.assertEqual(servidor._extension("audio/webm"), ".webm")      # Chrome
+        self.assertEqual(servidor._extension("audio/mp4"), ".m4a")        # Safari iOS
+        self.assertEqual(servidor._extension("audio/ogg"), ".ogg")        # Firefox
+
+    def test_los_parametros_del_tipo_no_estorban(self):
+        # MediaRecorder devuelve «audio/webm;codecs=opus».
+        self.assertEqual(servidor._extension("audio/webm;codecs=opus"), ".webm")
+        self.assertEqual(servidor._extension("audio/mp4; codecs=mp4a.40.2"), ".m4a")
+
+    def test_da_igual_como_venga_escrito(self):
+        self.assertEqual(servidor._extension("  AUDIO/MP4  "), ".m4a")
+
+    def test_un_tipo_desconocido_no_revienta(self):
+        # Preferible una extensión de más a un 500 por un navegador raro.
+        self.assertEqual(servidor._extension("audio/loquesea"), ".webm")
+        self.assertEqual(servidor._extension(""), ".webm")
+
+
 class TestElPuertoOcupado(unittest.TestCase):
     """Arrancar dos veces es el error más común, y daba un traceback.
 

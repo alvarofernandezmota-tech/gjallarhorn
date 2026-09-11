@@ -55,6 +55,20 @@ import negocio as negocios
 import recepcion
 import voz
 
+# Cada navegador graba en lo suyo: Chrome y Firefox en webm, **Safari en iOS
+# en mp4**. Antes esto se escribia siempre como `.webm`, asi que una llamada
+# desde el movil llegaba como un mp4 con nombre de webm. El decodificador
+# suele olfatear el contenido y salir del paso, pero no siempre, y cuando no
+# lo hace el sintoma es «no le he oido» sin ninguna pista de por que.
+EXTENSIONES = {"audio/webm": ".webm", "audio/mp4": ".m4a", "audio/mpeg": ".mp3",
+               "audio/ogg": ".ogg", "audio/wav": ".wav", "audio/x-wav": ".wav",
+               "audio/aac": ".aac", "audio/flac": ".flac"}
+
+
+def _extension(tipo: str) -> str:
+    """La extension que le toca a un Content-Type. `.webm` si no se reconoce."""
+    return EXTENSIONES.get(tipo.split(";")[0].strip().lower(), ".webm")
+
 RAIZ = Path(__file__).resolve().parent
 PAGINA = RAIZ / "web" / "index.html"
 
@@ -132,7 +146,7 @@ class Recepcion(BaseHTTPRequestHandler):
         else:
             if self.transcriptor is None:
                 raise RuntimeError("el servidor está en modo texto: arráncalo sin --sin-voz")
-            with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as entrada:
+            with tempfile.NamedTemporaryFile(suffix=_extension(tipo), delete=False) as entrada:
                 entrada.write(cuerpo)
                 ruta = Path(entrada.name)
             try:
