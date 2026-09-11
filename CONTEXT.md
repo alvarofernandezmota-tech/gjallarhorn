@@ -53,5 +53,8 @@ Tailscale Funnel— modifican esa decisión, y eso se escribe antes, no después
 
 ## Estado actual
 
-⚪ **Sin implementar.** Solo la estructura base. Lo siguiente es la
-transcripción local.
+✅ **El agente funciona**: audio (o texto) → cerebro → acción → una frase. 43
+pruebas contra los módulos reales de midgaror, con las rutas en temporales.
+
+Pendiente: instalar Whisper en la máquina donde corra, y decidir si el cerebro
+de reglas se sustituye por un LLM (ADR-018).

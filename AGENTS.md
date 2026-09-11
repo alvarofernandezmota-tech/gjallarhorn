@@ -21,11 +21,20 @@ bloqueada: [`README.md`](README.md) y [`CONTEXT.md`](CONTEXT.md).
 
 ## Estado actual
 
-⚪ **Sin implementar.** Solo la estructura base. Aquí todavía no hay código.
+✅ **El agente funciona de punta a punta**: `agente.py` toma audio (o texto),
+decide qué acción toca y la ejecuta contra el diario de midgaror. 43 pruebas,
+`ruff` limpio.
 
-Lo siguiente es la **transcripción local**. La telefonía **no se toca** hasta
-que exista un ADR en midgaror que resuelva cómo entra un webhook sin
-contradecir el ADR-015 («en el router no se abre nada»).
+⚠️ Dos cosas que **no** están hechas, y conviene no leerlas al revés:
+- El **modelo de Whisper no está instalado** aquí: `voz.Whisper` está escrito y
+  probado en su interfaz, pero nadie ha transcrito audio de verdad todavía. Eso
+  se hace en la máquina donde corra el agente.
+- El **cerebro es de reglas**, no un LLM (ver `cerebro.py`). Elegir modelo es
+  la decisión pendiente del ADR-018, y se decide midiendo contra estas reglas.
+
+❌ La telefonía **no se toca** hasta que exista un ADR en midgaror que resuelva
+cómo entra un webhook sin contradecir el ADR-015 («en el router no se abre
+nada»).
 
 ## Reglas que vienen de midgaror y valen aquí
 
@@ -44,9 +53,15 @@ contradecir el ADR-015 («en el router no se abre nada»).
 
 ## Verificación
 
-Todavía no hay pruebas que correr: no hay código. Cuando lo haya, la
-verificación real es **`python3 scripts/verificar.py` desde la raíz de
-midgaror**, que encadena las pruebas y el lint de los tres repos.
+```bash
+MIDGAROR_RAIZ=/ruta/a/midgaror python3 -m unittest discover -s tests
+ruff check .
+```
+
+Cuando gjallarhorn sea submódulo, esto se encadena en **`python3
+scripts/verificar.py`** desde la raíz de midgaror, que es la verificación real.
+Hasta entonces se corre a mano, y **una comprobación saltada no es una
+comprobación pasada**.
 
 La CI de la cuenta **no arranca** desde el 2026-09-04 por un cobro rechazado.
 Un check en rojo en GitHub no dice nada del código: sale en segundos, sin

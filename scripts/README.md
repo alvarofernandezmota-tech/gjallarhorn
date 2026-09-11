@@ -12,8 +12,12 @@ midgaror): `transcribir.md` ↔ `transcribir.py`.
 
 ## Índice
 
-Vacío: todavía no hay ningún script. El primero será el de la transcripción
-local.
+Vacío todavía.
+
+Los **módulos de librería** —`agente.py`, `acciones.py`, `cerebro.py`,
+`voz.py`, `midgaror.py`— viven en la raíz, como en bifrost (`bot.py`,
+`utils/`). Esta carpeta es para lo que **automatiza un procedimiento**, con el
+mismo nombre base que su `.md`.
 
 ## Antes de dar algo por bueno
 
