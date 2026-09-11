@@ -76,6 +76,23 @@ IDIOMA = "es-ES"
 _LOCK = threading.Lock()
 
 
+def token_de_mentira(token: str) -> bool:
+    """Un token que es el hueco del ejemplo sin rellenar, no un token.
+
+    Pasa al copiar una linea de una guia con `<...>` dentro, o al dejarse el
+    `pon-aqui-el-token`. Un token asi arranca el webhook igual, y luego cada
+    llamada se cae con un 403 por firma no valida: el peor sitio para
+    enterarse. Aqui se ve en un segundo.
+    """
+    sucio = token.strip()
+    if not sucio:
+        return False                                # eso es «no hay», no «de mentira»
+    if "<" in sucio or ">" in sucio or " " in sucio:
+        return True                                 # el `<...>` de una guia, pegado tal cual
+    return sucio.lower() in {"xxx", "cambiame", "cambiar", "tu-token",
+                             "tu_token", "pon-aqui-el-token", "pon_aqui_el_token"}
+
+
 def configuracion() -> dict | None:
     """Token del proveedor y voz. None si no hay token: entonces no hay webhook."""
     avisar._leer_env()

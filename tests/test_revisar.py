@@ -23,7 +23,9 @@ import copias  # noqa: E402
 import datos  # noqa: E402
 import frases as _frases  # noqa: E402
 import negocio as negocios  # noqa: E402
+import avisar  # noqa: E402
 import revisar as _revisar  # noqa: E402
+import telefonia  # noqa: E402
 
 HOY = date(2026, 9, 11)
 
@@ -122,6 +124,76 @@ class TestLaMezclaDeTratos(CasoRevisar):
 
     def test_el_de_ejemplo_no_mezcla(self):
         self.assertIn("frases: trata de usted en todo", self.titulos(_revisar.BIEN))
+
+
+class TestElEnvMalPuesto(CasoRevisar):
+    """El caso que se coló de verdad: una línea de más en el .env.
+
+    Al copiar una guía es fácil pegar el `<el token de tu proveedor>` tal
+    cual, o añadir el token una segunda vez sin borrar el primero. Las dos
+    cosas dejaban `make revisar` en verde y el teléfono muerto, porque nada
+    de esto se nota hasta que entra una llamada y se cae con un 403.
+    """
+
+    def env(self, texto):
+        fichero = Path(tempfile.mkdtemp()) / ".env"
+        fichero.write_text(texto, encoding="utf-8")
+        return fichero
+
+    def test_el_hueco_del_ejemplo_no_es_un_token(self):
+        self.assertTrue(telefonia.token_de_mentira("<el token de tu proveedor>"))
+        self.assertTrue(telefonia.token_de_mentira("pon-aqui-el-token"))
+        self.assertFalse(telefonia.token_de_mentira("a1b2c3d4e5f6a1b2c3d4e5f6"))
+
+    def test_sin_token_no_es_lo_mismo_que_de_mentira(self):
+        # Vacío ya tiene su propio fallo, con su propio texto.
+        self.assertFalse(telefonia.token_de_mentira(""))
+        self.assertFalse(telefonia.token_de_mentira("   "))
+
+    def test_un_token_de_relleno_es_fallo_y_lo_dice(self):
+        antes = telefonia.configuracion
+        telefonia.configuracion = lambda: {"token": "<el token de tu proveedor>",
+                                           "voz": "Polly.Lucia"}
+        self.addCleanup(lambda: setattr(telefonia, "configuracion", antes))
+        fallo = next(p for p in self.puntos() if p.titulo.startswith("teléfono:"))
+        self.assertEqual(fallo.marca, _revisar.FALLO)
+        self.assertIn("403", fallo.detalle)
+
+    def test_en_el_env_manda_la_ultima_como_en_systemd(self):
+        # El servicio arranca con EnvironmentFile=, y systemd se queda con la
+        # de abajo. Leerlo al revés aquí es no enterarse de nada.
+        import os
+        fichero = self.env("GJALLARHORN_TELEFONO_TOKEN=el_bueno\n"
+                           "GJALLARHORN_TELEFONO_TOKEN=el_de_abajo\n")
+        antes = os.environ.pop("GJALLARHORN_TELEFONO_TOKEN", None)
+        self.addCleanup(lambda: os.environ.__setitem__(
+            "GJALLARHORN_TELEFONO_TOKEN", antes) if antes else
+            os.environ.pop("GJALLARHORN_TELEFONO_TOKEN", None))
+        avisar._leer_env(fichero)
+        self.assertEqual(os.environ["GJALLARHORN_TELEFONO_TOKEN"], "el_de_abajo")
+
+    def test_lo_que_ya_esta_en_el_entorno_sigue_mandando(self):
+        import os
+        fichero = self.env("GJALLARHORN_TELEFONO_TOKEN=el_del_fichero\n")
+        os.environ["GJALLARHORN_TELEFONO_TOKEN"] = "el_del_entorno"
+        self.addCleanup(lambda: os.environ.pop("GJALLARHORN_TELEFONO_TOKEN", None))
+        avisar._leer_env(fichero)
+        self.assertEqual(os.environ["GJALLARHORN_TELEFONO_TOKEN"], "el_del_entorno")
+
+    def test_una_clave_repetida_se_avisa(self):
+        fichero = self.env("GJALLARHORN_TELEFONO_TOKEN=uno\n"
+                           "GJALLARHORN_TELEGRAM_CHAT=123\n"
+                           "GJALLARHORN_TELEFONO_TOKEN=dos\n")
+        self.assertEqual(avisar.repetidas_en_env(fichero),
+                         ["GJALLARHORN_TELEFONO_TOKEN"])
+
+    def test_un_env_normal_no_tiene_repetidas(self):
+        fichero = self.env("# un comentario\nGJALLARHORN_TELEFONO_TOKEN=uno\n"
+                           "\nGJALLARHORN_TELEGRAM_CHAT=123\n")
+        self.assertEqual(avisar.repetidas_en_env(fichero), [])
+
+    def test_sin_env_no_revienta(self):
+        self.assertEqual(avisar.repetidas_en_env(Path("/no/existe/.env")), [])
 
 
 class TestLaOrden(CasoRevisar):

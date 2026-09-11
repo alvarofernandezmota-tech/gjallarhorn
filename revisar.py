@@ -109,11 +109,21 @@ def _agenda_y_datos(negocio, hoy: date) -> list[Punto]:
 
 def _por_donde_habla() -> list[Punto]:
     puntos = []
-    if telefonia.configuracion():
+    puesto = telefonia.configuracion()
+    if puesto and telefonia.token_de_mentira(puesto["token"]):
+        puntos.append(Punto(FALLO, "teléfono: el token es el hueco del ejemplo",
+                            "GJALLARHORN_TELEFONO_TOKEN en .env tiene el texto de "
+                            "relleno; el webhook arranca y luego cada llamada se "
+                            "cae con un 403"))
+    elif puesto:
         puntos.append(Punto(BIEN, "teléfono: token puesto, el webhook arranca"))
     else:
         puntos.append(Punto(FALLO, "teléfono: sin token",
                             "GJALLARHORN_TELEFONO_TOKEN en .env; sin él no hay webhook"))
+    repetidas = avisar.repetidas_en_env()
+    if repetidas:
+        puntos.append(Punto(AVISO, f".env: {', '.join(repetidas)} está puesto dos veces",
+                            "vale el de abajo; borra el que sobre para no jugártela"))
     if avisar.configuracion():
         puntos.append(Punto(BIEN, "avisos al móvil: configurados"))
     else:

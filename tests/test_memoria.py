@@ -261,20 +261,23 @@ class TestLaLlamadaAlimentaLaFicha(unittest.TestCase):
     def decir(self, sid, frase):
         return self.centralita.turno({"CallSid": sid, "SpeechResult": frase}, self.TURNO)
 
-    def cuando(self, cual=0):
-        """Un hueco de verdad, dicho como lo diría quien llama.
+    def hueco(self, cual=0):
+        """Un hueco de verdad de la agenda, no una hora escrita a mano.
 
-        Con fechas escritas a mano —«el viernes a las cinco»— esta prueba
-        dependía de la hora a la que se corriera: pasadas las cinco de un
-        viernes, esa cita ya era pasado y la agenda la rechazaba. Se piden
-        los huecos que hay y se dicen tal cual.
+        Con fechas a mano —«el viernes a las cinco»— esto dependía de la
+        hora a la que se corriera: pasadas las cinco de un viernes esa cita
+        ya era pasado y la agenda la rechazaba.
         """
-        import fechas
         agenda = ag.Agenda("peluqueria", self.negocio.horario)
-        huecos = agenda.proximos_huecos(agenda.ahora().strftime("%Y-%m-%d"), 90,
-                                        dias=14, tope=4, por_dia=1)
-        hueco = huecos[cual]
-        return (f"{fechas.en_palabras(hueco.fecha, agenda.ahora().date())} "
+        return agenda.proximos_huecos(agenda.ahora().strftime("%Y-%m-%d"), 90,
+                                      dias=14, tope=4, por_dia=1)[cual]
+
+    def cuando(self, cual=0):
+        """Ese hueco, dicho como lo diría quien llama."""
+        import fechas
+        hueco = self.hueco(cual)
+        ahora = ag.Agenda("peluqueria", self.negocio.horario).ahora()
+        return (f"{fechas.en_palabras(hueco.fecha, ahora.date())} "
                 f"a {fechas.hora_en_palabras(hueco.hora)}")
 
     def citarse(self, sid, cuando=None):
@@ -285,12 +288,16 @@ class TestLaLlamadaAlimentaLaFicha(unittest.TestCase):
         self.centralita.fin({"CallSid": sid})
 
     def test_la_cita_cerrada_se_apunta_en_la_ficha(self):
+        # La franja se comprueba contra el hueco que se cogió, no contra una
+        # escrita aquí: el primer hueco libre es por la mañana o por la
+        # tarde según el día y la hora a la que se corra esto.
+        suya = memoria.franja_de(self.hueco(0).hora)
         self.citarse("CA1")
         ficha = memoria.ficha(UN_NUMERO)
         self.assertEqual(ficha.nombre, "Marta")
         self.assertEqual(ficha.citas, 1)
         self.assertEqual(ficha.servicios, {"Tinte": 1})
-        self.assertEqual(ficha.franjas, {"tarde": 1})
+        self.assertEqual(ficha.franjas, {suya: 1})
 
     def test_a_la_segunda_ya_hay_costumbre_y_se_le_ofrece(self):
         self.citarse("CA1")

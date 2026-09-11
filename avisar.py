@@ -41,16 +41,43 @@ TIPOS_POR_DEFECTO = ("cita", "llamada", "fallo")
 _LOCK = threading.Lock()
 
 
-def _leer_env(fichero: Path = RAIZ / ".env") -> None:
-    """Carga KEY=VALOR de un .env al entorno, sin pisar lo que ya este puesto."""
+def _pares_del_env(fichero: Path) -> list[tuple[str, str]]:
+    """Los KEY=VALOR del fichero, en orden y con las repeticiones."""
     if not fichero.exists():
-        return
+        return []
+    pares = []
     for linea in fichero.read_text(encoding="utf-8").splitlines():
         linea = linea.strip()
         if not linea or linea.startswith("#") or "=" not in linea:
             continue
         clave, valor = linea.split("=", 1)
-        os.environ.setdefault(clave.strip(), valor.strip().strip("'\""))
+        pares.append((clave.strip(), valor.strip().strip("'\"")))
+    return pares
+
+
+def _leer_env(fichero: Path = RAIZ / ".env") -> None:
+    """Carga KEY=VALOR de un .env al entorno, sin pisar lo que ya este puesto.
+
+    Si una clave sale dos veces en el fichero, vale **la ultima**. No es un
+    capricho: el servicio arranca con `EnvironmentFile=` y systemd hace eso
+    mismo. Leyendolo al reves —que es lo que salia del `setdefault` linea a
+    linea— `make revisar` veia el token bueno y el servicio arrancaba con el
+    de abajo, y no hay forma de dar con eso mirando: las llamadas se caen
+    con un 403 y aqui todo sale en verde.
+    """
+    ultimo = dict(_pares_del_env(fichero))         # la ultima gana, como systemd
+    for clave, valor in ultimo.items():
+        os.environ.setdefault(clave, valor)        # el entorno de verdad manda
+
+
+def repetidas_en_env(fichero: Path = RAIZ / ".env") -> list[str]:
+    """Claves puestas mas de una vez. Vale la ultima, pero conviene saberlo."""
+    visto, repetidas = set(), []
+    for clave, _ in _pares_del_env(fichero):
+        if clave in visto and clave not in repetidas:
+            repetidas.append(clave)
+        visto.add(clave)
+    return repetidas
 
 
 def configuracion() -> dict | None:
