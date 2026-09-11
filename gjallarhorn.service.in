@@ -6,7 +6,7 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=@RAIZ@
-ExecStart=@RAIZ@/.venv/bin/python servidor.py --negocio @NEGOCIO@ --puerto @PUERTO@
+ExecStart=@RAIZ@/.venv/bin/python servidor.py --negocio @NEGOCIO@ --puerto @PUERTO@ --puerto-telefono @PUERTO_TELEFONO@
 Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1

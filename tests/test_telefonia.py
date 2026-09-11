@@ -149,17 +149,32 @@ class TestColgarYRecordar(CasoCentralita):
         self.assertIn("+34600000009", avisos.listar()[0]["texto"])
 
 
-class TestElWebhookEnElServidor(unittest.TestCase):
-    """Lo que ve el proveedor: 404 sin configurar, 403 sin firma, XML con ella."""
+class CasoHandler(unittest.TestCase):
+    """Monta un handler a mano y le mete una petición, sin abrir sockets."""
 
-    def peticion(self, ruta, campos, firma=None, host="maquina.tailnet.ts.net"):
+    def setUp(self):
+        servidor.Comun.negocio = negocios.cargar("peluqueria")
+        servidor.Comun.centralita = None
+        servidor.Comun.config_telefono = None
+        servidor.Comun.transcriptor = None
+        servidor.Comun.locutor = None
+        servidor.Comun.conversacion = None
+
+    def con_telefono(self):
+        servidor.Comun.config_telefono = {"token": "secreto", "voz": "Polly.Lucia"}
+        servidor.Comun.centralita = telefonia.Centralita(servidor.Comun.negocio)
+
+    def peticion(self, clase, metodo, ruta, campos=None, firma=None,
+                 host="maquina.tailnet.ts.net", funnel=False):
         from urllib.parse import urlencode
-        cuerpo = urlencode(campos).encode()
-        h = servidor.Recepcion.__new__(servidor.Recepcion)
-        cab = {"Content-Length": str(len(cuerpo)), "Host": host, "X-Forwarded-Proto": "https"}
+        cuerpo = urlencode(campos or {}).encode()
+        h = clase.__new__(clase)
+        h.headers = {"Content-Length": str(len(cuerpo)), "Host": host,
+                     "X-Forwarded-Proto": "https"}
         if firma:
-            cab["X-Twilio-Signature"] = firma
-        h.headers = cab
+            h.headers["X-Twilio-Signature"] = firma
+        if funnel:
+            h.headers["Tailscale-Funnel-Request"] = "?1"
         h.path = ruta
         h.rfile = io.BytesIO(cuerpo)
         h.client_address = ("127.0.0.1", 0)
@@ -167,30 +182,30 @@ class TestElWebhookEnElServidor(unittest.TestCase):
         h.close_connection = False
         salida = {}
         h._responder = lambda codigo, cuerpo, tipo: salida.update(codigo=codigo, cuerpo=cuerpo)
-        h._telefono()
+        getattr(h, metodo)()
         return salida
 
-    def setUp(self):
-        servidor.Recepcion.negocio = negocios.cargar("peluqueria")
-        servidor.Recepcion.centralita = None
-        servidor.Recepcion.config_telefono = None
+
+class TestElWebhookEnElServidor(CasoHandler):
+    """Lo que ve el proveedor: 404 sin configurar, 403 sin firma, XML con ella."""
+
+    def webhook(self, ruta="/telefono/entrada", campos=None, firma=None):
+        return self.peticion(servidor.Telefono, "do_POST", ruta,
+                             campos or {"CallSid": "CA1"}, firma)
 
     def test_sin_configurar_es_404(self):
-        self.assertEqual(self.peticion("/telefono/entrada", {"CallSid": "CA1"})["codigo"], 404)
+        self.assertEqual(self.webhook()["codigo"], 404)
 
     def test_sin_firma_es_403_y_queda_aviso(self):
-        servidor.Recepcion.config_telefono = {"token": "secreto", "voz": "Polly.Lucia"}
-        servidor.Recepcion.centralita = telefonia.Centralita(servidor.Recepcion.negocio)
-        salida = self.peticion("/telefono/entrada", {"CallSid": "CA1"})
-        self.assertEqual(salida["codigo"], 403)
+        self.con_telefono()
+        self.assertEqual(self.webhook()["codigo"], 403)
         self.assertIn("firma mala", avisos.listar()[0]["texto"])
 
     def test_con_firma_contesta_twiml(self):
-        servidor.Recepcion.config_telefono = {"token": "secreto", "voz": "Polly.Lucia"}
-        servidor.Recepcion.centralita = telefonia.Centralita(servidor.Recepcion.negocio)
+        self.con_telefono()
         campos = {"CallSid": "CA1", "From": "+34600"}
         url = "https://maquina.tailnet.ts.net/telefono/entrada"
-        salida = self.peticion("/telefono/entrada", campos, firma=firmar("secreto", url, campos))
+        salida = self.webhook(campos=campos, firma=firmar("secreto", url, campos))
         self.assertEqual(salida["codigo"], 200)
         self.assertIn(b"<Gather", salida["cuerpo"])
 
@@ -199,6 +214,65 @@ class TestElWebhookEnElServidor(unittest.TestCase):
             self.assertTrue(telefonia.RUTAS.match(ruta), ruta)
         self.assertFalse(telefonia.RUTAS.match("/telefono/otra"))
         self.assertFalse(telefonia.RUTAS.match("/hablar"))
+
+
+class TestElPuertoPublicoNoSirveLaDemo(CasoHandler):
+    """La separación de verdad: el puerto que se publica no conoce la demo.
+
+    No depende de mirar una cabecera ni de confiar en Tailscale. `Telefono` no
+    tiene ruta para `/`, `/hablar` ni `/colgar`, así que publicarlo no publica
+    la demo aunque alguien se equivoque de puerto en el `funnel`.
+    """
+
+    def test_la_pagina_no_existe_en_el_puerto_publico(self):
+        self.con_telefono()
+        self.assertEqual(self.peticion(servidor.Telefono, "do_GET", "/")["codigo"], 404)
+        self.assertEqual(self.peticion(servidor.Telefono, "do_GET", "/index.html")["codigo"], 404)
+
+    def test_hablar_y_colgar_tampoco(self):
+        self.con_telefono()
+        for ruta in ("/hablar", "/colgar"):
+            salida = self.peticion(servidor.Telefono, "do_POST", ruta, {"texto": "hola"})
+            self.assertEqual(salida["codigo"], 404, ruta)
+
+    def test_el_puerto_publico_no_toca_la_agenda_ni_whisper(self):
+        # Lo caro de que /hablar estuviera abierto: arranca Whisper con el
+        # audio que le manden y reserva en la agenda de un negocio real.
+        self.con_telefono()
+        antes = len(avisos.listar())
+        self.peticion(servidor.Telefono, "do_POST", "/hablar", {"texto": "quiero cita"})
+        self.assertEqual(len(avisos.listar()), antes)
+
+
+class TestLaDemoNoAtiendeAInternet(CasoHandler):
+    """Segunda cerradura: si alguien publica el puerto de la demo, no sirve.
+
+    Tailscale marca con `Tailscale-Funnel-Request` lo que entra de internet.
+    Esto no es de lo que depende la separación —para eso están los dos
+    puertos— pero para el error de publicar el puerto equivocado.
+    """
+
+    def test_con_la_marca_de_funnel_la_pagina_da_404(self):
+        self.assertEqual(
+            self.peticion(servidor.Recepcion, "do_GET", "/", funnel=True)["codigo"], 404)
+
+    def test_con_la_marca_de_funnel_hablar_da_404(self):
+        salida = self.peticion(servidor.Recepcion, "do_POST", "/hablar",
+                               {"texto": "hola"}, funnel=True)
+        self.assertEqual(salida["codigo"], 404)
+
+    def test_sin_la_marca_la_pagina_se_sirve_normal(self):
+        salida = self.peticion(servidor.Recepcion, "do_GET", "/")
+        self.assertEqual(salida["codigo"], 200)
+        self.assertIn(b"Peluquer", salida["cuerpo"])
+
+    def test_el_webhook_no_vive_en_el_puerto_de_la_demo(self):
+        # Si estuviera en los dos, publicar cualquiera publicaria el webhook,
+        # y la demo con el.
+        self.con_telefono()
+        salida = self.peticion(servidor.Recepcion, "do_POST", "/telefono/entrada",
+                               {"CallSid": "CA1"})
+        self.assertEqual(salida["codigo"], 404)
 
 
 if __name__ == "__main__":

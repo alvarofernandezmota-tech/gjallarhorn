@@ -165,6 +165,27 @@ Cada petición al webhook viene firmada con el token del proveedor; sin firma
 válida, 403. Sin token, el webhook no arranca. Y el webhook se publica con
 `tailscale funnel`: una conexión de salida, el router intacto (decisión 8).
 
+### 7 ter. Lo que sale a internet es un puerto aparte, no una ruta aparte
+
+**Decisión**: el webhook del teléfono vive en su propio puerto (8081) con su
+propia tabla de rutas, que solo conoce `/telefono/*`. La demo del navegador
+(la página, `/hablar`, `/colgar`) vive en el 8080 y no se publica nunca.
+
+**Razón**: para que entre una llamada, algo tiene que ser alcanzable desde
+internet. Si eso es «el servidor», lo que se abre incluye `/hablar` —que
+arranca Whisper con el audio que le manden— y `/colgar` —que escribe en la
+agenda de un negocio real—. Filtrar por ruta dentro de un mismo puerto
+funciona hasta que alguien añade una ruta y no se acuerda.
+
+Dos puertos lo hacen imposible de olvidar: **un puerto no puede servir lo que
+no sabe servir**. No depende de mirar una cabecera ni de confiar en que
+Tailscale marque el tráfico. Esa marca (`Tailscale-Funnel-Request`) se mira
+igualmente en el puerto de la demo, pero como segunda cerradura para el error
+de publicar el puerto equivocado, no como la separación.
+
+Esto salió de un fallo real: `make funnel` publicaba el 8080 —el de la demo—
+y estuvo unos minutos abierto a internet.
+
 ### 8. En el router no se abre nada
 
 **Decisión**: para llegar desde el móvil, `tailscale serve`. No un puerto
