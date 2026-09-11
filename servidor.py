@@ -50,6 +50,7 @@ import tempfile
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
+import avisar
 import avisos
 import frases
 import negocio as negocios
@@ -140,6 +141,8 @@ class Recepcion(BaseHTTPRequestHandler):
             # primera y contesta cosas que no vienen a cuento.
             quedo = Recepcion.charla().colgar()
             Recepcion.conversacion = recepcion.conversacion_de(self.negocio)
+            if quedo:
+                avisar.en_segundo_plano()
             return self._responder(
                 200, json.dumps({"colgado": quedo}, ensure_ascii=False).encode("utf-8"),
                 "application/json; charset=utf-8")
@@ -187,6 +190,7 @@ class Recepcion(BaseHTTPRequestHandler):
         respuesta = Recepcion.charla().atender(oido)
         if respuesta.aviso:
             avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
+            avisar.en_segundo_plano()
         print(f"🎙️  {oido}\n  → {respuesta.texto}", flush=True)
 
         audio = None
@@ -225,6 +229,9 @@ def main() -> int:
         print(f"⚠️  {Recepcion.negocio.nombre}: sin rellenar {', '.join(faltan)}")
     for problema in frases.problemas(Recepcion.negocio.conocimiento):
         print(f"⚠️  frases.toml: {problema}")
+    if avisar.configuracion() is None:
+        print("ℹ️  sin Telegram: las citas y recados se quedan en avisos.json "
+              "(python3 avisar.py explica cómo configurarlo)")
 
     if not args.sin_voz:
         Recepcion.transcriptor, Recepcion.locutor = voz.Whisper(), voz.Piper()

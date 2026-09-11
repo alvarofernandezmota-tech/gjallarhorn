@@ -40,6 +40,12 @@ probar: $(PY)  ## el recepcionista por teclado, con memoria y agenda
 servidor: $(PY)  ## el MVP en primer plano (Ctrl+C para parar)
 	$(PY) servidor.py --negocio $(NEGOCIO) --puerto $(PUERTO)
 
+avisar: $(PY)  ## mandar al movil los avisos pendientes (Telegram)
+	$(PY) avisar.py
+
+telegram-prueba: $(PY)  ## ¿llega un mensaje al movil? comprueba token y chat
+	$(PY) avisar.py --prueba
+
 pruebas: $(PY)  ## las pruebas y el lint
 	$(PY) -m unittest discover -s tests
 	$(VENV)/bin/ruff check . 2>/dev/null || ruff check .
@@ -74,4 +80,4 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
 	@$(PY) diagnostico.py
 
-.PHONY: ayuda instalar voz medir probar servidor pruebas arrancar parar reiniciar log estado diagnostico
+.PHONY: ayuda instalar voz medir probar servidor pruebas avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
