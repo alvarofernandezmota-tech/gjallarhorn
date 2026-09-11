@@ -93,6 +93,27 @@ arrancar: $(PY) $(UNIDAD)  ## servicio systemd: siempre encendido, se reinicia s
 	@loginctl show-user $$USER 2>/dev/null | grep -q 'Linger=yes' || \
 	  echo "⚠️  para que arranque sin que inicies sesion:  sudo loginctl enable-linger $$USER"
 
+TIMER := $(HOME)/.config/systemd/user/gjallarhorn-actualizar.timer
+ACTUALIZAR := $(HOME)/.config/systemd/user/gjallarhorn-actualizar.service
+
+$(ACTUALIZAR): gjallarhorn-actualizar.service.in
+	mkdir -p $(dir $(ACTUALIZAR))
+	sed -e 's|@RAIZ@|$(CURDIR)|g' gjallarhorn-actualizar.service.in > $(ACTUALIZAR)
+	systemctl --user daemon-reload
+
+$(TIMER): gjallarhorn-actualizar.timer.in
+	mkdir -p $(dir $(TIMER))
+	cp gjallarhorn-actualizar.timer.in $(TIMER)
+	systemctl --user daemon-reload
+
+auto: $(ACTUALIZAR) $(TIMER)  ## que Madre se actualice sola: git pull cada 5 min y reinicia si cambio
+	systemctl --user enable --now gjallarhorn-actualizar.timer
+	@echo "→ cada 5 minutos: git pull --ff-only; si hay commits nuevos, make reiniciar."
+	@echo "  Con esto, fusionar en GitHub basta. Ver: systemctl --user list-timers"
+
+sin-auto:  ## dejar de actualizar sola
+	systemctl --user disable --now gjallarhorn-actualizar.timer 2>/dev/null || true
+
 parar:  ## parar el servicio
 	systemctl --user disable --now $(SERVICIO) 2>/dev/null || true
 
@@ -115,4 +136,4 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
 	@$(PY) diagnostico.py
 
-.PHONY: ayuda instalar voz medir probar servidor serve pruebas cerebro funnel sin-funnel avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
+.PHONY: ayuda instalar voz medir probar servidor serve pruebas cerebro funnel sin-funnel auto sin-auto avisar telegram-prueba arrancar parar reiniciar log estado diagnostico

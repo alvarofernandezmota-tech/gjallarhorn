@@ -1,0 +1,8 @@
+# Plantilla: `make auto` la rellena. Un solo disparo cada vez; el timer manda.
+[Unit]
+Description=gjallarhorn: git pull --ff-only y make reiniciar si cambio algo
+
+[Service]
+Type=oneshot
+WorkingDirectory=@RAIZ@
+ExecStart=/bin/sh -c 'antes=$(git rev-parse HEAD); git pull -q --ff-only || exit 0; test "$antes" != "$(git rev-parse HEAD)" && make -s reiniciar || true'

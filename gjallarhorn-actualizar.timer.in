@@ -1,0 +1,11 @@
+# Plantilla: `make auto` la rellena y la deja en ~/.config/systemd/user/.
+[Unit]
+Description=gjallarhorn: traer cambios de GitHub y reiniciar si hay
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=gjallarhorn-actualizar.service
+
+[Install]
+WantedBy=timers.target
