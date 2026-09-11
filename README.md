@@ -365,6 +365,36 @@ llamada sigue con las reglas solas.
 una decisión del negocio. Sin nada configurado, las reglas van solas y no se
 cae nada.
 
+## La colmena: lo que trabaja cuando no suena el teléfono
+
+Un negocio tiene cosas que pasan entre llamada y llamada y que hoy no hace
+nadie. Eso son los agentes: corren **una vez al día**, dejan avisos y no
+hablan con ningún cliente.
+
+| agente | qué mira |
+|---|---|
+| `recordatorios` | las citas de mañana, con el mensaje listo para mandarle a cada uno |
+| `resumen` | cómo viene el día: citas, huecos libres y lo previsto de la tabla |
+| `huecos` | qué días de esta semana están flojos, y qué clientes repiten |
+| `seguimiento` | quién lleva medio año sin venir teniendo costumbre de venir |
+| `revision` | lo que está mal: tarifas sin duración, dos citas que se pisan, `frases.toml` con erratas, fichas caducadas |
+
+```bash
+make agentes-seco        # qué dirían, sin registrar nada
+make agentes             # correrlos y dejar los avisos
+make agentes-diarios     # que corran solos cada mañana a las 8 (timer de systemd)
+```
+
+Tres cosas que no hacen, y son a propósito:
+
+- **No mandan nada al cliente.** `recordatorios` deja el mensaje escrito; se
+  manda desde el móvil, si se quiere. Mandar SMS es otra decisión y otra
+  factura, y no se toma por inercia desde un cron.
+- **No deciden.** Ponen delante los números y los nombres. A quién se llama
+  para llenar un hueco lo decide quien lleva el negocio.
+- **Se callan cuando no hay nada.** Un agente que avisa cada mañana de que no
+  hay novedades deja de leerse en una semana, y con él los que sí traían algo.
+
 ## Los avisos llegan al móvil
 
 Cada cita reservada, cada recado y cada fallo se apunta en `avisos.json` y,

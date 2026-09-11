@@ -1,0 +1,9 @@
+# Plantilla: `make agentes-diarios` la rellena y la deja en ~/.config/systemd/user/.
+[Unit]
+Description=gjallarhorn: los agentes de cada mañana (recordatorios, resumen, revisión)
+
+[Service]
+Type=oneshot
+WorkingDirectory=@RAIZ@
+# Los agentes dejan avisos; `avisar` los manda al móvil si hay Telegram puesto.
+ExecStart=/bin/sh -c '@PYTHON@ agentes.py --negocio @NEGOCIO@ && @PYTHON@ avisar.py || true'
