@@ -11,7 +11,7 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import diagnostico  # noqa: E402
+from dueno import diagnostico  # noqa: E402
 
 
 class TestElInforme(unittest.TestCase):

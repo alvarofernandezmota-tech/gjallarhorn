@@ -57,7 +57,7 @@ def carpeta_negocios() -> Path:
     valor = os.environ.get(VARIABLE, "").strip()
     if valor:
         return Path(valor).expanduser().resolve()
-    return Path(__file__).resolve().parent / "negocios"
+    return Path(__file__).resolve().parent.parent / "negocios"
 
 
 @dataclass(frozen=True)
@@ -93,7 +93,7 @@ def _horario(config, fichero):
     """
     if not config:
         return None
-    import agenda
+    from negocio import agenda
     try:
         return agenda.Horario.desde(config)
     except ValueError as error:

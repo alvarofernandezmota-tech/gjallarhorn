@@ -16,7 +16,7 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401 — desvía los datos antes de cualquier import
 
-import avisos  # noqa: E402
+from guardado import avisos  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 AYER = datetime(2026, 9, 10, 17, 30, tzinfo=MADRID)
@@ -48,7 +48,11 @@ class TestDondeCaen(unittest.TestCase):
         self.assertTrue(str(avisos.raiz()).startswith(os.environ["GJALLARHORN_DATOS"]))
 
     def test_la_variable_manda_sobre_la_carpeta_del_repo(self):
-        self.assertNotEqual(avisos.raiz(), Path(avisos.__file__).parent / "datos")
+        # `parent.parent` porque avisos.py vive en guardado/, no en la raíz.
+        # Con un solo `parent` esto comparaba contra `guardado/datos`, que no
+        # existe: pasaba siempre y no comprobaba nada.
+        del_repo = Path(avisos.__file__).resolve().parent.parent / "datos"
+        self.assertNotEqual(avisos.raiz(), del_repo)
 
 
 class TestRegistrar(CasoAvisos):

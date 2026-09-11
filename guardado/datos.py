@@ -46,7 +46,7 @@ _NEGOCIO: str | None = None
 def raiz() -> Path:
     """La carpeta de datos. `GJALLARHORN_DATOS` manda; si no, `datos/` aquí."""
     valor = os.environ.get(VARIABLE, "").strip()
-    return Path(valor).expanduser() if valor else Path(__file__).resolve().parent / "datos"
+    return Path(valor).expanduser() if valor else Path(__file__).resolve().parent.parent / "datos"
 
 
 def usar(negocio, migrar_lo_viejo: bool = True) -> list[str]:

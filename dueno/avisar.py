@@ -33,10 +33,10 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-import avisos
-import datos
+from guardado import avisos
+from guardado import datos
 
-RAIZ = Path(__file__).resolve().parent
+RAIZ = Path(__file__).resolve().parent.parent
 TIPOS_POR_DEFECTO = ("cita", "llamada", "fallo")
 _LOCK = threading.Lock()
 

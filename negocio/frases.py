@@ -267,14 +267,14 @@ class Frases:
 
     @staticmethod
     def _quejarse(clave, plantilla, error) -> None:
-        import avisos
+        from guardado import avisos
         avisos.registrar("fallo", f"La frase {clave!r} de frases.toml no se pudo "
                                   f"usar ({error}); se ha dicho la de por defecto. "
                                   f"Estaba escrita así: {plantilla!r}")
 
 
 def _quejarse_del_fichero(fichero: Path, error) -> None:
-    import avisos
+    from guardado import avisos
 
     aviso = (f"{fichero} no es un TOML válido ({error}). Se está hablando con "
              "las frases de fábrica: lo que hayas escrito ahí NO se está "
@@ -439,7 +439,7 @@ def main(argumentos: list[str] | None = None) -> int:
     """`python3 frases.py`: todo lo que va a decir el bot, y cómo trata."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Lo que dice tu bot, frase por frase")
     parser.add_argument("--negocio", default="peluqueria")

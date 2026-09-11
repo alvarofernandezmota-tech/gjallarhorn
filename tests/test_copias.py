@@ -16,13 +16,13 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-import agenda as _agenda  # noqa: E402
-import agentes  # noqa: E402
-import avisos  # noqa: E402
-import copias  # noqa: E402
-import datos  # noqa: E402
-import memoria  # noqa: E402
-import negocio as negocios  # noqa: E402
+from negocio import agenda as _agenda  # noqa: E402
+from dueno import agentes  # noqa: E402
+from guardado import avisos  # noqa: E402
+from guardado import copias  # noqa: E402
+from guardado import datos  # noqa: E402
+from mente import memoria  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
 
 HOY = date(2026, 9, 11)
 

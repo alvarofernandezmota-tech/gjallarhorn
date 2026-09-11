@@ -63,15 +63,15 @@ from html import escape
 from pathlib import Path
 from urllib.parse import parse_qs
 
-import avisar
-import avisos
-import datos
-import memoria
-import firmas
-import recepcion
-import voz as voz_
+from dueno import avisar
+from guardado import avisos
+from guardado import datos
+from mente import memoria
+from telefono import firmas
+from mente import recepcion
+from telefono import voz as voz_
 
-RAIZ = Path(__file__).resolve().parent
+RAIZ = Path(__file__).resolve().parent.parent
 VOZ_POR_DEFECTO = "Polly.Lucia"      # castellano de España, en el proveedor
 CABECERA_TWILIO = "X-Twilio-Signature"
 CABECERA_TELNYX = "telnyx-signature-ed25519"
@@ -264,7 +264,7 @@ PISTAS_FIJAS = ["cita", "precio", "cuánto vale", "anular", "cambiar", "horario"
 
 def pistas_de(negocio) -> str:
     """Las palabras que el proveedor debe esperar oír, para transcribir mejor."""
-    import conocimiento
+    from mente import conocimiento
     servicios = [s["servicio"] for s in conocimiento.tarifas(negocio.conocimiento)]
     vistas, pistas = set(), []
     for pista in servicios + PISTAS_FIJAS:
@@ -458,7 +458,7 @@ def main() -> int:
     import argparse
     import sys as _sys
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="El telefono, sin telefono")
     parser.add_argument("--simular", action="store_true", help="una llamada por teclado")

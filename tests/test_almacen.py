@@ -16,7 +16,7 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import almacen  # noqa: E402
+from guardado import almacen  # noqa: E402
 
 
 class CasoAlmacen(unittest.TestCase):

@@ -20,9 +20,9 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import frases  # noqa: E402
-import negocio as negocios  # noqa: E402
-import rag  # noqa: E402
+from negocio import frases  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from mente import rag  # noqa: E402
 
 
 class CasoRag(unittest.TestCase):

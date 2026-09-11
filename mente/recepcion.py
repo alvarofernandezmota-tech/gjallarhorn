@@ -54,16 +54,16 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from pathlib import Path
 
-import agenda as _agenda
-import avisos
-import datos
-import cerebro
-import conocimiento
-import fechas
-import frases as _frases
-import negocio as negocios
-import rag
-import voz
+from negocio import agenda as _agenda
+from guardado import avisos
+from guardado import datos
+from mente import cerebro
+from mente import conocimiento
+from mente import fechas
+from negocio import frases as _frases
+from negocio import negocio as negocios
+from mente import rag
+from telefono import voz
 
 @dataclass(frozen=True)
 class Respuesta:

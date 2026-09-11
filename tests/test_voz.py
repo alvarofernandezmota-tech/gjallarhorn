@@ -24,7 +24,7 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import voz  # noqa: E402
+from telefono import voz  # noqa: E402
 
 TASA = 22050
 

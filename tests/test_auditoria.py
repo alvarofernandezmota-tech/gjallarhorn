@@ -17,13 +17,13 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-import agenda as ag  # noqa: E402
-import avisar  # noqa: E402
-import avisos  # noqa: E402
-import diagnostico  # noqa: E402
-import negocio as negocios  # noqa: E402
-import servidor  # noqa: E402
-import telefonia  # noqa: E402
+from negocio import agenda as ag  # noqa: E402
+from dueno import avisar  # noqa: E402
+from guardado import avisos  # noqa: E402
+from dueno import diagnostico  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from telefono import servidor  # noqa: E402
+from telefono import telefonia  # noqa: E402
 
 
 class TestElCuerpoDeLaPeticion(unittest.TestCase):

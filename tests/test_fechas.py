@@ -20,7 +20,7 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import fechas  # noqa: E402
+from mente import fechas  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 # Viernes 11 de septiembre de 2026, por la mañana.

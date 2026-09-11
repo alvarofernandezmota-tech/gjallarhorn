@@ -9,8 +9,8 @@ tarifas y toma la cita. Por voz, y en local.
 
 ### 1. Proyecto independiente, sin dependencias de ningún otro repo
 
-**Decisión**: repo propio, con sus propios `fechas.py`, `almacen.py` y
-`voz.py`. No importa nada de fuera.
+**Decisión**: repo propio, con sus propios `mente/fechas.py`, `guardado/almacen.py` y
+`telefono/voz.py`. No importa nada de fuera.
 
 **Razón**: hubo unas horas en las que esto tiraba de otro repo y **se cortó a
 propósito**. Un recepcionista de peluquería no tiene por qué arrastrar el repo
@@ -18,7 +18,7 @@ del diario personal de nadie para arrancar, y un fallo en un lado no puede
 dejar mudo el otro. Si alguna vez hace falta algo de fuera, **se copia**: son
 treinta líneas frente a una dependencia entre proyectos.
 
-### 2. `fechas.py` mira hacia delante
+### 2. `mente/fechas.py` mira hacia delante
 
 **Decisión**: el parser de fechas es propio y resuelve **siempre hacia
 delante**.
@@ -86,7 +86,7 @@ turno: cinco apuntes de los que solo el último sirve no son un registro.
 
 ### 5 ter. Reservar solo contra un horario escrito
 
-**Decisión**: con `[horario]` en `negocio.toml`, `agenda.py` reserva —abre,
+**Decisión**: con `[horario]` en `negocio.toml`, `negocio/agenda.py` reserva —abre,
 cae dentro, no se solapa— y ofrece huecos cercanos si no cabe. Sin horario,
 se toma nota y se promete confirmar.
 
@@ -135,7 +135,7 @@ que no dependa de que alguien se acuerde al editar un fichero de texto.
 
 ### 7. La telefonía va después de medir
 
-**Decisión**: primero `medir_voz.py`, después el número de teléfono.
+**Decisión**: primero `dueno/medir_voz.py`, después el número de teléfono.
 
 **Razón**: la telefonía es la parte **conocida** —un proveedor entrega la
 llamada en unos cientos de milisegundos y eso no lo cambia nadie—. Lo
@@ -204,7 +204,7 @@ esto son datos, no código.
 
 ## Estado actual
 
-✅ **Funciona de punta a punta, por texto y por voz.** `servidor.py` levanta el
+✅ **Funciona de punta a punta, por texto y por voz.** `telefono/servidor.py` levanta el
 MVP en el navegador; con `--sin-voz` se prueba el recepcionista hoy, sin
 instalar ningún modelo.
 

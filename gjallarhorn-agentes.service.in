@@ -6,4 +6,4 @@ Description=gjallarhorn: los agentes de cada mañana (recordatorios, resumen, re
 Type=oneshot
 WorkingDirectory=@RAIZ@
 # Los agentes dejan avisos; `avisar` los manda al móvil si hay Telegram puesto.
-ExecStart=/bin/sh -c '@PYTHON@ agentes.py --negocio @NEGOCIO@ && @PYTHON@ avisar.py --negocio @NEGOCIO@ || true'
+ExecStart=/bin/sh -c '@PYTHON@ -m dueno.agentes --negocio @NEGOCIO@ && @PYTHON@ -m dueno.avisar --negocio @NEGOCIO@ || true'

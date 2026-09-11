@@ -26,7 +26,7 @@ import socket
 import sys
 from pathlib import Path
 
-RAIZ = Path(__file__).resolve().parent
+RAIZ = Path(__file__).resolve().parent.parent
 
 
 def _version(paquete: str) -> str:
@@ -64,14 +64,14 @@ def puerto_cogido(puerto: int) -> bool:
 
 def negocio_y_datos(negocio: str) -> list[str]:
     sys.path.insert(0, str(RAIZ))
-    import agenda
-    import avisos
-    import datos
-    import fechas
-    import conocimiento
-    import frases
-    import memoria
-    import negocio as negocios
+    from negocio import agenda
+    from guardado import avisos
+    from guardado import datos
+    from mente import fechas
+    from mente import conocimiento
+    from negocio import frases
+    from mente import memoria
+    from negocio import negocio as negocios
 
     lineas = []
     try:
@@ -128,7 +128,7 @@ def informe(negocio: str, puerto: int, corto: bool, puerto_telefono: int = 8081)
         f"puerto {puerto} (demo, solo tailnet): "
         f"{'cogido (¿el servidor?)' if puerto_cogido(puerto) else 'libre'}",
     ]
-    import telefonia
+    from telefono import telefonia
     if telefonia.configuracion() is None:
         lineas.append("teléfono: sin token, el webhook no arranca")
     else:

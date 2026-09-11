@@ -17,9 +17,9 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import cerebro  # noqa: E402
-import negocio as negocios  # noqa: E402
-import recepcion  # noqa: E402
+from mente import cerebro  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from mente import recepcion  # noqa: E402
 
 
 def modelo_que_dice(**campos):
@@ -67,7 +67,7 @@ class TestEntender(CasoCerebro):
         real = dict(os.environ)
         os.environ.pop("ANTHROPIC_API_KEY", None)
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(real)))
-        import avisar
+        from dueno import avisar
         leer = avisar._leer_env
         avisar._leer_env = lambda *a, **k: None
         self.addCleanup(setattr, avisar, "_leer_env", leer)
@@ -229,7 +229,7 @@ class TestLasIntencionesNuevas(CasoCerebro):
         from datetime import datetime
         from zoneinfo import ZoneInfo
 
-        import agenda as ag
+        from negocio import agenda as ag
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.agenda = ag.Agenda("peluqueria", self.negocio.horario,
@@ -263,7 +263,7 @@ class TestLasIntencionesNuevas(CasoCerebro):
 
 class TestSiFallaQuedaConstancia(CasoCerebro):
     def test_un_fallo_del_modelo_deja_aviso(self):
-        import avisos
+        from guardado import avisos
         entorno.aislar(self)
         self.assertIsNone(cerebro.entender("x", self.base, preguntar=modelo_roto))
         registrados = avisos.listar()

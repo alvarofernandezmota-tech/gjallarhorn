@@ -27,7 +27,7 @@ Las decisiones y sus porqués: [`CONTEXT.md`](CONTEXT.md). Cómo se usa:
 
 ## Independiente: no importa ningún otro repo
 
-`fechas.py`, `almacen.py` y `voz.py` son propios. Hubo unas horas en las que
+`mente/fechas.py`, `guardado/almacen.py` y `telefono/voz.py` son propios. Hubo unas horas en las que
 esto tiraba de otro repo y **se cortó a propósito**: un recepcionista de
 peluquería no tiene por qué arrastrar el repo del diario personal de nadie
 para arrancar.
@@ -50,7 +50,7 @@ casa el 2026-09-11: una llamada por voz desde un iPhone, oída y contestada.
   2898 ms para 3,2 s de audio, contra un presupuesto de 2000 ms para el turno
   entero. Es un número frío; `make medir` da el caliente y `MODELO=base` el del
   modelo pequeño. Hasta tener esos dos, no se decide nada.
-- **El teléfono está a un token de distancia.** El webhook (`telefonia.py`)
+- **El teléfono está a un token de distancia.** El webhook (`telefono/telefonia.py`)
   existe y está probado; falta un número en un proveedor TwiML y su token en
   `.env`. Al teléfono oye y habla el proveedor —Whisper no llega a tiempo—;
   la conversación, los precios y la agenda siguen siendo de aquí.

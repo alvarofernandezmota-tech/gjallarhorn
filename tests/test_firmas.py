@@ -21,8 +21,8 @@ import entorno  # noqa: E402,F401
 
 import ed25519_de_mentira as telnyx  # noqa: E402
 
-import firmas  # noqa: E402
-import telefonia  # noqa: E402
+from telefono import firmas  # noqa: E402
+from telefono import telefonia  # noqa: E402
 
 # Los vectores del RFC 8032, sección 7.1. Si esto pasa, la implementación es
 # Ed25519 de verdad y no algo que lo parece.

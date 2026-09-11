@@ -65,15 +65,15 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-import avisar
-import avisos
-import datos
-import frases
-import negocio as negocios
-import panel as _panel
-import recepcion
-import telefonia
-import voz
+from dueno import avisar
+from guardado import avisos
+from guardado import datos
+from negocio import frases
+from negocio import negocio as negocios
+from dueno import panel as _panel
+from mente import recepcion
+from telefono import telefonia
+from telefono import voz
 
 # Cada navegador graba en lo suyo: Chrome y Firefox en webm, **Safari en iOS
 # en mp4**. Antes esto se escribia siempre como `.webm`, asi que una llamada
@@ -89,7 +89,7 @@ def _extension(tipo: str) -> str:
     """La extension que le toca a un Content-Type. `.webm` si no se reconoce."""
     return EXTENSIONES.get(tipo.split(";")[0].strip().lower(), ".webm")
 
-RAIZ = Path(__file__).resolve().parent
+RAIZ = Path(__file__).resolve().parent.parent
 PAGINA = RAIZ / "web" / "index.html"
 PANEL = RAIZ / "web" / "panel.html"
 
@@ -486,7 +486,8 @@ def main() -> int:
     if Comun.negocio.horario is None:
         print("⚠️  sin [horario] en negocio.toml: se toma nota, no se reserva")
 
-    faltan = __import__("conocimiento").que_falta(Comun.negocio.conocimiento)
+    from mente import conocimiento
+    faltan = conocimiento.que_falta(Comun.negocio.conocimiento)
     if faltan:
         print(f"⚠️  {Comun.negocio.nombre}: sin rellenar {', '.join(faltan)}")
     for problema in frases.problemas(Comun.negocio.conocimiento):

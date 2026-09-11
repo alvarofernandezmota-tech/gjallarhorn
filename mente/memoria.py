@@ -50,9 +50,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-import almacen
-import datos
-import fechas
+from guardado import almacen
+from guardado import datos
+from mente import fechas
 
 ESQUEMA = 2
 VARIABLE = "GJALLARHORN_DATOS"
