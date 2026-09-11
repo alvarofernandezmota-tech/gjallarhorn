@@ -35,18 +35,10 @@ despedida = "Gracias a usted. ¡Hasta luego!"
 # Valen trozos de frase a los dos lados: «corte de pelo» → «corte», y «para mi
 # hija» → «corte infantil» (con comillas si lleva espacios o eñes).
 [sinonimos]
-corte = ["cortar", "cortarme", "cortarse", "cortarle", "corte de pelo",
-         "cortar el pelo", "cortarme el pelo", "cortarle el pelo", "pelarme"]
-tinte = ["teñir", "teñirme", "teñirse", "tintar", "color", "tinte de pelo"]
-mechas = ["reflejos", "balayage", "babylights", "californianas"]
-caballero = ["hombre", "chico", "señor", "de hombre", "masculino"]
-"señora" = ["mujer", "chica", "de mujer", "femenino"]
-"corte infantil" = ["niño", "niña", "niños", "mi hijo", "mi hija", "el peque",
-                    "la peque", "para el niño", "para la niña", "infantil"]
-lavar = ["lavado", "lavarme"]
-peinar = ["peinado", "peinarme"]
-keratina = ["queratina", "alisado", "alisarme", "alisado de keratina"]
-recogido = ["recogerme el pelo", "un moño", "peinado de boda", "de novia"]
+servicio = ["completo"]
+frnaces natural = ["frances", "natural"]
+parejas = ["parejas"]
+
 
 [entiende]
 
