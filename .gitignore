@@ -1,0 +1,30 @@
+# ---- Credenciales y datos sensibles ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# ---- Audio: es el diario hablado, no se versiona nunca ----
+*.ogg
+*.oga
+*.mp3
+*.wav
+*.m4a
+audio/
+
+# ---- Entornos y caches de Python ----
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# ---- Sistema operativo / editor ----
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
