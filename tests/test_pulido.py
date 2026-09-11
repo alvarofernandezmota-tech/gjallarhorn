@@ -62,6 +62,12 @@ class TestSinonimos(CasoPeluqueria):
         self.texto("quiero cita para cortarle el pelo a mi hijo")
         self.assertEqual(self.llamada.cita.servicio, "Corte infantil")
 
+    def test_para_mi_hija_gana_al_servicio_del_que_se_hablaba(self):
+        # Se habló del corte de caballero; la cita es para la niña. Se apuntaba
+        # un corte de caballero a nombre de la niña.
+        self.texto("¿cuánto vale el corte de caballero?", "quiero cita para mi hija el sábado")
+        self.assertEqual(self.llamada.cita.servicio, "Corte infantil")
+
     def test_sin_sinonimos_no_pasa_nada(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)

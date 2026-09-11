@@ -30,9 +30,10 @@ algo_mas = "¿Le puedo ayudar en algo más?"
 cual_servicio = "¿De qué servicio? Así le digo el precio y lo que se tarda."
 despedida = "Gracias a usted. ¡Hasta luego!"
 
-# Cómo llama la gente a lo que hay en tarifas.md. La palabra de la izquierda
-# tiene que estar en el nombre del servicio; las de la derecha son lo que dice
-# quien llama. Vale poner trozos de frase: «corte de pelo» → «corte».
+# Cómo llama la gente a lo que hay en tarifas.md. Lo de la izquierda tiene que
+# estar en el nombre del servicio; lo de la derecha es lo que dice quien llama.
+# Valen trozos de frase a los dos lados: «corte de pelo» → «corte», y «para mi
+# hija» → «corte infantil» (con comillas si lleva espacios o eñes).
 [sinonimos]
 corte = ["cortar", "cortarme", "cortarse", "cortarle", "corte de pelo",
          "cortar el pelo", "cortarme el pelo", "cortarle el pelo", "pelarme"]
@@ -40,8 +41,8 @@ tinte = ["teñir", "teñirme", "teñirse", "tintar", "color", "tinte de pelo"]
 mechas = ["reflejos", "balayage", "babylights", "californianas"]
 caballero = ["hombre", "chico", "señor", "de hombre", "masculino"]
 "señora" = ["mujer", "chica", "de mujer", "femenino"]
-infantil = ["niño", "niña", "niños", "mi hijo", "mi hija", "el peque", "la peque",
-            "para el niño", "para la niña"]
+"corte infantil" = ["niño", "niña", "niños", "mi hijo", "mi hija", "el peque",
+                    "la peque", "para el niño", "para la niña", "infantil"]
 lavar = ["lavado", "lavarme"]
 peinar = ["peinado", "peinarme"]
 keratina = ["queratina", "alisado", "alisarme", "alisado de keratina"]
