@@ -251,6 +251,14 @@ def para_decir(texto: str) -> str:
     texto = re.sub(r"\b(\d+)\s*min\b", lambda m: f"{m.group(1)} minutos", texto)
     texto = re.sub(r"\b1 minutos\b", "1 minuto", texto)
     texto = re.sub(r"\b(\d+)\s*h\b", lambda m: f"{m.group(1)} horas", texto)
+    # «10:00» se lee «diez», «16:30» «dieciséis y media»: el horario de la FAQ
+    # está escrito con reloj y por teléfono no se lee un reloj.
+    minutos = {"00": "", "15": " y cuarto", "30": " y media"}
+
+    def reloj(m):
+        return m.group(1) + minutos.get(m.group(2), f" y {int(m.group(2))}")
+
+    texto = re.sub(r"\b(\d{1,2}):(\d{2})\b", reloj, texto)
     return texto.replace("; ", ", ")
 
 

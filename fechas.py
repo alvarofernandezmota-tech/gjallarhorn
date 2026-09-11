@@ -87,11 +87,11 @@ def _buscar_fecha(texto: str, hoy_: date) -> tuple[date, str] | None:
     # «Esta tarde» es hoy, y la franja la recoge `franja_en` por su cuenta.
     if m := re.search(r"\best[ae]\s+(?:tarde|noche|manana|mediodia)\b", texto):
         return hoy_, m.group(0)
-    if m := re.search(r"\bmanana\b", texto):
-        # «mañana» es el día siguiente; «por la mañana» es una franja. La
-        # preposición delante es lo único que las distingue.
-        if not re.search(r"\b(por|de|la|esta)\s+manana\b", texto):
-            return hoy_ + timedelta(days=1), m.group(0)
+    # «mañana» es el día siguiente; «por la mañana» es una franja. La
+    # preposición delante es lo único que las distingue, y se mira en CADA
+    # aparición: «mañana por la mañana» lleva las dos y es el día siguiente.
+    if m := re.search(r"(?<!\bla )(?<!esta )(?<!este )\bmanana\b", texto):
+        return hoy_ + timedelta(days=1), m.group(0)
     if m := re.search(r"\bhoy\b", texto):
         return hoy_, m.group(0)
 
@@ -285,6 +285,33 @@ def hora_en_palabras(hora: str) -> str:
     dicha = HORAS_DICHAS[h % 12]
     articulo = "la" if h % 12 == 1 else "las"
     return f"{articulo} {dicha}{minutos} {franja}"
+
+
+def duracion_en_palabras(texto: str | None) -> str | None:
+    """«90 min» → «una hora y media». None si no se entiende lo escrito.
+
+    «Unos 90 minutos» se entiende; «una hora y media» es lo que diría una
+    persona. Lo que no se sepa leer se deja tal cual escrito, no se inventa.
+    """
+    if not texto:
+        return None
+    t = sin_tildes(texto).replace(",", ".")
+    if m := re.fullmatch(r"\s*(\d+)\s*h(?:oras?)?\s*(?:y\s*)?(\d+)?\s*(?:min\w*)?\s*", t):
+        minutos = int(m.group(1)) * 60 + int(m.group(2) or 0)
+    elif m := re.fullmatch(r"\s*(\d+)\s*(?:min\w*|m)\s*", t):
+        minutos = int(m.group(1))
+    else:
+        return None
+    horas, resto = divmod(minutos, 60)
+    if horas == 0:
+        return {15: "un cuarto de hora", 30: "media hora",
+                45: "tres cuartos de hora"}.get(resto, f"unos {resto} minutos")
+    dichas = {1: "una hora", 2: "dos horas", 3: "tres horas"}.get(horas, f"{horas} horas")
+    if resto == 0:
+        return dichas
+    if resto == 30:
+        return f"{dichas} y media"
+    return f"{dichas} y {resto} minutos"
 
 
 def hora_suelta(frase: str) -> tuple[str, bool] | None:

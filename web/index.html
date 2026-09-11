@@ -89,6 +89,12 @@ async function mandar(cuerpo, tipo, loQueDije) {
     const ms = Math.round(performance.now() - arranque);
     di(`${ms} ms`, "nota");
     if (datos.audio) sonar("data:audio/wav;base64," + datos.audio);
+    if (datos.fin) {
+      // La despedida cuelga, como en el teléfono. La siguiente frase es otra llamada.
+      if (datos.colgado) di("apuntado: " + datos.colgado, "nota");
+      di("— llamada terminada —", "nota");
+      di({{SALUDO_JSON}}, "suyo");
+    }
   } catch (e) {
     esperando.textContent = "No he podido contestar: " + e.message;
   } finally {

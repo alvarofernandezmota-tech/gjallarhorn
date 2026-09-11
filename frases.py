@@ -84,6 +84,10 @@ DICE = {
                     "Le tomo el recado y le devolvemos la llamada."),
     "sin_horario": "No tengo el horario a mano. Le tomo el recado y le llamamos.",
     "recado": "Tomo nota y le devolvemos la llamada en cuanto podamos.",
+    # «¿Eres un robot?», «¿puedo hablar con alguien?»: se dice la verdad.
+    "humano": ("Soy un asistente automático. Puedo darle precios, horario y citas. "
+               "Si prefiere hablar con una persona, le tomo el recado y le devuelven "
+               "la llamada en cuanto puedan."),
     "despedida": "Gracias a usted. ¡Hasta luego!",
 }
 
@@ -148,6 +152,17 @@ ENTIENDE = {
            "nada", "nada mas", "eso es todo", "ya esta"],
     "colgar": ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
                "eso es todo", "colgar", "chao"],
+    # «¿Cómo?»: se repite lo último que se dijo, sin cambiar nada.
+    "repetir": ["repite", "repita", "repitas", "me lo repite", "me lo repites",
+                "como dice", "como has dicho", "que has dicho", "que ha dicho",
+                "no le he oido", "no te he oido", "no le he entendido",
+                "no te he entendido", "otra vez", "no me he enterado"],
+    # Quien pregunta si habla con una persona, o pide hablar con una.
+    # Sin eñes: se compara sin tildes, y la eñe se queda en ene.
+    "humano": ["robot", "maquina", "una persona", "un humano", "hablar con alguien",
+               "con el dueno", "con la duena", "con el encargado", "con la encargada",
+               "con alguien", "eres real", "hay alguien", "persona de verdad",
+               "una persona real", "con el jefe", "con la jefa"],
     # Anular va ANTES que cita al decidir: «anular mi cita» lleva las dos
     # palabras, y lo que quiere es anular. Al reves se le reserva otra.
     "anular": ["anular", "anula", "cancelar", "cancela", "quitar la cita",
@@ -166,6 +181,13 @@ AL_PRINCIPIO = {"si", "no"}
 _CACHE: dict[str, "Frases"] = {}
 
 
+def _llano(texto: str) -> str:
+    """Minúsculas y sin tildes, que es como se compara todo aquí."""
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", str(texto).lower())
+                   if unicodedata.category(c) != "Mn").strip()
+
+
 def _patron(trozos, al_principio: bool) -> re.Pattern:
     alternativas = "|".join(re.escape(t) for t in trozos)
     borde = r"^\W*(?:" if al_principio else r"\b(?:"
@@ -173,12 +195,16 @@ def _patron(trozos, al_principio: bool) -> re.Pattern:
 
 
 class Frases:
-    """Las palabras de un negocio: las suyas y las de quien le llama."""
+    """Las palabras de un negocio: las suyas, las de quien le llama, y sus sinónimos."""
 
-    def __init__(self, dice: dict, entiende: dict):
+    def __init__(self, dice: dict, entiende: dict, sinonimos: dict | None = None):
         self.dice = dice
         self.entiende = {clave: _patron(trozos, clave in AL_PRINCIPIO)
                          for clave, trozos in entiende.items() if trozos}
+        # dicho → palabra de la tabla, ya sin tildes: «cortarme» → «corte».
+        self.sinonimos = {_llano(dicho): _llano(palabra)
+                          for palabra, dichos in (sinonimos or {}).items()
+                          for dicho in dichos}
 
     def decir(self, clave: str, **datos) -> str:
         """La frase, con sus huecos puestos. No levanta nunca: ver el módulo."""
@@ -237,9 +263,13 @@ def problemas(base: Path | None = None) -> list[str]:
     except tomllib.TOMLDecodeError as error:
         return [f"{fichero} no es un TOML válido: {error}"]
 
-    fuera = set(propias) - {"dice", "entiende"}
-    encontrados = [f"la sección [{s}] no existe; solo hay [dice] y [entiende]"
+    fuera = set(propias) - {"dice", "entiende", "sinonimos"}
+    encontrados = [f"la sección [{s}] no existe; hay [dice], [entiende] y [sinonimos]"
                    for s in sorted(fuera)]
+    encontrados += [f"en [sinonimos], «{palabra}» tiene que ser una lista de palabras"
+                    for palabra, dichos in propias.get("sinonimos", {}).items()
+                    if not isinstance(dichos, list)
+                    or not all(isinstance(d, str) for d in dichos)]
     encontrados += revisar(propias.get("dice", {}))
     encontrados += [f"«{i}» no es nada que el agente reconozca; hay: "
                     f"{', '.join(sorted(ENTIENDE))}"
@@ -255,6 +285,7 @@ def cargar(base: Path | None = None) -> Frases:
 
     dice, entiende = dict(DICE), {k: list(v) for k, v in ENTIENDE.items()}
     fichero = Path(base) / "frases.toml" if base else None
+    propias: dict = {}
     if fichero and fichero.exists():
         propias = tomllib.loads(fichero.read_text(encoding="utf-8"))
         dice.update(propias.get("dice", {}))
@@ -262,7 +293,7 @@ def cargar(base: Path | None = None) -> Frases:
             # Se sustituye, no se suma: quien escribe su lista quiere la suya.
             entiende[intencion] = list(trozos)
 
-    _CACHE[clave] = Frases(dice, entiende)
+    _CACHE[clave] = Frases(dice, entiende, propias.get("sinonimos", {}))
     return _CACHE[clave]
 
 

@@ -95,7 +95,7 @@ def _seccion_faq(clave: str, base: Path | None = None) -> str:
     return ""
 
 
-def _entre_ofrecidos(frase: str, ofrecidos: list[dict]) -> dict | None:
+def _entre_ofrecidos(frase: str, ofrecidos: list[dict], base: Path | None = None) -> dict | None:
     """Cuál de los servicios ofrecidos nombra la frase, por sus palabras.
 
     Entre «Corte de caballero» y «Corte de señora», «el de caballero» solo
@@ -103,7 +103,7 @@ def _entre_ofrecidos(frase: str, ofrecidos: list[dict]) -> dict | None:
     cubrir más de la mitad del nombre y aquí fallaba —«caballero» es 1 de
     2— justo cuando el cliente acaba de elegir.
     """
-    dichas = conocimiento._palabras(frase)
+    dichas = conocimiento.palabras_dichas(frase, base)
     if not dichas or not ofrecidos:
         return None
     candidatos = [s for s in ofrecidos if dichas & conocimiento._palabras(s["servicio"])]
@@ -115,8 +115,14 @@ def _entre_ofrecidos(frase: str, ofrecidos: list[dict]) -> dict | None:
 
 
 def _precio_de(servicio: dict, frases) -> Respuesta:
-    """Un servicio y su precio, dicho igual se llegue por donde se llegue."""
-    duracion = f", unos {servicio['duracion']}" if servicio.get("duracion") else ""
+    """Un servicio y su precio, dicho igual se llegue por donde se llegue.
+
+    La duración, como se dice: «una hora y media», no «90 min». Si lo escrito
+    en la tabla no se entiende, se lee tal cual.
+    """
+    escrita = servicio.get("duracion")
+    dicha = fechas.duracion_en_palabras(escrita)
+    duracion = f", {dicha}" if dicha else f", unos {escrita}" if escrita else ""
     return Respuesta(
         frases.decir("precio_uno", servicio=servicio["servicio"],
                      precio=servicio["precio"], duracion=duracion),
@@ -250,6 +256,10 @@ NO_ES_NOMBRE = {"un", "una", "el", "la", "los", "las", "mi", "su", "para",
 # Preguntas en condicional: «¿y si no puedo ir?» no es «no puedo ir». Lo
 # primero se contesta con la FAQ; lo segundo anula la cita.
 HIPOTETICA = re.compile(r"^\W*(?:y\s+)?(?:si|cuando)\s+")
+
+# «¿Cómo?», «¿qué?», «¿mande?»: una sola palabra que pide que se repita. Solo
+# a secas: «¿cómo anulo la cita?» es una pregunta, no un «¿cómo?».
+REPITE_A_SECAS = {"como", "que", "eh", "perdon", "perdona", "perdone", "mande", "diga"}
 
 # Lo que se dice al preguntar un precio sin nombrar el qué: «¿y cuánto me va
 # a costar?». Si tras quitar esto no queda palabra, no se ha nombrado ningún
@@ -477,7 +487,8 @@ class Conversacion:
         """Cuál de los huecos ofrecidos ha elegido: «sí» al único, «el primero», «el último»."""
         if not self._ofrecidos:
             return None
-        corta = len(comparable.split()) <= 4
+        # «Sí» al único hueco lo coge; «sí, a las seis» dice otra hora y esa manda.
+        corta = len(comparable.split()) <= 4 and fechas.hora_suelta(comparable) is None
         if corta and self.frases.reconoce("si", comparable) and len(self._ofrecidos) == 1:
             return self._ofrecidos[0]
         if re.search(r"\b(?:el|la)\s+primer[oa]\b|\bprimer[oa]\b", comparable):
@@ -838,6 +849,13 @@ class Conversacion:
         ahora_mismo, nombre_dado = self._recordar(limpia)
         viva = self.cita is not None and not self.cita.cerrada
 
+        # «¿Cómo?», «¿me lo repite?»: lo último que se dijo, tal cual, sin
+        # tocar nada de lo que se estaba haciendo.
+        if (self.frases.reconoce("repetir", comparable) and len(comparable.split()) <= 7) \
+                or comparable.strip("¿?¡!., ") in REPITE_A_SECAS:
+            ultimo = self.turnos[-1][1] if self.turnos else self.frases.decir("digame")
+            return Respuesta(ultimo, "repetir")
+
         # «¿Algo más?» → «no, gracias» es la despedida; «sí» es «dígame».
         # Cualquier otra cosa se atiende como lo que sea.
         if self.esperando == "algo_mas":
@@ -867,10 +885,10 @@ class Conversacion:
                 # «El de caballero»: no nombra el servicio entero, nombra lo
                 # que lo distingue de los otros que se acaban de ofrecer. Se
                 # busca solo entre esos, y solo si queda uno.
-                ahora_mismo = _entre_ofrecidos(limpia, self._opciones)
+                ahora_mismo = _entre_ofrecidos(limpia, self._opciones, self.base)
             if ahora_mismo is not None:
                 self.servicio = ahora_mismo
-                return _precio_de(ahora_mismo, self.frases)
+                return self._con_lo_pendiente(_precio_de(ahora_mismo, self.frases))
             if not conocimiento._palabras(limpia) - RELLENO:
                 # «¿Y cuánto tarda?» sin decir cuál: se vuelve a preguntar cuál.
                 self.esperando = "cual"
@@ -973,6 +991,12 @@ class Conversacion:
             if viva:
                 return self._seguir_cita()
             return Respuesta(self.frases.decir("digame"), "saludo")
+
+        # «¿Eres un robot?», «¿puedo hablar con alguien?»: se dice lo que es y
+        # se toma el recado. Nunca se hace pasar por una persona.
+        if self.frases.reconoce("humano", comparable):
+            return Respuesta(self.frases.decir("humano"), "recado",
+                             aviso=f"Pide hablar con una persona: «{limpia}»")
 
         # Nada que reconocer por reglas. Antes de rendirse, el LLM, si lo hay:
         # devuelve intencion y datos con forma fija, y se atiende como si las

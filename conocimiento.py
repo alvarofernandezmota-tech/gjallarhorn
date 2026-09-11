@@ -114,11 +114,28 @@ VACIAS = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
           "vale", "precio", "a", "me", "mi", "quiero", "queria", "quisiera",
           "pues", "bueno", "nada", "gracias", "mire", "mira", "oye", "oiga",
           "hola", "buenas", "perdone", "perdon", "entonces", "tambien", "ya",
-          "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame"}
+          "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame", "como"}
 
 
 def _palabras(texto: str) -> set[str]:
     return {p for p in re.findall(r"\w+", _sin_tildes(texto)) if p not in VACIAS}
+
+
+def palabras_dichas(frase: str, base: Path | None = None) -> set[str]:
+    """Las palabras de lo que ha dicho quien llama, traducidas a las de la tabla.
+
+    Los sinónimos son del negocio, en `frases.toml`: «cortarme el pelo» →
+    «corte», «reflejos» → «mechas», «para mi hija» → «infantil». Se sustituyen
+    los más largos primero, sobre el texto entero, y solo entonces se trocea:
+    así «corte de pelo» se convierte en «corte» y no deja «pelo» colgando
+    bajándole la cobertura a la búsqueda.
+    """
+    import frases as _frases
+    texto = _sin_tildes(frase)
+    sinonimos = _frases.cargar(base).sinonimos
+    for dicho in sorted(sinonimos, key=len, reverse=True):
+        texto = re.sub(rf"\b{re.escape(dicho)}\b", sinonimos[dicho], texto)
+    return _palabras(texto)
 
 
 def vocabulario(base: Path | None = None) -> set[str]:
@@ -138,7 +155,7 @@ def mencionado(frase: str, base: Path | None = None) -> dict | None:
     está entero en la frase, es ese. Es la asimetría real —frase larga, nombre
     corto— y no vale para lo otro, por eso son dos funciones.
     """
-    dichas = _palabras(frase)
+    dichas = palabras_dichas(frase, base)
     mejor, suyas_mejor = None, 0
     for servicio in tarifas(base):
         suyas = _palabras(servicio["servicio"])
@@ -148,7 +165,7 @@ def mencionado(frase: str, base: Path | None = None) -> dict | None:
     return mejor
 
 
-def buscar(consulta: str, base: Path | None = None, tope: int = 3) -> list[dict]:
+def buscar(consulta: str, base: Path | None = None, tope: int = 4) -> list[dict]:
     """Los servicios que encajan con lo que han preguntado. **Sin LLM.**
 
     La regla, que no es cosmética: un servicio solo cuenta si lo que se ha
@@ -187,7 +204,7 @@ def buscar(consulta: str, base: Path | None = None, tope: int = 3) -> list[dict]
             por el servicio:   {cambio} de {cambio, aceite}     = 50 %
             ninguno pasa de la mitad → no se dice nada. Correcto.
     """
-    palabras = _palabras(consulta)
+    palabras = palabras_dichas(consulta, base)
     if not palabras:
         return []
     puntuados = []
@@ -256,7 +273,7 @@ def faq(frase: str, base: Path | None = None) -> tuple[str, str] | None:
     que un recado es mejor que la respuesta a otra pregunta. El texto de la
     respuesta se da tal cual, sin parafrasear: lo escribio el dueño.
     """
-    dichas = _palabras(frase)
+    dichas = palabras_dichas(frase, base)
     if not dichas:
         return None
     mejor, empate, cuantas = None, False, 0

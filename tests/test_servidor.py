@@ -242,3 +242,16 @@ class TestQuienLlamaSeVa(unittest.TestCase):
         handler.end_headers = lambda: None
         handler._responder(200, b"{}", "application/json")   # no levanta
         self.assertTrue(handler.close_connection)
+
+
+class TestLaDespedidaCuelgaEnLaDemo(CasoServidor):
+    def test_adios_termina_la_llamada_y_la_siguiente_empieza_de_cero(self):
+        self.decir("quiero cita el jueves")
+        datos = self.decir("pues nada, adiós")
+        self.assertTrue(datos.get("fin"), "la despedida cuelga, como en el teléfono")
+        self.assertIn("a medias", datos.get("colgado") or "")
+        # La cita a medias ya no está: «a las cinco» sola no es nada.
+        self.assertNotIn("nombre", self.decir("a las cinco")["dicho"].lower())
+
+    def test_una_frase_normal_no_cuelga(self):
+        self.assertNotIn("fin", self.decir("cuánto vale un corte de señora"))

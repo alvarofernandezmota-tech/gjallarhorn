@@ -63,6 +63,14 @@ class TestLaHoraComoSeDice(unittest.TestCase):
     def test_una_hora_imposible_no_es_una_hora(self):
         self.assertEqual(self.hora("a las 25"), (None, False))
 
+    def test_manana_por_la_manana_es_el_dia_siguiente(self):
+        # Lleva «mañana» dos veces: la primera es el día, la segunda la franja.
+        # Antes la franja tapaba al día y no se entendía ninguna fecha.
+        fecha, hora, _, _ = fechas.interpretar("hueco mañana por la mañana", VIERNES)
+        self.assertEqual((fecha, hora), ("2026-09-12", None))
+        self.assertEqual(fechas.franja_en("mañana por la mañana"), "manana")
+        self.assertIsNone(fechas.interpretar("el sábado por la mañana", VIERNES)[1])
+
     def test_esta_tarde_es_hoy(self):
         fecha, hora, acotada, _ = fechas.interpretar("esta tarde a las seis", VIERNES)
         self.assertEqual((fecha, hora, acotada), ("2026-09-11", "18:00", True))
@@ -198,6 +206,17 @@ class TestElegirElHuecoOfrecido(CasoHuecos):
         dicho = self.texto("el martes")
         self.assertEqual((self.cita().fecha, self.cita().hora), ("2026-09-15", "10:00"))
         self.assertIn("¿A nombre de quién", dicho)
+
+    def test_si_pero_con_otra_hora_manda_la_hora(self):
+        for hora in ("10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+                     "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"):
+            self.agenda.reservar(JUEVES, hora, 30, "Corte", "Alguien")
+        self.texto("¿tenéis hueco el jueves?")          # solo queda las 19:30
+        dicho = self.texto("sí, a las siete de la tarde")
+        # Lo que dijo manda: las siete estan cogidas, y se le dice, en vez de
+        # apuntarle a las siete y media por el «sí».
+        self.assertIn("ya tengo a alguien", dicho)
+        self.assertIsNone(self.cita().hora)
 
     def test_otra_hora_distinta_se_respeta(self):
         self.texto("¿tenéis hueco el jueves por la tarde?", "a las seis de la tarde")
