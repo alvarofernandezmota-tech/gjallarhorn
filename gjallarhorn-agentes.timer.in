@@ -1,0 +1,14 @@
+# Plantilla: `make agentes-diarios` la rellena. Una vez al día y con margen:
+# a las 8:00 la peluquería todavía no ha abierto y el resumen ya está en el
+# móvil. `Persistent` hace que, si la máquina estaba apagada, corra al arrancar
+# en vez de saltarse el día.
+[Unit]
+Description=gjallarhorn: correr los agentes cada mañana
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+Unit=gjallarhorn-agentes.service
+
+[Install]
+WantedBy=timers.target

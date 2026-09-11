@@ -61,6 +61,20 @@ cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
 buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
 	$(PY) rag.py "$(FRASE)" --negocio $(NEGOCIO)
 
+agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
+	$(PY) agentes.py --negocio $(NEGOCIO)
+
+agentes-seco: $(PY)  ## lo mismo, pero solo enseñarlo: no registra ningun aviso
+	$(PY) agentes.py --negocio $(NEGOCIO) --seco
+
+agentes-diarios: $(AGENTES) $(AGENTES_TIMER)  ## que corran solos cada mañana a las 8
+	systemctl --user enable --now gjallarhorn-agentes.timer
+	@echo "→ cada mañana a las 8:00: los agentes dejan sus avisos y se mandan al movil."
+	@echo "  Ver: systemctl --user list-timers | grep agentes"
+
+sin-agentes-diarios:  ## dejar de correrlos solos
+	systemctl --user disable --now gjallarhorn-agentes.timer 2>/dev/null || true
+
 clientes: $(PY)  ## las fichas de quien ha llamado (esto SI lleva nombres)
 	$(PY) memoria.py
 
@@ -115,6 +129,20 @@ arrancar: $(PY) $(UNIDAD)  ## servicio systemd: siempre encendido, se reinicia s
 
 TIMER := $(HOME)/.config/systemd/user/gjallarhorn-actualizar.timer
 ACTUALIZAR := $(HOME)/.config/systemd/user/gjallarhorn-actualizar.service
+
+AGENTES       := $(HOME)/.config/systemd/user/gjallarhorn-agentes.service
+AGENTES_TIMER := $(HOME)/.config/systemd/user/gjallarhorn-agentes.timer
+
+$(AGENTES): gjallarhorn-agentes.service.in
+	mkdir -p $(dir $(AGENTES))
+	sed -e 's|@RAIZ@|$(CURDIR)|g' -e 's|@PYTHON@|$(PY)|g' -e 's|@NEGOCIO@|$(NEGOCIO)|g' \
+		gjallarhorn-agentes.service.in > $(AGENTES)
+	systemctl --user daemon-reload
+
+$(AGENTES_TIMER): gjallarhorn-agentes.timer.in
+	mkdir -p $(dir $(AGENTES_TIMER))
+	cp gjallarhorn-agentes.timer.in $(AGENTES_TIMER)
+	systemctl --user daemon-reload
 
 $(ACTUALIZAR): gjallarhorn-actualizar.service.in
 	mkdir -p $(dir $(ACTUALIZAR))
