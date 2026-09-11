@@ -266,6 +266,29 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+## El panel: el día, desde el móvil
+
+El dueño se enteraba de las cosas por Telegram —avisos sueltos, según pasan—
+y por la terminal. Para quien tiene una peluquería eso no vale: lo que hace
+falta es una pantalla que conteste de un vistazo a «¿qué tengo hoy?».
+
+```
+make serve            # y en el móvil: https://<máquina>.<tailnet>.ts.net/panel
+make panel            # lo mismo, en la terminal
+```
+
+Enseña las citas de hoy y de mañana con su hora, servicio, nombre y teléfono,
+los huecos que quedan libres, lo que se espera facturar —sumando **solo** los
+precios de la tabla, y diciendo aparte cuántas citas no tienen precio— y los
+últimos avisos. Y deja hacer una cosa: anular una cita, con confirmación y
+dejando rastro en los avisos.
+
+**Vive en el puerto privado y solo ahí.** Aquí salen nombres y teléfonos de
+clientes, que es justo lo que `make diagnostico` no enseña nunca: el
+diagnóstico se pega en un chat, y el panel es la libreta del dueño dentro de
+su tailnet. El puerto que se publica en internet no tiene ni ruta para esto,
+y hay pruebas que lo comprueban.
+
 ## El teléfono de verdad
 
 Un proveedor de telefonía que hable TwiML (Twilio, Telnyx) recibe la llamada

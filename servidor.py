@@ -69,6 +69,7 @@ import avisar
 import avisos
 import frases
 import negocio as negocios
+import panel as _panel
 import recepcion
 import telefonia
 import voz
@@ -89,6 +90,7 @@ def _extension(tipo: str) -> str:
 
 RAIZ = Path(__file__).resolve().parent
 PAGINA = RAIZ / "web" / "index.html"
+PANEL = RAIZ / "web" / "panel.html"
 
 # Tope de subida: unos segundos de voz no pasan de aquí. Sin tope, cualquiera
 # tumba el proceso mandando un fichero de un giga.
@@ -279,6 +281,11 @@ class Recepcion(Comun):
     def do_GET(self):
         if self._es_de_internet():
             return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
+        if self.path == "/panel":
+            pagina = PANEL.read_text(encoding="utf-8").replace("{{NEGOCIO}}", self.negocio.nombre)
+            return self._responder(200, pagina.encode("utf-8"), "text/html; charset=utf-8")
+        if self.path == "/panel/datos":
+            return self._json(_panel.vista(self.negocio))
         if self.path in ("/", "/index.html"):
             pagina = PAGINA.read_text(encoding="utf-8")
             pagina = pagina.replace("{{NEGOCIO}}", self.negocio.nombre)
@@ -290,6 +297,16 @@ class Recepcion(Comun):
     def do_POST(self):
         if self._es_de_internet():
             return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
+        if self.path == "/panel/vistos":
+            # Sin ids, todos: es el botón de «ya lo he visto» de la pantalla.
+            return self._json({"vistos": _panel.marcar_vistos(self._ids() or None)})
+        if self.path == "/panel/anular":
+            # El id llega del navegador: si no es un numero, no se busca nada.
+            ids = self._ids()
+            quitada = _panel.anular(self.negocio, ids[0]) if ids else None
+            if quitada:
+                avisar.en_segundo_plano()
+            return self._json({"anulada": quitada})
         if self.path == "/colgar":
             # Colgar apunta en que quedo la llamada y empieza otra de cero.
             # Sin esto, la segunda prueba hereda la cita a medias de la
@@ -330,6 +347,27 @@ class Recepcion(Comun):
                          "audio": None, "error": str(error)}
         self._responder(200, json.dumps(resultado, ensure_ascii=False).encode("utf-8"),
                         "application/json; charset=utf-8")
+
+    def _json(self, datos) -> None:
+        self._responder(200, json.dumps(datos, ensure_ascii=False).encode("utf-8"),
+                        "application/json; charset=utf-8")
+
+    def _ids(self) -> list[int]:
+        """Los ids que manda el panel: `{"id": 3}` o `{"ids": [3, 4]}`.
+
+        Lo que llegue que no sea un numero se tira. Es una pagina propia, sí,
+        pero un `id` que viene de fuera y acaba en una busqueda no se mira a
+        ojo: se filtra aquí, una vez, y abajo ya son enteros.
+        """
+        cuerpo = self._cuerpo(TOPE_FORMULARIO) or b"{}"
+        try:
+            datos = json.loads(cuerpo or b"{}")
+        except json.JSONDecodeError:
+            return []
+        if not isinstance(datos, dict):
+            return []
+        crudos = datos.get("ids") if isinstance(datos.get("ids"), list) else [datos.get("id")]
+        return [c for c in crudos if isinstance(c, int) and not isinstance(c, bool)]
 
     def _atender(self, cuerpo: bytes) -> dict:
         tipo = self.headers.get("Content-Type", "")
