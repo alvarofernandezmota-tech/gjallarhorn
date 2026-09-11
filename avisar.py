@@ -70,6 +70,38 @@ def _leer_env(fichero: Path = RAIZ / ".env") -> None:
         os.environ.setdefault(clave, valor)        # el entorno de verdad manda
 
 
+def poner_en_env(clave: str, valor: str, fichero: Path = RAIZ / ".env") -> str:
+    """Deja `clave=valor` en el .env. Devuelve «puesta», «cambiada» o «igual».
+
+    **Sustituye** las que hubiera en vez de añadir otra linea. Anadir es lo
+    que sale de un `echo >>`, y asi es como acabo un .env con el token tres
+    veces: una comentada, una con el hueco del ejemplo y otra de verdad.
+    Con systemd gana la ultima, o sea que la que acabas de poner puede no
+    ser la que se use, y eso no se ve por ningun lado.
+
+    No se toca lo que este comentado: un `# CLAVE=` del ejemplo es
+    documentacion, no una clave puesta.
+    """
+    linea = f"{clave}={valor}"
+    lineas = (fichero.read_text(encoding="utf-8").splitlines()
+              if fichero.exists() else [])
+    donde = [i for i, linea_ya in enumerate(lineas)
+             if linea_ya.strip().startswith(f"{clave}=")]
+    if not donde:
+        if lineas and lineas[-1].strip():
+            lineas.append("")
+        lineas.append(linea)
+        que = "puesta"
+    else:
+        que = "igual" if lineas[donde[0]] == linea else "cambiada"
+        lineas[donde[0]] = linea
+        for sobra in reversed(donde[1:]):        # las repetidas, fuera
+            del lineas[sobra]
+            que = "cambiada"
+    fichero.write_text("\n".join(lineas) + "\n", encoding="utf-8")
+    return que
+
+
 def repetidas_en_env(fichero: Path = RAIZ / ".env") -> list[str]:
     """Claves puestas mas de una vez. Vale la ultima, pero conviene saberlo."""
     visto, repetidas = set(), []

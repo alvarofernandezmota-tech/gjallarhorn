@@ -449,10 +449,20 @@ margen. Sin eso, una petición buena que alguien grabe vale para siempre y se
 puede repetir la misma llamada mil veces.
 
 ```bash
-# .env, según tu proveedor:
-#   GJALLARHORN_TELEFONO_TOKEN=<el Auth Token de Twilio>
-#   GJALLARHORN_TELEFONO_CLAVE_PUBLICA=<la clave pública de Telnyx>
-make revisar         # dice cuál ha cogido, y si lo que has puesto sirve
+make lanzar          # de aquí a la primera llamada, paso a paso
+```
+
+Hace los seis pasos por orden y comprueba cada uno antes de seguir: te pide
+la clave del proveedor y **la rechaza si no sirve** (el error más fácil es
+pegar la API Key de Telnyx donde va la clave pública), arranca el servicio,
+publica solo el puerto del teléfono, te imprime las dos URLs **enteras**
+para pegarlas en el portal, y se queda mirando hasta que entra la primera
+llamada. No imprime ningún `<hueco>` que haya que traducir a mano.
+
+A mano, si prefieres verlo por partes:
+
+```bash
+make revisar         # ¿está listo? dice qué proveedor ha cogido
 make arrancar
 make funnel          # publica SOLO el puerto del teléfono, sin abrir el router
 ```
