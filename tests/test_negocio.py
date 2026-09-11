@@ -8,6 +8,7 @@ Lo que se vigila aquí:
    malo; perder el registro de que alguien llamó, peor.
 """
 
+import shutil
 import sys
 import tempfile
 import unittest
@@ -96,7 +97,10 @@ class TestLaLlamadaEntera(unittest.TestCase):
         resultado = self.llamar("cuánto vale un corte de señora", locutor=locutor)
         self.assertEqual(resultado["oido"], "cuánto vale un corte de señora")
         self.assertIn("20 €", resultado["dicho"])
-        self.assertEqual(locutor.dicho, [resultado["dicho"]])
+        # Lo hablado no es lo escrito: «20 €, unos 45 min.» se lee «20 euros,
+        # unos 45 minutos.». La respuesta escrita se queda como esta.
+        self.assertEqual(locutor.dicho, [voz.para_decir(resultado["dicho"])])
+        self.assertIn("euros", locutor.dicho[0])
         self.assertTrue(resultado["audio"].exists())
 
     def test_la_llamada_queda_registrada(self):
@@ -138,3 +142,34 @@ class TestLaBoca(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElRepoEsPublico(unittest.TestCase):
+    """Un teléfono en los ficheros del negocio acaba en GitHub a la vista de todos."""
+
+    def negocio_con(self, contenido, fichero="faq.md"):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        for nombre in ("tarifas.md", "faq.md"):
+            (Path(tmp) / nombre).write_text("# x\n", encoding="utf-8")
+        (Path(tmp) / fichero).write_text(contenido, encoding="utf-8")
+        return negocios.cargar(tmp)
+
+    def test_un_movil_en_la_faq_se_avisa(self):
+        avisos_ = negocios.advertencias(self.negocio_con("Llámanos al 612 345 678"))
+        self.assertEqual(len(avisos_), 1)
+        self.assertIn("faq.md", avisos_[0])
+        self.assertIn("público", avisos_[0])
+
+    def test_con_prefijo_y_en_el_toml_tambien(self):
+        avisos_ = negocios.advertencias(self.negocio_con('nombre = "X"\n# +34 912 345 678\n',
+                                                        fichero="negocio.toml"))
+        self.assertEqual(len(avisos_), 1)
+
+    def test_un_precio_o_una_hora_no_es_un_telefono(self):
+        self.assertEqual(negocios.advertencias(self.negocio_con(
+            "| Tinte | 45 € | 90 min |\nAbrimos de 10:00 a 14:00. Somos 3 personas.",
+            fichero="tarifas.md")), [])
+
+    def test_la_peluqueria_de_ejemplo_esta_limpia(self):
+        self.assertEqual(negocios.advertencias(negocios.cargar("peluqueria")), [])

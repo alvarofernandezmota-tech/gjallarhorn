@@ -74,7 +74,8 @@ class TestLaLlamada(CasoCentralita):
     def test_lo_que_dice_se_contesta_y_se_sigue_escuchando(self):
         self.llamar("CA1")
         xml = self.decir("CA1", "cuánto vale un tinte")
-        self.assertIn("45 €", xml)
+        self.assertIn("45 euros", xml)     # se lee en voz alta: euros, no €
+        self.assertNotIn("€", xml)
         self.assertIn("<Gather", xml)
 
     def test_la_despedida_cuelga(self):

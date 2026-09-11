@@ -232,13 +232,35 @@ class LocutorFalso:
         return destino
 
 
+def para_decir(texto: str) -> str:
+    """El texto como hay que leerlo en voz alta. Lo escrito se queda como está.
+
+    «45 €» en pantalla es perfecto; en voz, un motor lo lee como «cuarenta y
+    cinco» y un signo raro, o «euro» en singular. «90 min» sale «noventa min».
+    Esto se aplica solo en el momento de hablar —Piper o el proveedor—, para
+    que la página, los avisos y las pruebas sigan viendo el texto escrito.
+    """
+    import re
+
+    def euros(m):
+        entero, decimales = m.group(1), m.group(2)
+        dicho = f"{entero} euro" if entero == "1" and not decimales else f"{entero} euros"
+        return f"{dicho} con {decimales.lstrip('0') or '0'}" if decimales else dicho
+
+    texto = re.sub(r"(\d+)(?:[,.](\d{1,2}))?\s*€", euros, texto)
+    texto = re.sub(r"\b(\d+)\s*min\b", lambda m: f"{m.group(1)} minutos", texto)
+    texto = re.sub(r"\b1 minutos\b", "1 minuto", texto)
+    texto = re.sub(r"\b(\d+)\s*h\b", lambda m: f"{m.group(1)} horas", texto)
+    return texto.replace("; ", ", ")
+
+
 def hablar(texto: str, destino: Path, locutor: Locutor) -> Path | None:
     """El audio de una frase. `None` si no hay nada que decir.
 
     Devolver None y no un wav de silencio es a propósito: quien llama no tiene
     por qué oír medio segundo de nada y pensar que se ha cortado.
     """
-    texto = (texto or "").strip()
+    texto = para_decir((texto or "").strip())
     return locutor.decir(texto, Path(destino)) if texto else None
 
 

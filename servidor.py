@@ -424,6 +424,8 @@ def main() -> int:
         print(f"⚠️  {Comun.negocio.nombre}: sin rellenar {', '.join(faltan)}")
     for problema in frases.problemas(Comun.negocio.conocimiento):
         print(f"⚠️  frases.toml: {problema}")
+    for aviso_ in negocios.advertencias(Comun.negocio):
+        print(f"⚠️  {aviso_}")
     if avisar.configuracion() is None:
         print("ℹ️  sin Telegram: las citas y recados se quedan en avisos.json "
               "(python3 avisar.py explica cómo configurarlo)")

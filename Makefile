@@ -30,6 +30,13 @@ instalar: $(PY)  ## venv + dependencias + modelos de voz, de una vez
 	$(PIP) install faster-whisper piper-tts anthropic
 	$(PY) voz.py
 
+nuevo:  ## dar de alta otro negocio: make nuevo NEGOCIO=mi-negocio
+	@test -n "$(NEGOCIO)" -a "$(NEGOCIO)" != peluqueria || { echo "❌ di el nombre: make nuevo NEGOCIO=mi-negocio"; exit 1; }
+	@test ! -e negocios/$(NEGOCIO) || { echo "❌ negocios/$(NEGOCIO) ya existe"; exit 1; }
+	cp -r negocios/peluqueria negocios/$(NEGOCIO)
+	@echo "→ negocios/$(NEGOCIO)/: edita negocio.toml (nombre, saludo, horario), tarifas.md y faq.md."
+	@echo "  Arrancar con el:  make servidor NEGOCIO=$(NEGOCIO)   o   make arrancar NEGOCIO=$(NEGOCIO)"
+
 voz: $(PY)  ## ¿oye y habla esta maquina? versiones y milisegundos
 	$(PY) voz.py
 
@@ -70,6 +77,9 @@ sin-funnel:  ## dejar de publicar: nada sale a internet
 
 avisar: $(PY)  ## mandar al movil los avisos pendientes (Telegram)
 	$(PY) avisar.py
+
+telefono-prueba: $(PY)  ## una llamada por teclado, como la veria el proveedor
+	$(PY) telefonia.py --simular --negocio $(NEGOCIO) --puerto $(PUERTO_TELEFONO)
 
 telegram-prueba: $(PY)  ## ¿llega un mensaje al movil? comprueba token y chat
 	$(PY) avisar.py --prueba
@@ -136,4 +146,4 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
 	@$(PY) diagnostico.py
 
-.PHONY: ayuda instalar voz medir probar servidor serve pruebas cerebro funnel sin-funnel auto sin-auto avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
+.PHONY: ayuda nuevo instalar voz medir probar servidor serve pruebas cerebro telefono-prueba funnel sin-funnel auto sin-auto avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
