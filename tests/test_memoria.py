@@ -208,6 +208,13 @@ class TestLoDeSiempre(CasoConMemoria):
         self.con_ficha(nombre="Marta", servicios={"Tinte": 1})
         self.assertIn("qué servicio", self.texto("ponme lo de siempre").lower())
 
+    def test_y_la_cita_queda_abierta_para_lo_que_diga_despues(self):
+        self.con_ficha(nombre="Marta", servicios={"Tinte": 1})
+        self.texto("lo de siempre")                  # → «¿para qué servicio?»
+        self.assertIn("¿A qué hora", self.texto("el jueves"))
+        self.texto("un tinte", "a las cinco de la tarde")
+        self.assertEqual(self.agenda.citas()[0]["servicio"], "Tinte")
+
     def test_sin_ficha_tampoco_se_inventa_nada(self):
         self.assertIn("qué servicio", self.texto("lo de siempre").lower())
 
@@ -231,7 +238,7 @@ class TestLaFranjaDeSiempre(CasoConMemoria):
 
     def test_lo_que_diga_manda_sobre_la_costumbre(self):
         self.con_ficha(nombre="Marta", servicios={"Tinte": 3}, franjas={"tarde": 4})
-        dicho = self.texto("quiero cita el jueves por la mañana, cuando podáis")
+        dicho = self.texto("quiero cita de tinte el jueves por la mañana, cuando podáis")
         self.assertIn("de la mañana", dicho)
 
     def test_sin_costumbre_se_ofrece_lo_que_haya(self):

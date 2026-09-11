@@ -133,23 +133,23 @@ class CasoHuecos(unittest.TestCase):
 
 class TestSeOfrecenHuecos(CasoHuecos):
     def test_tienes_hueco_el_jueves_se_contesta_con_los_huecos(self):
-        dicho = self.texto("¿tenéis hueco el jueves?")
+        dicho = self.texto("¿tenéis hueco el jueves?", "un corte de caballero")
         self.assertIn("El jueves 17 tengo", dicho)
         self.assertIn("las diez de la mañana", dicho)
         self.assertIn("¿Cuál le viene bien?", dicho)
 
     def test_por_la_tarde_da_los_de_la_tarde(self):
-        dicho = self.texto("¿tenéis hueco el jueves por la tarde?")
+        dicho = self.texto("¿tenéis hueco el jueves por la tarde?", "un corte de caballero")
         self.assertIn("cuatro y media de la tarde", dicho)
         self.assertNotIn("mañana", dicho)
 
     def test_por_la_manana_da_los_de_la_manana(self):
-        dicho = self.texto("¿tenéis algo el jueves por la mañana?")
+        dicho = self.texto("¿tenéis algo el jueves por la mañana?", "un corte de caballero")
         self.assertIn("de la mañana", dicho)
         self.assertNotIn("tarde", dicho)
 
     def test_cuando_podais_al_preguntar_la_hora(self):
-        dicho = self.texto("quiero cita", "el jueves", "cuando podáis")
+        dicho = self.texto("quiero cita de tinte", "el jueves", "cuando podáis")
         self.assertIn("El jueves 17 tengo", dicho)
 
     def test_cuando_podais_sin_dia_da_lo_mas_pronto(self):
@@ -158,16 +158,18 @@ class TestSeOfrecenHuecos(CasoHuecos):
         self.assertIn("hoy", dicho)
 
     def test_pedir_cita_normal_sigue_preguntando_la_hora(self):
-        self.assertIn("¿A qué hora", self.texto("quiero cita el jueves"))
+        self.assertIn("¿A qué hora", self.texto("quiero cita de tinte el jueves"))
 
     def test_sin_agenda_no_se_ofrece_nada(self):
         llamada = recepcion.Conversacion(self.negocio.conocimiento)
-        self.assertIn("¿A qué hora", llamada.atender("¿tenéis hueco el jueves?").texto)
+        llamada.atender("¿tenéis hueco el jueves?")
+        self.assertIn("¿A qué hora", llamada.atender("un tinte").texto)
 
     def test_un_dia_lleno_ofrece_los_siguientes(self):
         for hora, cuanto in (("10:00", 120), ("12:00", 120), ("16:30", 120), ("18:30", 90)):
             self.agenda.reservar(JUEVES, hora, cuanto, "Mechas", "Alguien")
-        dicho = self.texto("¿tenéis hueco el jueves?")
+        # Con el día entero cogido, da igual de qué sea: no cabe nada.
+        dicho = self.texto("¿tenéis hueco el jueves?", "un corte de caballero")
         self.assertIn("El jueves 17 no me queda", dicho)
         self.assertIn("el viernes 18", dicho)
 
@@ -177,30 +179,31 @@ class TestElegirElHuecoOfrecido(CasoHuecos):
         for hora in ("10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
                      "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"):
             self.agenda.reservar(JUEVES, hora, 30, "Corte", "Alguien")
-        dicho = self.texto("¿tenéis hueco el jueves?")
+        dicho = self.texto("¿tenéis hueco el jueves?", "un corte de caballero")
         self.assertIn("las siete y media de la tarde", dicho)
         self.texto("sí")
         self.assertEqual((self.cita().hora, self.cita().acotada), ("19:30", True))
 
     def test_si_con_varios_pregunta_cual(self):
-        self.texto("¿tenéis hueco el jueves?")
+        self.texto("¿tenéis hueco el jueves?", "un corte de caballero")
         self.assertIn("¿Cuál de ellos", self.texto("sí"))
         self.assertIsNone(self.cita().hora)
 
     def test_el_primero_y_el_ultimo(self):
-        self.texto("¿tenéis hueco el jueves por la tarde?", "el último")
+        self.texto("¿tenéis hueco el jueves por la tarde?", "un corte de caballero", "el último")
         self.assertEqual(self.cita().hora, "17:30")
         otra = recepcion.Conversacion(self.negocio.conocimiento, agenda=self.agenda)
         otra.atender("¿tenéis hueco el jueves por la tarde?")
+        otra.atender("un corte de caballero")
         otra.atender("el primero")
         self.assertEqual(otra.cita.hora, "16:30")
 
     def test_decir_la_hora_ofrecida_ya_esta_acotada(self):
-        self.texto("¿tenéis hueco el jueves por la tarde?", "las cinco")
+        self.texto("¿tenéis hueco el jueves por la tarde?", "un corte de caballero", "las cinco")
         self.assertEqual((self.cita().hora, self.cita().acotada), ("17:00", True))
 
     def test_decir_el_dia_ofrecido_coge_su_hora(self):
-        dicho = self.texto("quiero cita el lunes a las cinco de la tarde")
+        dicho = self.texto("quiero cita de tinte el lunes a las cinco de la tarde")
         self.assertIn("cerrados", dicho)
         self.assertIn("el martes 15", dicho)
         dicho = self.texto("el martes")
@@ -211,7 +214,7 @@ class TestElegirElHuecoOfrecido(CasoHuecos):
         for hora in ("10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
                      "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"):
             self.agenda.reservar(JUEVES, hora, 30, "Corte", "Alguien")
-        self.texto("¿tenéis hueco el jueves?")          # solo queda las 19:30
+        self.texto("¿tenéis hueco el jueves?", "un corte de caballero")          # solo queda las 19:30
         dicho = self.texto("sí, a las siete de la tarde")
         # Lo que dijo manda: las siete estan cogidas, y se le dice, en vez de
         # apuntarle a las siete y media por el «sí».
@@ -219,7 +222,7 @@ class TestElegirElHuecoOfrecido(CasoHuecos):
         self.assertIsNone(self.cita().hora)
 
     def test_otra_hora_distinta_se_respeta(self):
-        self.texto("¿tenéis hueco el jueves por la tarde?", "a las seis de la tarde")
+        self.texto("¿tenéis hueco el jueves por la tarde?", "un corte de caballero", "a las seis de la tarde")
         self.assertEqual(self.cita().hora, "18:00")
 
 

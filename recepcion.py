@@ -393,6 +393,8 @@ class Conversacion:
         self._cambiando = False               # anular para poner otra, no solo anular
         self._sin_entender = 0                # seguidas; a la tercera se toma el recado
         self._consultas = 0                   # al LLM; hay tope por llamada
+        self._pedido_servicio = False         # ¿ya se ha preguntado de qué es la cita?
+        self._ofreciendo = False              # se iban a ofrecer huecos cuando se preguntó
         self.turnos: list[tuple[str, str]] = []
 
     def recordar(self, ficha) -> None:
@@ -456,6 +458,23 @@ class Conversacion:
         self._ofrecidos = []
         return self.cita
 
+    def _pedir_servicio(self) -> Respuesta | None:
+        """«¿Para qué servicio?», una sola vez. None si ya se sabe o ya se preguntó.
+
+        Sin el servicio, una cita se reserva con la duración por defecto: un
+        tinte de hora y media metido en media hora descuadra la tarde entera,
+        y los huecos que se ofrecen son los de media hora, que no existen para
+        ese servicio. Se pregunta **una** vez: si no lo dice, se sigue igual y
+        se apunta sin él, que es mejor que dar vueltas.
+        """
+        if self.cita is None or self.cita.servicio is not None or self._pedido_servicio:
+            return None
+        if not conocimiento.tarifas(self.base):
+            return None        # un negocio sin tabla no tiene servicios que pedir
+        self._pedido_servicio = True
+        self.esperando = "servicio"
+        return Respuesta(self.frases.decir("pide_servicio"), "cita")
+
     @staticmethod
     def _enumerar(dichos: list[str]) -> str:
         """«A, B o C»: como se lee una lista en voz alta."""
@@ -468,6 +487,11 @@ class Conversacion:
         la tarde del jueves, no con «¿a qué hora le viene bien?». Si ese día
         no queda nada, se ofrecen los primeros de los días siguientes.
         """
+        if (preguntar := self._pedir_servicio()) is not None:
+            # Los huecos dependen de cuánto dure: se pregunta antes de ofrecer,
+            # y se vuelve aquí en cuanto lo diga.
+            self._ofreciendo = True
+            return preguntar
         cita, duracion = self.cita, self._duracion()
         # Si no ha dicho franja pero siempre viene a la misma, se empieza por
         # ahí. Es una preferencia, no una regla: si ahí no queda nada, se le
@@ -503,6 +527,9 @@ class Conversacion:
 
     def _primeros_huecos(self) -> Respuesta:
         """«Cuando podáis», sin día: lo más pronto que hay, un hueco por día."""
+        if (preguntar := self._pedir_servicio()) is not None:
+            self._ofreciendo = True
+            return preguntar
         proximos = self.agenda.proximos_huecos(self.ahora().strftime("%Y-%m-%d"),
                                                self._duracion(), por_dia=1)
         if not proximos:
@@ -540,6 +567,9 @@ class Conversacion:
     def _seguir_cita(self) -> Respuesta:
         """La siguiente pregunta, o el cierre si ya no falta nada."""
         cita = self.cita
+        if (preguntar := self._pedir_servicio()) is not None:
+            return preguntar
+
         que = f" de {cita.servicio.lower()}" if cita.servicio else ""
         self.esperando = falta = cita.falta()
 
@@ -911,6 +941,15 @@ class Conversacion:
             if (hecho := self._renombrar(nombre_dado)) is not None:
                 return hecho
 
+        # Se le preguntó de qué era la cita y lo acaba de decir: se vuelve a
+        # donde estaba, que puede ser ofrecerle huecos o seguir preguntando.
+        if self.esperando == "servicio" and viva and ahora_mismo is not None:
+            self.esperando = None
+            if self._ofreciendo:
+                self._ofreciendo = False
+                return self._ofrecer_huecos() if self.cita.fecha else self._primeros_huecos()
+            return self._seguir_cita()
+
         # Acabo de ofrecer varias opciones y me acaban de decir cuál. Eso es
         # una pregunta de precio, aunque la frase sea solo «el tinte».
         #
@@ -992,6 +1031,15 @@ class Conversacion:
                 return Respuesta(self.frases.decir(
                     "lo_de_siempre", servicio=habitual["servicio"].lower()), "cita")
             if not self._pide_otra_cosa(comparable):
+                # Quien pide «lo de siempre» quiere una cita: se abre igual,
+                # aunque todavía no se sepa de qué. Si no, lo que diga después
+                # —«el viernes»— se queda sin cita a la que ir y acaba en recado.
+                if not viva:
+                    self._abrir_cita()
+                self._rellenar_con(limpia)
+                # Esta frase YA es la pregunta del servicio: que no se vuelva
+                # a hacer en el turno siguiente con otras palabras.
+                self._pedido_servicio, self.esperando = True, "servicio"
                 return Respuesta(self.frases.decir("no_se_lo_de_siempre"), "cita")
 
         # «Cuando podáis», «el que tengáis»: se ofrecen huecos en vez de

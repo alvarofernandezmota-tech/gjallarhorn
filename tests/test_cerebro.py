@@ -168,7 +168,7 @@ class TestLoQueVeElModelo(CasoCerebro):
     def test_le_llega_lo_que_se_le_acaba_de_preguntar(self):
         preguntar = modelo_con_memoria([dice(intencion="otro")])
         llamada = self.llamada(preguntar)
-        llamada.atender("quiero cita")                 # → «¿qué día le viene bien?»
+        llamada.atender("quiero cita de tinte")        # → «¿qué día le viene bien?»
         llamada.atender("uy, pues no sé")
         self.assertIn("qué día", preguntar.vistas[0]["esperando"])
 
