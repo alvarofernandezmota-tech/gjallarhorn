@@ -114,7 +114,22 @@ VACIAS = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
           "vale", "precio", "a", "me", "mi", "quiero", "queria", "quisiera",
           "pues", "bueno", "nada", "gracias", "mire", "mira", "oye", "oiga",
           "hola", "buenas", "perdone", "perdon", "entonces", "tambien", "ya",
-          "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame", "como"}
+          "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame", "como",
+          # Verbos de «¿hacéis…?», «¿tenéis…?»: salen en media FAQ y en casi
+          # toda pregunta, así que no distinguen nada y sí despistaban.
+          "haceis", "hacen", "hacemos", "haces", "podeis", "podemos", "dais",
+          "usais", "usan", "atendeis", "atienden", "trabajais", "sois", "soy",
+          "lo", "del", "al", "le", "les", "nos", "os", "su", "sus", "tu", "tus",
+          "mis", "este", "esto", "ese", "esa", "esos", "esas", "aquel", "aquello",
+          "aqui", "alli", "ahi",
+          # Palabras de unir frases. Salen en cualquier sitio y no dicen nada,
+          # y una de ellas se coló de lo lindo: «hasta» está en «hasta los doce
+          # años», así que «pues nada, hasta otra» se llevaba la respuesta de
+          # los niños en vez de ser una despedida.
+          "hasta", "desde", "entre", "sobre", "cada", "todo", "toda", "todos",
+          "otra", "otro", "otros", "mismo", "misma", "mas", "menos", "aunque",
+          "porque", "cuando", "mientras", "siempre", "nunca", "solo", "algo",
+          "alguna", "alguno", "algun", "cosa", "cosas", "favor", "mejor"}
 
 
 def _palabras(texto: str) -> set[str]:
@@ -220,14 +235,31 @@ def buscar(consulta: str, base: Path | None = None, tope: int = 4) -> list[dict]
     return [servicio for _, servicio in puntuados[:tope]]
 
 
+def ficheros(base: Path | None = None) -> list[tuple[str, str]]:
+    """Los ficheros de conocimiento y cómo se titulan en el prompt.
+
+    Los dos de siempre primero, y detrás cualquier otro `.md` que haya puesto
+    el dueño: `servicios.md`, `promociones.md`, lo que sea. Añadir uno es
+    añadir conocimiento, sin tocar código y sin dar de alta nada.
+    """
+    carpeta_ = Path(base) if base else carpeta()
+    fijos = [("tarifas.md", "TARIFAS"), ("faq.md", "PREGUNTAS FRECUENTES")]
+    if not carpeta_.is_dir():
+        return fijos
+    otros = sorted(f.name for f in carpeta_.glob("*.md")
+                   if f.name not in ("tarifas.md", "faq.md"))
+    return fijos + [(n, n[:-3].upper().replace("-", " ")) for n in otros]
+
+
 def para_prompt(base: Path | None = None) -> str:
     """Todo el conocimiento, tal cual, para meterlo en el prompt del modelo.
 
     Entero y sin trocear: es justamente lo que evita el paso de recuperación
-    que puede equivocarse de precio.
+    que puede equivocarse de precio. Cuando deje de caber —`cabe_en()`— el
+    que recupera trozos es `rag.py`.
     """
     partes = []
-    for nombre, titulo in (("tarifas.md", "TARIFAS"), ("faq.md", "PREGUNTAS FRECUENTES")):
+    for nombre, titulo in ficheros(base):
         texto = _leer(nombre, base).strip()
         # Sin contenido real no se manda la cabecera: un "### TARIFAS" seguido
         # de nada invita al modelo a rellenar el hueco, que es justo lo que no
@@ -262,31 +294,6 @@ def que_falta(base: Path | None = None) -> list[str]:
 def esta_configurado(base: Path | None = None) -> bool:
     """Si hay conocimiento de verdad. Con False, el agente no sabe nada."""
     return not que_falta(base)
-
-
-def faq(frase: str, base: Path | None = None) -> tuple[str, str] | None:
-    """(pregunta, respuesta) de la FAQ que mejor encaja con lo que han dicho.
-
-    Por palabras con contenido en comun con la **pregunta** de cada bloque:
-    «¿aceptais tarjeta?» y «¿se puede pagar con tarjeta?» comparten «tarjeta».
-    Hace falta al menos una y que no haya empate: ante la duda no se contesta,
-    que un recado es mejor que la respuesta a otra pregunta. El texto de la
-    respuesta se da tal cual, sin parafrasear: lo escribio el dueño.
-    """
-    dichas = palabras_dichas(frase, base)
-    if not dichas:
-        return None
-    mejor, empate, cuantas = None, False, 0
-    for bloque in re.split(r"\n(?=\*\*)", _leer("faq.md", base)):
-        if not bloque.startswith("**"):
-            continue
-        pregunta, _, respuesta = bloque.partition("\n")
-        comunes = len(dichas & _palabras(pregunta.strip("* ")))
-        if comunes > cuantas:
-            mejor, empate, cuantas = (pregunta.strip("* "), respuesta.strip()), False, comunes
-        elif comunes == cuantas and comunes:
-            empate = True
-    return None if empate or mejor is None or not mejor[1] else mejor
 
 
 def cabe_en(limite: int = LIMITE_COMODO, base: Path | None = None) -> tuple[bool, int]:

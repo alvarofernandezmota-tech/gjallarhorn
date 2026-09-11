@@ -61,6 +61,7 @@ import conocimiento
 import fechas
 import frases as _frases
 import negocio as negocios
+import rag
 import voz
 
 @dataclass(frozen=True)
@@ -977,10 +978,14 @@ class Conversacion:
         if self.frases.reconoce("horario", comparable):
             return self._con_lo_pendiente(_responder_horario(limpia, self.base))
 
-        # Lo demás que esté escrito en la FAQ: tarjeta, dónde, si hace falta
-        # cita… Se contesta con el texto del dueño, tal cual.
-        if (faq := conocimiento.faq(limpia, self.base)) is not None:
-            return self._con_lo_pendiente(Respuesta(faq[1], "faq"))
+        # Lo demás que esté escrito en los .md del negocio: tarjeta, dónde, si
+        # hace falta cita, el aparcamiento… Lo busca `rag.py` y se contesta con
+        # el texto del dueño, tal cual. Si no hay nada claro, calla y se toma
+        # el recado: contestar otra pregunta es peor que no contestar.
+        if (pasaje := rag.responder(limpia, self.base)) is not None:
+            return self._con_lo_pendiente(Respuesta(
+                pasaje.dicho, "faq",
+                aviso=f"Contestado de {pasaje.fuente}: «{limpia}»", tipo_aviso="llamada"))
 
         if self.frases.reconoce("colgar", comparable):
             return self._despedida()

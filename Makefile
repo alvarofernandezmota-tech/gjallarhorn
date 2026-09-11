@@ -58,6 +58,9 @@ serve: $(PY)  ## la demo, visible solo en tu tailnet (para el movil)
 cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
 	$(PY) cerebro.py "$(FRASE)" --negocio $(NEGOCIO)
 
+buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
+	$(PY) rag.py "$(FRASE)" --negocio $(NEGOCIO)
+
 funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@$(PY) -c "import telefonia, sys; sys.exit(0 if telefonia.configuracion() else 1)" || \
 	  { echo "❌ sin GJALLARHORN_TELEFONO_TOKEN en .env no hay webhook que publicar."; \
