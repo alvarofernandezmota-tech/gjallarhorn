@@ -53,6 +53,7 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
+import agenda as _agenda
 import avisos
 import conocimiento
 import fechas
@@ -307,9 +308,10 @@ class Conversacion:
     peor que puede pasar aquí, así que a medias también se apunta.
     """
 
-    def __init__(self, base: Path | None = None):
+    def __init__(self, base: Path | None = None, agenda=None):
         self.base = base
         self.frases = _frases.cargar(base)
+        self.agenda = agenda          # agenda.Agenda, o None: entonces solo toma nota
         self.cita: Cita | None = None
         self.servicio: dict | None = None     # del que se viene hablando
         self.nombre: str | None = None
@@ -357,21 +359,108 @@ class Conversacion:
             return Respuesta(self.frases.decir(
                 "pide_hora", fecha=fechas.en_palabras(cita.fecha), servicio=que), "cita")
         if falta == "franja":
-            # No se resuelve sola: confirmarla es de quien llama. Es la regla
-            # que evita citar a nadie a las cinco de la madrugada.
-            dicha = fechas.hora_en_palabras(f"{int(cita.hora[:2]) + 12:02d}:{cita.hora[3:]}")
-            return Respuesta(self.frases.decir(
-                "confirma_franja", hora=f"{dicha[0].upper()}{dicha[1:]}"), "cita")
+            return self._preguntar_franja()
         if falta == "nombre":
+            if self.agenda is not None and (no_cabe := self._si_no_cabe(que)) is not None:
+                return no_cabe
             return Respuesta(self.frases.decir("pide_nombre"), "cita")
 
+        if self.agenda is None:
+            # Sin agenda se apunta, no se confirma: prometer un hueco que
+            # nadie ha mirado es peor que no cogerlo.
+            cita.cerrada = True
+            self.esperando = None
+            return Respuesta(self.frases.decir(
+                "cierra_cita", servicio=que, fecha=fechas.en_palabras(cita.fecha),
+                hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre), "cita")
+        if (no_cabe := self._si_no_cabe(que)) is not None:
+            # Entre la comprobacion de antes y ahora ha podido entrar otra
+            # llamada. Se vuelve a mirar; la agenda lo mira otra vez al reservar.
+            return no_cabe
+        return self._reservar(que)
+
+    def _duracion(self) -> int:
+        return _agenda.duracion_en_minutos(
+            self.servicio.get("duracion") if self.servicio else None)
+
+    def _reservar(self, que: str) -> Respuesta:
+        cita = self.cita
+        reservada = self.agenda.reservar(cita.fecha, cita.hora, self._duracion(),
+                                         cita.servicio, cita.nombre)
         cita.cerrada = True
         self.esperando = None
-        # Se apunta, no se confirma: aquí no hay agenda que consultar todavía,
-        # y prometer un hueco que nadie ha mirado es peor que no cogerlo.
         return Respuesta(self.frases.decir(
-            "cierra_cita", servicio=que, fecha=fechas.en_palabras(cita.fecha),
-            hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre), "cita")
+            "reservada", servicio=que, fecha=fechas.en_palabras(cita.fecha),
+            hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre),
+            "cita", aviso=f"Reservada: {cita.resumen()} (id {reservada['id']})",
+            tipo_aviso="cita")
+
+    def _si_no_cabe(self, que: str) -> Respuesta | None:
+        """None si el hueco pedido cabe. Si no, la respuesta que ofrece otros.
+
+        Se vuelve a preguntar solo lo que toque: el día entero si está
+        cerrado, solo la hora si es cosa de la hora. Y los huecos que se
+        ofrecen son **cerca de lo que pidió**: a quien quiere la tarde no se le
+        ofrece la mañana si hay tarde.
+        """
+        cita = self.cita
+        duracion = self._duracion()
+        motivo = self.agenda.por_que_no(cita.fecha, cita.hora, duracion)
+        if motivo is None:
+            return None
+
+        dia_dicho = fechas.en_palabras(cita.fecha)
+        if motivo == "cerrado":
+            huecos = self.agenda.proximos_huecos(cita.fecha, duracion, por_dia=1)
+            dichos = [h.dicho for h in huecos]
+            cita.fecha, cita.hora, cita.acotada = None, None, False
+            self.esperando = "fecha"
+            dia_dicho = dia_dicho[0].upper() + dia_dicho[1:]
+        else:
+            pedida = _agenda._minutos(cita.hora)
+            huecos = (self.agenda.huecos(cita.fecha, duracion, desde=pedida)
+                      or self.agenda.huecos(cita.fecha, duracion))
+            dichos = [fechas.hora_en_palabras(h.hora) for h in huecos]
+            cita.hora, cita.acotada = None, False
+            self.esperando = "hora"
+            dia_dicho = dia_dicho[0].upper() + dia_dicho[1:]
+
+        if not huecos:
+            cita.cerrada = True
+            self.esperando = None
+            return Respuesta(self.frases.decir("sin_huecos"), "cita",
+                             aviso=f"Sin huecos para: {cita.resumen()}", tipo_aviso="fallo")
+
+        alternativas = ", ".join(dichos[:-1]) + (" o " if len(dichos) > 1 else "") + dichos[-1]
+        clave = {"cerrado": "cerrado", "fuera": "fuera_horario", "ocupado": "ocupado"}[motivo]
+        return Respuesta(self.frases.decir(clave, fecha=dia_dicho, alternativas=alternativas),
+                         "cita")
+
+    def _preguntar_franja(self) -> Respuesta:
+        """«A las cinco»: ¿de la mañana o de la tarde? Se propone la plausible.
+
+        Con agenda, si solo una de las dos cae dentro del horario se toma esa
+        sin preguntar: nadie quiere que le pregunten si las diez son de la
+        noche en una peluquería que cierra a las ocho. Si caben las dos, o no
+        hay agenda, se pregunta, proponiendo la más probable: por debajo de
+        las ocho, la tarde; a partir de ahí, la mañana.
+        """
+        cita = self.cita
+        h, minutos = int(cita.hora[:2]), cita.hora[3:]
+        manana, tarde = f"{h:02d}:{minutos}", f"{h + 12:02d}:{minutos}"
+
+        if self.agenda is not None:
+            duracion = self._duracion()
+            cabe_m = self.agenda.por_que_no(cita.fecha, manana, duracion) != "fuera"
+            cabe_t = self.agenda.por_que_no(cita.fecha, tarde, duracion) != "fuera"
+            if cabe_m != cabe_t:
+                cita.hora, cita.acotada = (manana if cabe_m else tarde), True
+                return self._seguir_cita()
+
+        self._propuesta = tarde if h < 8 else manana
+        dicha = fechas.hora_en_palabras(self._propuesta)
+        return Respuesta(self.frases.decir(
+            "confirma_franja", hora=f"{dicha[0].upper()}{dicha[1:]}"), "cita")
 
     def _rellenar_con(self, frase: str) -> bool:
         """Mete en la cita lo que traiga esta frase. ¿Ha aportado algo?"""
@@ -395,14 +484,21 @@ class Conversacion:
     def _confirmar_franja(self, comparable: str) -> Respuesta | None:
         """Resuelve el «¿las 5 de la tarde?» que se acaba de preguntar."""
         cita = self.cita
+        h, minutos = int(cita.hora[:2]), cita.hora[3:]
+        propuesta = getattr(self, "_propuesta", f"{h + 12:02d}:{minutos}")
+        la_otra = f"{h:02d}:{minutos}" if propuesta.startswith(f"{h + 12:02d}") \
+            else f"{h + 12:02d}:{minutos}"
         if self.frases.reconoce("si", comparable):
-            cita.hora = f"{int(cita.hora[:2]) + 12:02d}:{cita.hora[3:]}"
-            cita.acotada = True
+            cita.hora, cita.acotada = propuesta, True
             return self._seguir_cita()
         if self.frases.reconoce("no", comparable):
-            # Podría darse por la mañana, pero las 05:00 en un negocio que abre
-            # a las diez no es una cita: es un error esperando a pasar.
-            cita.hora, cita.acotada = None, False
+            # «No» quiere decir la otra. Si la otra es absurda (las cinco de la
+            # madrugada), la agenda lo dira y ofrecera huecos; sin agenda se
+            # vuelve a preguntar la hora antes que apuntar una de madrugada.
+            if self.agenda is not None or int(la_otra[:2]) >= 8:
+                cita.hora, cita.acotada = la_otra, True
+            else:
+                cita.hora, cita.acotada = None, False
             return self._seguir_cita()
         return None
 
@@ -497,6 +593,12 @@ class Conversacion:
         return texto
 
 
+def conversacion_de(negocio) -> Conversacion:
+    """Una llamada nueva para un negocio, con agenda si tiene horario escrito."""
+    ag = _agenda.Agenda(negocio.ruta.name, negocio.horario) if negocio.horario else None
+    return Conversacion(negocio.conocimiento, agenda=ag)
+
+
 def llamada(audio: Path, negocio, transcriptor, locutor=None,
             carpeta_audio: Path | None = None) -> dict:
     """Un turno de llamada entero: audio → texto → respuesta → audio.
@@ -562,14 +664,17 @@ def main() -> int:
         return 0
 
     print(negocio.saludo)
+    charla = conversacion_de(negocio)
     for linea in sys.stdin:
         linea = linea.strip()
         if not linea:
             continue
-        respuesta = atender(linea, negocio.conocimiento)
+        respuesta = charla.atender(linea)
         print(f"  → {respuesta.texto}")
         if respuesta.aviso:
             print(f"     [{respuesta.tipo_aviso}] {respuesta.aviso}")
+    if (quedo := charla.colgar()):
+        print(f"     [cita] {quedo}")
     print(negocio.despedida)
     return 0
 

@@ -93,9 +93,14 @@ class TestContesta(CasoServidor):
         datos = self.decir("cuánto vale un corte de señora")
         self.assertIn("20 €", datos["dicho"])
 
-    def test_una_cita_con_hora_ambigua_repregunta(self):
-        datos = self.decir("quiero cita para un tinte el jueves a las 5")
-        self.assertIn("de la tarde", datos["dicho"])
+    def test_una_cita_con_hora_ambigua_se_resuelve_con_el_horario(self):
+        # «A las 5» un jueves: las 05:00 caen fuera del horario y las 17:00
+        # dentro, así que la agenda lo resuelve sin preguntar. Lo que se
+        # exige es que NO se apunte a las cinco de la madrugada.
+        self.decir("quiero cita para un tinte el jueves a las 5")
+        datos = self.decir("Álvaro")
+        self.assertIn("cinco de la tarde", datos["dicho"])
+        self.assertNotIn("05:00", datos["dicho"])
 
     def test_sin_texto_lo_dice_en_vez_de_contestar_cualquier_cosa(self):
         self.assertIn("No le he oído", self.decir("   ")["dicho"])

@@ -39,6 +39,13 @@ DICE = {
     "pide_nombre": "¿A nombre de quién se la apunto?",
     "cierra_cita": ("Perfecto. Le apunto la cita{servicio} {fecha} a {hora}, "
                     "a nombre de {nombre}. Se lo confirmamos enseguida."),
+    # Con agenda: se reserva de verdad, no se promete que alguien confirmara.
+    "reservada": ("Perfecto. Reservada la cita{servicio} {fecha} a {hora}, "
+                  "a nombre de {nombre}. Le esperamos."),
+    "cerrado": "{fecha} estamos cerrados. Tengo hueco {alternativas}. ¿Le viene bien alguno?",
+    "fuera_horario": "A esa hora no estamos abiertos. {fecha} tengo {alternativas}. ¿Le viene bien alguno?",
+    "ocupado": "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?",
+    "sin_huecos": "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos.",
     "precio_uno": "{servicio}: {precio}{duracion}.",
     "precio_varios": "Tengo varias opciones: {opciones}. ¿Cuál le interesa?",
     "precio_no_esta": ("No tengo ese servicio en la lista de precios. "
@@ -57,6 +64,10 @@ HUECOS = {
     "pide_hora": {"fecha", "servicio"},
     "confirma_franja": {"hora"},
     "cierra_cita": {"servicio", "fecha", "hora", "nombre"},
+    "reservada": {"servicio", "fecha", "hora", "nombre"},
+    "cerrado": {"fecha", "alternativas"},
+    "fuera_horario": {"fecha", "alternativas"},
+    "ocupado": {"fecha", "alternativas"},
     "precio_uno": {"servicio", "precio", "duracion"},
     "precio_varios": {"opciones"},
 }
