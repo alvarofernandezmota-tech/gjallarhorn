@@ -89,6 +89,10 @@ DICE = {
     "sin_tarifas": ("Ahora mismo no tengo las tarifas cargadas. "
                     "Le tomo el recado y le devolvemos la llamada."),
     "sin_horario": "No tengo el horario a mano. Le tomo el recado y le llamamos.",
+    # «¿Está abierto ahora?» se contesta mirando el reloj, no recitando el
+    # horario entero y que lo traduzca quien llama.
+    "abierto_ahora": "Sí, ahora mismo estamos abiertos, hasta {hora}.",
+    "cerrado_ahora": "Ahora mismo está cerrado. Abrimos {cuando} a {hora}.",
     "recado": "Tomo nota y le devolvemos la llamada en cuanto podamos.",
     # «¿Eres un robot?», «¿puedo hablar con alguien?»: se dice la verdad.
     "humano": ("Soy un asistente automático. Puedo darle precios, horario y citas. "
@@ -114,6 +118,8 @@ HUECOS = {
     "sin_huecos_dia": {"fecha", "alternativas"},
     "primeros_huecos": {"alternativas"},
     "pide_hora_franja": {"fecha", "franja"},
+    "abierto_ahora": {"hora"},
+    "cerrado_ahora": {"cuando", "hora"},
     "lo_de_siempre": {"servicio"},
     "renombrada": {"nombre"},
     "anular_no_hay": {"nombre"},
@@ -139,7 +145,10 @@ ENTIENDE = {
     "saludo": ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
                "oiga", "diga", "digame", "perdone"],
     "cita": ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
-             "pedir hora", "disponible", "disponibilidad", "libre"],
+             "pedir hora", "disponible", "disponibilidad", "libre",
+             # Quien dice esto quiere que le metan cuanto antes: es una cita,
+             # aunque no diga la palabra.
+             "lo mas pronto", "lo antes posible", "cuanto antes"],
     # «¿Tenéis hueco el jueves?» pregunta qué hay, no pide una hora: se le
     # dicen los huecos del día en vez de preguntarle «¿a qué hora?».
     "disponibilidad": ["hueco", "huecos", "disponible", "disponibilidad", "libre",
@@ -149,20 +158,28 @@ ENTIENDE = {
     "siempre": ["lo de siempre", "lo mismo de siempre", "como siempre",
                 "lo mismo que la ultima vez", "lo mismo que siempre",
                 "lo de la ultima vez", "lo habitual", "lo mio de siempre"],
-    "cualquiera": ["cuando podais", "cuando pueda", "cuando puedas", "cuando tengais",
+    "cualquiera": ["lo que sea", "la que sea", "el que sea", "lo que veas",
+                   "cuando podais", "cuando pueda", "cuando puedas", "cuando tengais",
                    "cuando tengas", "la que tengais", "lo que tengais", "el que tengais",
                    "la que tengas", "lo que tengas", "me da igual", "me es igual",
                    "cualquiera", "cualquier hora", "lo antes posible", "cuanto antes",
                    "primera hora", "a la hora que sea", "cuando sea", "que huecos",
                    "que teneis", "que tienes", "que hay", "lo que haya"],
     "horario": ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
-                "cerrado", "hasta que hora", "a que hora"],
+                "abierta", "abiertos", "abiertas", "cerrado", "cerrada", "cerrados",
+                "hasta que hora", "a que hora"],
+    # Va antes que «horario» al decidir: quien pregunta si está abierto AHORA
+    # quiere un sí o un no, no la lista de los siete días.
+    "ahora": ["ahora", "ahora mismo", "en este momento", "hoy", "os pillo",
+              "te pillo", "estais abiertos", "esta abierto", "estan abiertos",
+              "sigues abierto", "seguis abiertos"],
     "si": ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale",
            "perfecto", "por la tarde", "de la tarde"],
     "no": ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
            "nada", "nada mas", "eso es todo", "ya esta"],
     "colgar": ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
-               "eso es todo", "colgar", "chao"],
+               "eso es todo", "era eso", "eso era", "ya esta todo", "nada mas era eso",
+               "colgar", "chao"],
     # «¿Cómo?»: se repite lo último que se dijo, sin cambiar nada.
     "repetir": ["repite", "repita", "repitas", "me lo repite", "me lo repites",
                 "como dice", "como has dicho", "que has dicho", "que ha dicho",
@@ -171,6 +188,9 @@ ENTIENDE = {
     # Quien pregunta si habla con una persona, o pide hablar con una.
     # Sin eñes: se compara sin tildes, y la eñe se queda en ene.
     "humano": ["robot", "maquina", "una persona", "un humano", "hablar con alguien",
+               "con quien hablo", "quien eres", "quien habla", "quien me habla",
+               "eres una persona", "eres humano",
+               "pasar con", "pasarme con", "pasame con", "me pasas con", "con alguien",
                "con el dueno", "con la duena", "con el encargado", "con la encargada",
                "con alguien", "eres real", "hay alguien", "persona de verdad",
                "una persona real", "con el jefe", "con la jefa"],
@@ -239,6 +259,19 @@ class Frases:
                                   f"Estaba escrita así: {plantilla!r}")
 
 
+def _quejarse_del_fichero(fichero: Path, error) -> None:
+    import avisos
+
+    aviso = (f"{fichero} no es un TOML válido ({error}). Se está hablando con "
+             "las frases de fábrica: lo que hayas escrito ahí NO se está "
+             "diciendo. Míralo con «make frases».")
+    print(f"⚠️  {aviso}", flush=True)
+    try:
+        avisos.registrar("fallo", aviso)
+    except Exception:  # noqa: BLE001 — si ni el registro va, que siga la llamada
+        pass
+
+
 def revisar(dice: dict) -> list[str]:
     """Los problemas de unas frases propias. Lista vacía si están bien.
 
@@ -298,7 +331,18 @@ def cargar(base: Path | None = None) -> Frases:
     fichero = Path(base) / "frases.toml" if base else None
     propias: dict = {}
     if fichero and fichero.exists():
-        propias = tomllib.loads(fichero.read_text(encoding="utf-8"))
+        try:
+            propias = tomllib.loads(fichero.read_text(encoding="utf-8"))
+        except tomllib.TOMLDecodeError as error:
+            # Esto es lo que promete la cabecera de este fichero: **una
+            # plantilla mal escrita no puede tumbar una llamada**. Y la
+            # tumbaba: un `frases.toml` con una clave sin comillas levantaba
+            # aquí, dentro de `Conversacion.__init__`, así que el bot
+            # arrancaba y se caía en cuanto descolgaba alguien. Con el
+            # fichero roto se habla con las frases de fábrica y se deja el
+            # aviso; hablar raro es mucho mejor que no hablar.
+            _quejarse_del_fichero(fichero, error)
+            propias = {}
         dice.update(propias.get("dice", {}))
         for intencion, trozos in propias.get("entiende", {}).items():
             # Se sustituye, no se suma: quien escribe su lista quiere la suya.
@@ -311,3 +355,117 @@ def cargar(base: Path | None = None) -> Frases:
 def olvidar() -> None:
     """Tira la caché. Para las pruebas y para recargar sin reiniciar."""
     _CACHE.clear()
+
+
+# Cómo trata el bot a quien llama. No es gramática fina: son las marcas que
+# de verdad aparecen en estas frases.
+DE_USTED = re.compile(r"\b(usted|le\s|les\s|se\s+l[ao]|su\s|dígame|digame|perdone|"
+                      r"viene\s+bien\s+alguno|repite\b)", re.IGNORECASE)
+DE_TU = re.compile(r"\b(te\s|tú|tu\s|tus\s|dime|perdona|tienes|quieres|"
+                   r"repites|necesitas)\b", re.IGNORECASE)
+
+
+def tratamiento(texto: str) -> str | None:
+    """«tu», «usted» o None si la frase no se moja. Ver `mezcla_de_tratos`."""
+    usted, tuteo = len(DE_USTED.findall(texto)), len(DE_TU.findall(texto))
+    if usted == tuteo:
+        return None
+    return "usted" if usted > tuteo else "tu"
+
+
+def mezcla_de_tratos(dice: dict) -> tuple[str | None, list[str]]:
+    """(cómo trata este bot, qué frases se le han quedado del otro lado).
+
+    Un bot que tutea y suelta un «¿le viene bien alguno?» suena a dos
+    personas distintas, y pasa solo: las frases que no estén en el
+    `frases.toml` del negocio salen de las de fábrica, que tratan de usted.
+    Esto lo dice **antes** de que lo oiga un cliente.
+    """
+    cuenta: dict[str, int] = {"tu": 0, "usted": 0}
+    tratos = {}
+    for clave, plantilla in dice.items():
+        if (trato := tratamiento(str(plantilla))) is not None:
+            tratos[clave] = trato
+            cuenta[trato] += 1
+    if not tratos or cuenta["tu"] == cuenta["usted"]:
+        return None, []
+    suyo = "tu" if cuenta["tu"] > cuenta["usted"] else "usted"
+    return suyo, sorted(clave for clave, trato in tratos.items() if trato != suyo)
+
+
+def propias_de(base: Path | None = None) -> dict:
+    """Las frases que ha escrito el negocio, sin las de fábrica."""
+    fichero = Path(base) / "frases.toml" if base else None
+    if not fichero or not fichero.exists():
+        return {}
+    try:
+        return tomllib.loads(fichero.read_text(encoding="utf-8")).get("dice", {})
+    except tomllib.TOMLDecodeError:
+        return {}
+
+
+def como_trata(base: Path | None = None) -> tuple[str | None, list[str]]:
+    """(cómo trata este bot, qué frases no van con eso).
+
+    El trato lo marcan **sus** frases, no las de fábrica. Quien escribe dos
+    frases tuteando ya ha dicho cómo quiere hablar, aunque las otras cuarenta
+    salgan de aquí tratando de usted: entonces las descolgadas son esas
+    cuarenta, no sus dos. Medido al revés, el aviso decía justo lo contrario
+    de lo que había que hacer.
+    """
+    dice = cargar(base).dice
+    trato, _ = mezcla_de_tratos(propias_de(base) or dice)
+    if trato is None:
+        return None, []
+    return trato, sorted(clave for clave, plantilla in dice.items()
+                         if (tratamiento(str(plantilla)) or trato) != trato)
+
+
+def main(argumentos: list[str] | None = None) -> int:
+    """`python3 frases.py`: todo lo que va a decir el bot, y cómo trata."""
+    import argparse
+
+    import negocio as negocios
+
+    parser = argparse.ArgumentParser(description="Lo que dice tu bot, frase por frase")
+    parser.add_argument("--negocio", default="peluqueria")
+    parser.add_argument("--todas", action="store_true",
+                        help="también las que usa tal cual de fábrica")
+    args = parser.parse_args(argumentos)
+
+    try:
+        negocio = negocios.cargar(args.negocio)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"❌ {error}")
+        return 1
+
+    for problema in problemas(negocio.conocimiento):
+        print(f"⚠️  {problema}")
+
+    suyas = cargar(negocio.conocimiento).dice
+    propias = set(propias_de(negocio.conocimiento))
+
+    print(f"{negocio.nombre}: así saluda y así habla\n")
+    print(f"  saludo    {negocio.saludo}")
+    print(f"  despedida {negocio.despedida}\n")
+    for clave, plantilla in suyas.items():
+        marca = "·" if clave in propias else " "
+        if clave in propias or args.todas:
+            print(f" {marca} {clave:20} {plantilla}")
+    if not args.todas:
+        print(f"\n  (· son suyas; {len(set(suyas) - propias)} más las usa de fábrica, "
+              "se ven con --todas)")
+
+    trato, descolgadas = como_trata(negocio.conocimiento)
+    if descolgadas:
+        como = "de tú" if trato == "tu" else "de usted"
+        print(f"\n⚠️  este bot trata {como}, pero estas frases no: "
+              f"{', '.join(descolgadas)}")
+        print("   Escríbelas en su frases.toml o sonará a dos personas distintas.")
+    elif trato:
+        print(f"\n✅ trata {'de tú' if trato == 'tu' else 'de usted'} en todo.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

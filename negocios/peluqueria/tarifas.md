@@ -12,7 +12,14 @@
   Este bloque de ayuda no lo lee nadie: puedes borrarlo.
 -->
 
-| Servicio | 100 euros 
-| frances natural |
-| no parejas |
-| pasivo |
+| Servicio | Precio | Duración |
+|---|---|---|
+| Corte de caballero | 14 € | 30 min |
+| Corte de señora | 20 € | 45 min |
+| Lavar y peinar | 15 € | 30 min |
+| Tinte | 45 € | 90 min |
+| Mechas | 65 € | 120 min |
+| Corte y tinte | 60 € | 120 min |
+| Recogido | 40 € | 60 min |
+| Tratamiento de keratina | 80 € | 120 min |
+| Corte infantil | 10 € | 20 min |

@@ -9,13 +9,14 @@
 
 [dice]
 
-pide_dia = "Muy bien, una cita. ¿Qué día le viene bien?"
+pide_dia = "Muy bien, una cita{servicio}. ¿Qué día le viene bien?"
 pide_hora = "Perfecto, {fecha}. ¿A qué hora le viene bien?"
 confirma_franja = "¿{hora}?"
 pide_nombre = "¿A nombre de quién se la apunto?"
 cierra_cita = "Perfecto. Le apunto la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Se lo confirmamos enseguida."
 reservada = "Perfecto. Reservada la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Le esperamos."
 cerrado = "{fecha} estamos cerrados. Tengo hueco {alternativas}. ¿Le viene bien alguno?"
+fuera_horario = "A esa hora no estamos abiertos. {fecha} tengo {alternativas}. ¿Le viene bien alguno?"
 ocupado = "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?"
 sin_huecos = "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos."
 precio_uno = "{servicio}: {precio}{duracion}."
@@ -35,10 +36,18 @@ despedida = "Gracias a usted. ¡Hasta luego!"
 # Valen trozos de frase a los dos lados: «corte de pelo» → «corte», y «para mi
 # hija» → «corte infantil» (con comillas si lleva espacios o eñes).
 [sinonimos]
-servicio = ["completo"]
-frnaces natural = ["frances", "natural"]
-parejas = ["parejas"]
-
+corte = ["cortar", "cortarme", "cortarse", "cortarle", "corte de pelo",
+         "cortar el pelo", "cortarme el pelo", "cortarle el pelo", "pelarme"]
+tinte = ["teñir", "teñirme", "teñirse", "tintar", "color", "tinte de pelo"]
+mechas = ["reflejos", "balayage", "babylights", "californianas"]
+caballero = ["hombre", "chico", "señor", "de hombre", "masculino"]
+"señora" = ["mujer", "chica", "de mujer", "femenino"]
+"corte infantil" = ["niño", "niña", "niños", "mi hijo", "mi hija", "el peque",
+                    "la peque", "para el niño", "para la niña", "infantil"]
+lavar = ["lavado", "lavarme"]
+peinar = ["peinado", "peinarme"]
+keratina = ["queratina", "alisado", "alisarme", "alisado de keratina"]
+recogido = ["recogerme el pelo", "un moño", "peinado de boda", "de novia"]
 
 [entiende]
 
@@ -68,7 +77,8 @@ cita = ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
         "necesito hora", "me gustaria ir"]
 
 horario = ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
-           "cerrado", "hasta que hora", "a que hora", "que dias abris",
+           "abierta", "abiertos", "abiertas", "cerrado", "cerrada", "cerrados",
+           "hasta que hora", "a que hora", "que dias abris",
            "trabajais los", "los findes", "el sabado abris", "hoy abris"]
 
 si = ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale", "perfecto",

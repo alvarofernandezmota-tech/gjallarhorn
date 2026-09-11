@@ -186,9 +186,13 @@ class TestLoQueVeElModelo(CasoCerebro):
 
 class TestLaConfianza(CasoCerebro):
     def test_con_confianza_baja_no_se_hace_nada(self):
+        # Sin día en la frase: lo único que podría abrir una cita aquí es el
+        # modelo, y con poca confianza no se le hace caso. (Si la frase
+        # dijera «el jueves», la cita la abrirían las reglas, no él: eso se
+        # prueba en test_profesional.)
         dicho = self.llamada(modelo_con_memoria([
             dice(intencion="cita", cuando="el jueves", confianza="baja")])
-        ).atender("mmm no sé, algo el jueves quizá").texto
+        ).atender("mmm no sé, quizá algo de eso").texto
         self.assertIn("Tomo nota", dicho)
 
     def test_con_confianza_media_si(self):

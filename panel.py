@@ -38,7 +38,9 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import agenda as _agenda
+import aprender
 import avisos
+import datos as _datos
 import conocimiento
 import fechas
 import memoria
@@ -49,6 +51,10 @@ DIAS = 2
 
 # Cuántos avisos caben en la pantalla sin convertirla en un registro.
 TOPE_AVISOS = 20
+
+# Y cuántas cosas de las que no supo contestar. Es una lista para hacer algo
+# con ella —escribir un párrafo—, no un informe.
+TOPE_FALTAS = 6
 
 
 @dataclass(frozen=True)
@@ -145,12 +151,16 @@ def vista(negocio, ahora=None) -> dict:
             for salto in range(DIAS)]
     pendientes = avisos.listar(solo_nuevos=True)
     ultimos = avisos.listar(limite=TOPE_AVISOS)    # ya vienen de lo nuevo a lo viejo
+    # Lo que le preguntan y no sabe contestar. Aquí sí sale lo preguntado una
+    # sola vez: el dueño está mirando la pantalla y decide él si le interesa.
+    faltan = aprender.faltas(negocio.conocimiento, hoy=hoy)[:TOPE_FALTAS]
 
     return {
         "negocio": negocio.nombre,
         "ahora": reloj.strftime("%H:%M"),
         "fecha": hoy.isoformat(),
         "dias": [d.como_dict() for d in dias],
+        "faltas": [f.como_dict() for f in faltan],
         "avisos": [{"id": a["id"], "tipo": a["tipo"], "hora": a.get("hora", ""),
                     "fecha": a.get("fecha", ""), "texto": a["texto"],
                     "visto": bool(a.get("visto"))} for a in ultimos],
@@ -159,6 +169,7 @@ def vista(negocio, ahora=None) -> dict:
             "huecos_hoy": len(dias[0].huecos),
             "sin_ver": len(pendientes),
             "clientes": len(fichas),
+            "faltas": len(faltan),
             "previsto_hoy": round(dias[0].previsto, 2),
         },
     }
@@ -202,10 +213,12 @@ def main(argumentos: list[str] | None = None) -> int:
     args = parser.parse_args(argumentos)
 
     try:
-        datos = vista(negocios.cargar(args.negocio))
+        negocio = negocios.cargar(args.negocio)
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    _datos.usar(negocio)
+    datos = vista(negocio)
     print(f"{datos['negocio']} · {datos['ahora']}")
     for jornada in datos["dias"]:
         cabeza = jornada["dicho"][0].upper() + jornada["dicho"][1:]

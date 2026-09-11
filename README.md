@@ -266,6 +266,46 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+### Cada bot es suyo, y cada uno habla a su manera
+
+El repo trae **dos** ejemplos a propósito: `negocios/peluqueria` trata de
+usted y `negocios/taller` tutea. Es el mismo código:
+
+```
+— Quiero cita el jueves          Peluquería: Perfecto, el jueves 17. ¿A qué hora le viene bien?
+                                 Taller:     Vale, el jueves 17. ¿A qué hora?
+— Me llamo Álvaro                Peluquería: Le apunto la cita… Le esperamos.
+                                 Taller:     Te apunto la cita… Aquí te esperamos.
+```
+
+Para oír todo lo que va a decir el tuyo, y que no se le escape un «usted» en
+mitad de un bot que tutea:
+
+```bash
+make frases NEGOCIO=taller
+```
+
+Lo dice frase por frase, marca cuáles son suyas y cuáles usa de fábrica, y
+avisa si alguna se ha quedado del otro lado. Pasa solo: lo que no escribas en
+tu `frases.toml` sale de las de fábrica, que tratan de usted.
+
+
+Un negocio es un bot, y **todo lo suyo es suyo**:
+
+| | |
+|---|---|
+| `negocio.toml` | su nombre, su saludo, su despedida, su voz, su horario |
+| `frases.toml` | lo que dice y lo que entiende: su forma de hablar y sus sinónimos |
+| `tarifas.md`, `faq.md`, cualquier `.md` | lo que sabe |
+| `datos/<negocio>/agenda.json` | sus citas |
+| `datos/<negocio>/clientes.json` | quién le llama y qué suele pedir |
+| `datos/<negocio>/avisos.json` | su registro de llamadas |
+
+Dos negocios son dos carpetas y dos procesos, y no se mezclan: la peluquería
+no saluda por su nombre a quien llamó al taller, y los avisos de cada uno van
+a su sitio. Antes los datos eran de la máquina y no del negocio; si vienes de
+esa versión, la primera vez que arranques se mudan solos y te lo dice.
+
 ### Tu negocio no tiene por qué vivir dentro del repo
 
 `negocios/peluqueria/` es el **ejemplo** que viene con el código. Tu negocio
@@ -304,6 +344,76 @@ clientes, que es justo lo que `make diagnostico` no enseña nunca: el
 diagnóstico se pega en un chat, y el panel es la libreta del dueño dentro de
 su tailnet. El puerto que se publica en internet no tiene ni ruta para esto,
 y hay pruebas que lo comprueban.
+
+## ¿Está listo para coger llamadas?
+
+Antes de dar un número hay seis cosas que mirar, repartidas en seis sitios.
+Una orden las junta:
+
+```bash
+make revisar
+```
+```
+ ✅ tarifas: 9 servicio(s)
+ ✅ conocimiento: 10 párrafo(s) que puede contestar
+ ✅ frases: trata de usted en todo
+ ✅ horario: abre 5 día(s) por semana
+ ⚠️  copias: ninguna todavía
+ ❌ teléfono: sin token
+      GJALLARHORN_TELEFONO_TOKEN en .env; sin él no hay webhook
+
+❌ No está listo para coger llamadas: 1 cosa(s) rotas.
+```
+
+Sale 1 si algo está roto, así que vale para un gancho o un cron. Un **fallo**
+es lo que hace que una llamada salga mal; un **aviso** es lo que funciona
+pero conviene mirar.
+
+## Copias: lo peor es perder las citas
+
+Una copia al día de las citas, los clientes y los avisos, dentro de la
+carpeta del negocio y en JSON sin comprimir —el día malo no quieres depender
+de una herramienta para abrir tu agenda—:
+
+```bash
+make copia            # la de hoy, y tira las viejas (se guardan 14)
+make copias           # qué copias hay
+python3 copias.py --restaurar 2026-09-11
+```
+
+Restaurar **no borra lo que hay**: antes guarda el estado actual en
+`copias/antes-de-restaurar-…`. Restaurar la copia equivocada y quedarse sin
+las dos versiones es un error que solo se comete una vez.
+
+La hace sola uno de los agentes cada mañana, y solo habla si algo falla. No
+sustituye a una copia fuera de la máquina: si arde la máquina, arden las
+copias. Para eso, `GJALLARHORN_DATOS` a una carpeta que ya sincronices.
+
+## Lo que no supo contestar
+
+Un recepcionista nuevo pregunta: «oye, me han llamado tres veces preguntando
+por las uñas, ¿eso lo hacemos?». Esto es ese momento, y es lo que hace que
+el bot mejore con el uso:
+
+```bash
+make aprender
+```
+```
+Lo que el agente no supo contestar (últimos 30 días):
+
+preguntaron algo que no está escrito en ningún sitio:
+  «¿hacéis uñas?» (3 veces) → faq.md
+preguntaron por un servicio que no está en la tabla de precios:
+  «¿cuánto vale un masaje?» (2 veces) → tarifas.md
+```
+
+Escribes esas dos cosas en el fichero que te dice y a partir de ahí las
+contesta solo. **No aprende por su cuenta**, a propósito: aprender solo aquí
+sería inventarse respuestas, y lo que sabe el negocio lo escribe el negocio.
+
+Sale también en el panel, y uno de los agentes lo manda al móvil cuando algo
+se repite. Las preguntas dichas de tres formas distintas se agrupan en una
+línea: se agrupan por la palabra que más se repite entre lo que te preguntan.
 
 ## El teléfono de verdad
 

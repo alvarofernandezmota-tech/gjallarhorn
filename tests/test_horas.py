@@ -12,7 +12,7 @@ huecos, no se le repite la pregunta.
 import sys
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -238,3 +238,78 @@ class TestAgendaHuecosHasta(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestEstaAbiertoAhora(unittest.TestCase):
+    """«¿Está abierto ahora?» quiere un sí o un no.
+
+    Recitar los siete días para que quien llama traduzca es lo que hacía
+    antes, y es justo lo que no hace una persona: con el horario escrito y
+    un reloj, se sabe.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.negocio = negocios.cargar("peluqueria")
+
+    def preguntar(self, cuando, frase="¿estáis abiertos ahora?"):
+        agenda = ag.Agenda("peluqueria", self.negocio.horario,
+                           ruta=Path(self._tmp.name) / "a.json", ahora=cuando)
+        llamada = recepcion.Conversacion(self.negocio.conocimiento, agenda=agenda)
+        return llamada.atender(frase).texto
+
+    def test_abierto_dice_hasta_cuando(self):
+        dicho = self.preguntar(datetime(2026, 9, 15, 11, 0, tzinfo=MADRID))
+        self.assertIn("Sí", dicho)
+        self.assertIn("hasta las dos de la tarde", dicho)
+
+    def test_en_la_pausa_del_mediodia_dice_cuando_vuelve(self):
+        dicho = self.preguntar(datetime(2026, 9, 15, 15, 0, tzinfo=MADRID))
+        self.assertIn("cerrado", dicho)
+        self.assertIn("hoy a las cuatro y media de la tarde", dicho)
+
+    def test_despues_de_cerrar_dice_mañana(self):
+        dicho = self.preguntar(datetime(2026, 9, 15, 21, 0, tzinfo=MADRID))
+        self.assertIn("mañana a las diez de la mañana", dicho)
+
+    def test_un_dia_cerrado_entero(self):
+        dicho = self.preguntar(datetime(2026, 9, 14, 11, 0, tzinfo=MADRID))   # lunes
+        self.assertIn("cerrado", dicho)
+        self.assertIn("mañana", dicho)
+
+    def test_sin_ahora_se_sigue_diciendo_el_horario_entero(self):
+        dicho = self.preguntar(datetime(2026, 9, 15, 11, 0, tzinfo=MADRID),
+                               "¿qué horario tenéis?")
+        self.assertIn("martes a viernes", dicho)
+
+    def test_sin_agenda_no_se_inventa_un_reloj(self):
+        llamada = recepcion.Conversacion(self.negocio.conocimiento)
+        self.assertIn("martes a viernes", llamada.atender("¿estáis abiertos ahora?").texto)
+
+
+class TestElHorarioSabeLaHora(unittest.TestCase):
+    def setUp(self):
+        self.horario = negocios.cargar("peluqueria").horario
+
+    def test_el_tramo_en_el_que_cae_un_minuto(self):
+        martes = date(2026, 9, 15)
+        self.assertEqual(self.horario.tramo_de(martes, 11 * 60), (10 * 60, 14 * 60))
+        self.assertIsNone(self.horario.tramo_de(martes, 15 * 60))
+        # El minuto en el que cierra ya es «cerrado», no «abierto».
+        self.assertIsNone(self.horario.tramo_de(martes, 14 * 60))
+
+    def test_cuando_vuelve_a_abrir(self):
+        martes = date(2026, 9, 15)
+        self.assertEqual(self.horario.proxima_apertura(martes, 15 * 60),
+                         (martes, 16 * 60 + 30))
+        self.assertEqual(self.horario.proxima_apertura(martes, 21 * 60),
+                         (date(2026, 9, 16), 10 * 60))
+        # Domingo por la noche: lo siguiente es el martes, porque el lunes cierra.
+        self.assertEqual(self.horario.proxima_apertura(date(2026, 9, 13), 22 * 60),
+                         (date(2026, 9, 15), 10 * 60))
+
+    def test_un_negocio_que_no_abre_nunca_no_promete_nada(self):
+        import agenda
+        cerrado = agenda.Horario.desde({"lunes": [], "martes": []})
+        self.assertIsNone(cerrado.proxima_apertura(date(2026, 9, 15), 0))

@@ -46,12 +46,12 @@ sugerir lo de siempre y proponer la franja de siempre. Las dos se pueden
 quitar sin que se caiga nada.
 """
 
-import os
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import almacen
+import datos
 import fechas
 
 ESQUEMA = 2
@@ -149,9 +149,8 @@ class Ficha:
 
 
 def ruta() -> Path:
-    valor = os.environ.get(VARIABLE, "").strip()
-    base = Path(valor).expanduser() if valor else Path(__file__).resolve().parent / "datos"
-    return base / "clientes.json"
+    """El fichero de clientes **de este negocio**. Ver `datos.py`."""
+    return datos.fichero("clientes.json")
 
 
 def _todas() -> dict:

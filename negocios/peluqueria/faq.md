@@ -14,16 +14,18 @@
 -->
 
 **¿Qué horario tenéis?**
-24h todos los dias 
+De martes a viernes, de 10:00 a 14:00 y de 16:30 a 20:00. Sábados de 9:00 a
+14:00. Lunes cerrado.
 
 **¿Hace falta cita?**
-y avisar con antelacion de la legada 
+Para tinte, mechas y recogidos sí. Para un corte, si hay hueco, se puede pasar
+sin cita.
 
-**¿vienes a mi casa? vivo en un piso sola, o es desplazamiento?
+**¿Dónde estáis? ¿Cuál es la dirección?**
+En el centro; la dirección exacta se da al confirmar la cita.
 
 **¿Aceptáis tarjeta? ¿Se puede pagar con Bizum?**
-tarjeta no bizum si 
+Sí, tarjeta, Bizum y efectivo.
 
 **¿Y si no puedo ir? ¿Cómo anulo la cita?**
-avisando por telefono donde la pediste porfavor
-
+Avisando con cuatro horas de antelación no hay problema.

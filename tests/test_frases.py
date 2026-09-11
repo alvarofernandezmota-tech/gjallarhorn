@@ -144,3 +144,82 @@ class TestLoQueNoSePuedeCambiar(CasoFrases):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestComoTrataElBot(unittest.TestCase):
+    """Un bot que tutea y suelta un «¿le viene bien?» suena a dos personas.
+
+    Pasa solo: lo que no esté en el `frases.toml` del negocio sale de las de
+    fábrica, que tratan de usted. Esto lo dice antes de que lo oiga nadie.
+    """
+
+    def test_reconoce_como_habla_una_frase(self):
+        self.assertEqual(frases.tratamiento("¿Qué día le viene bien?"), "usted")
+        self.assertEqual(frases.tratamiento("¿Qué día te viene bien?"), "tu")
+        self.assertIsNone(frases.tratamiento("Tinte: 45 €."))
+
+    def test_caza_la_frase_que_se_ha_quedado_del_otro_lado(self):
+        trato, descolgadas = frases.mezcla_de_tratos({
+            "pide_dia": "¿Qué día te viene bien?",
+            "pide_hora": "Vale, ¿a qué hora te va bien?",
+            "pide_nombre": "¿A nombre de quién te la apunto?",
+            "sin_huecos": "No me queda hueco. Le tomo el recado y le llamamos.",
+        })
+        self.assertEqual(trato, "tu")
+        self.assertEqual(descolgadas, ["sin_huecos"])
+
+    def test_un_bot_coherente_no_se_queja(self):
+        trato, descolgadas = frases.mezcla_de_tratos({
+            "pide_dia": "¿Qué día le viene bien?",
+            "pide_nombre": "¿A nombre de quién se la apunto?",
+        })
+        self.assertEqual((trato, descolgadas), ("usted", []))
+
+    def test_las_de_fabrica_tratan_de_usted_y_van_a_una(self):
+        trato, descolgadas = frases.mezcla_de_tratos(frases.DICE)
+        self.assertEqual(trato, "usted")
+        self.assertEqual(descolgadas, [], "las de fábrica no pueden ir cada una por su lado")
+
+
+class TestUnFicheroRotoNoTumbaLaLlamada(unittest.TestCase):
+    """La promesa de la cabecera de frases.py, que no se estaba cumpliendo.
+
+    Un `frases.toml` con una clave sin comillas levantaba dentro de
+    `Conversacion.__init__`: el bot arrancaba, y se caía en cuanto descolgaba
+    alguien. Se descubrió mirando el negocio de ejemplo publicado, que tenía
+    justo eso.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+        (self.base / "tarifas.md").write_text(
+            "| Servicio | Precio |\n|---|---|\n| Corte | 10 € |\n", encoding="utf-8")
+        # Una clave con un espacio y sin comillas: TOML inválido.
+        (self.base / "frases.toml").write_text(
+            '[sinonimos]\nfrances natural = ["frances"]\n', encoding="utf-8")
+        frases.olvidar()
+        self.addCleanup(frases.olvidar)
+
+    def test_se_carga_con_las_de_fabrica_en_vez_de_levantar(self):
+        cargadas = frases.cargar(self.base)
+        self.assertEqual(cargadas.dice["recado"], frases.DICE["recado"])
+        self.assertEqual(cargadas.sinonimos, {})
+
+    def test_la_llamada_sigue_atendiendose(self):
+        import recepcion
+        llamada = recepcion.Conversacion(self.base)
+        self.assertIn("10 €", llamada.atender("¿cuánto vale un corte?").texto)
+
+    def test_queda_aviso_de_que_sus_frases_no_se_estan_diciendo(self):
+        import avisos
+        entorno.aislar(self)
+        frases.olvidar()
+        frases.cargar(self.base)
+        ultimo = avisos.listar()[0]
+        self.assertEqual(ultimo["tipo"], "fallo")
+        self.assertIn("no es un TOML válido", ultimo["texto"])
+
+    def test_y_problemas_lo_dice_al_arrancar(self):
+        self.assertTrue(any("TOML" in p for p in frases.problemas(self.base)))

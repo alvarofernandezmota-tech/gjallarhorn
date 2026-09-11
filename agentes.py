@@ -39,8 +39,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
 import agenda as _agenda
+import aprender
 import avisos
+import datos
 import conocimiento
+import copias
 import fechas
 import frases as _frases
 import memoria
@@ -53,6 +56,12 @@ PERDIDO_DIAS = 180
 # Cuántos días mira el agente de huecos. Más de una semana no sirve de nada:
 # los huecos de dentro de tres semanas se llenan solos.
 HUECOS_DIAS = 7
+
+# Cuánto mira atrás el agente que dice lo que no supo contestar, y cuántas
+# veces tienen que haberlo preguntado para que salga. Una vez es anécdota;
+# dos ya es un cliente perdido que se repite.
+APRENDER_DIAS = 30
+MINIMO_PARA_CONTARLO = 2
 
 
 @dataclass(frozen=True)
@@ -256,8 +265,48 @@ def revision(mundo: Mundo) -> Resultado | None:
     return Resultado("revision", "Revisión del negocio:", problemas, tipo="fallo")
 
 
+def aprendizaje(mundo: Mundo) -> Resultado | None:
+    """Lo que le han preguntado y no supo contestar, para que alguien lo escriba.
+
+    Es el agente que hace que esto mejore con el uso. No aprende solo —eso
+    sería inventarse respuestas—: le pasa la lista a quien sabe la respuesta.
+
+    Solo lo repetido (`MINIMO_PARA_CONTARLO`): una pregunta suelta rara la
+    hace cualquiera, y una lista con todas es una lista que no se lee.
+    """
+    pendientes = aprender.faltas(mundo.negocio.conocimiento, dias=APRENDER_DIAS,
+                                 minimo=MINIMO_PARA_CONTARLO, hoy=mundo.hoy)
+    if not pendientes:
+        return None
+    return Resultado("aprendizaje", "Lo que te preguntan y no sé contestar:",
+                     aprender.texto(pendientes), tipo="fallo")
+
+
+def copia(mundo: Mundo) -> Resultado | None:
+    """La copia del día. Calla si sale bien, que es lo normal.
+
+    Un aviso diario de «copia hecha» es ruido: a los tres días nadie lo lee,
+    y el día que ponga «no se pudo copiar» tampoco. Así que solo habla
+    cuando hay algo que contar.
+    """
+    try:
+        destino, copiados = copias.hacer()
+        copias.limpiar()
+    except OSError as error:
+        return Resultado("copia", "No he podido copiar las citas:",
+                         [f"{type(error).__name__}: {error}",
+                          "Si el disco está lleno, el bot tampoco podrá apuntar citas."],
+                         tipo="fallo")
+    if not copiados:
+        return None
+    return None if destino.exists() else Resultado(
+        "copia", "La copia no se ha guardado donde debía.", [str(destino)], tipo="fallo")
+
+
 TODOS = {
     "recordatorios": recordatorios,
+    "copia": copia,
+    "aprendizaje": aprendizaje,
     "resumen": resumen,
     "huecos": huecos,
     "seguimiento": seguimiento,
@@ -327,6 +376,7 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    datos.usar(negocio)
 
     resultados = correr(negocio, args.agente, registrar=not args.seco)
     if not resultados:

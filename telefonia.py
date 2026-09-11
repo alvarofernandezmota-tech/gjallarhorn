@@ -65,6 +65,7 @@ from urllib.parse import parse_qs
 
 import avisar
 import avisos
+import datos
 import memoria
 import recepcion
 import voz as voz_
@@ -271,7 +272,7 @@ class Centralita:
 
         respuesta = llamada.atender(dicho)
         if respuesta.aviso:
-            avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
+            avisos.registrar(respuesta.tipo_aviso, respuesta.aviso, respuesta.datos)
             avisar.en_segundo_plano()
         print(f"☎️  {dicho}\n  → {respuesta.texto}", flush=True)
 
@@ -370,6 +371,7 @@ def main() -> int:
     except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
+    datos.usar(n)
     config = configuracion()
     if not args.simular:
         parser.print_help()
@@ -397,11 +399,11 @@ def main() -> int:
         firma = base64.b64encode(hmac.new(
             config["token"].encode(), (url + "".join(k + campos[k] for k in sorted(campos))).encode(),
             hashlib.sha1).digest()).decode()
-        datos = "&".join(f"{k}={v}" for k, v in campos.items())
+        formulario = "&".join(f"{k}={v}" for k, v in campos.items())
         print("\nCon el servidor arrancado (make arrancar), esto prueba el webhook real, firma incluida:")
         print(f"  curl -s -X POST http://127.0.0.1:{args.puerto}/telefono/entrada "
               f"-H 'Host: localhost:{args.puerto}' -H 'X-Forwarded-Proto: https' "
-              f"-H 'X-Twilio-Signature: {firma}' -d '{datos}'")
+              f"-H 'X-Twilio-Signature: {firma}' -d '{formulario}'")
         print("  → tiene que devolver un <Response> con <Gather>. Sin la cabecera de firma, 403.")
     else:
         print("\nSin GJALLARHORN_TELEFONO_TOKEN en .env: el webhook no arranca. Ponlo y repite.")

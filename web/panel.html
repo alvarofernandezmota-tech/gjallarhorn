@@ -109,6 +109,16 @@ function pintarDia(dia) {
   return `<h2>${escapar(cabeza)}${escapar(previsto)}</h2>${citas}${huecos}`;
 }
 
+function pintarFalta(falta) {
+  const veces = falta.veces === 1 ? "1 vez" : `${falta.veces} veces`;
+  // Si se arregla escribiendo, se dice dónde: es lo único que hay que hacer.
+  const donde = falta.donde ? `se contesta escribiéndolo en ${falta.donde}` : falta.dicho;
+  return `<div class="aviso">
+    <div class="texto">«${escapar(falta.ejemplo)}»
+      <small>${escapar(veces)} · ${escapar(donde)}</small>
+    </div></div>`;
+}
+
 function pintarAviso(aviso) {
   return `<div class="aviso ${aviso.visto ? "" : "nuevo"}">
     <div class="texto">${escapar(aviso.texto)}
@@ -127,6 +137,7 @@ function pintar(datos) {
       <div class="cuenta"><b>${c.sin_ver}</b><small>avisos sin ver</small></div>
     </div>
     ${datos.dias.map(pintarDia).join("")}
+    ${datos.faltas.length ? `<h2>No supe contestar</h2>${datos.faltas.map(pintarFalta).join("")}` : ""}
     <h2>Últimos avisos</h2>
     ${datos.avisos.length ? datos.avisos.map(pintarAviso).join("")
                           : `<p class="vacio">Nada que contar.</p>`}`;

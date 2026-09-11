@@ -64,6 +64,21 @@ buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
 panel: $(PY)  ## el dia del dueño en la terminal (en el movil: /panel)
 	$(PY) panel.py --negocio $(NEGOCIO)
 
+aprender: $(PY)  ## que te preguntan y no supo contestar
+	$(PY) aprender.py --negocio $(NEGOCIO)
+
+frases: $(PY)  ## todo lo que dice tu bot, y si trata de tu o de usted
+	$(PY) frases.py --negocio $(NEGOCIO)
+
+revisar: $(PY)  ## ¿esta el bot listo para coger llamadas? (sale 1 si no)
+	$(PY) revisar.py --negocio $(NEGOCIO)
+
+copia: $(PY)  ## copia de hoy de las citas, los clientes y los avisos
+	$(PY) copias.py --negocio $(NEGOCIO)
+
+copias: $(PY)  ## que copias hay guardadas
+	$(PY) copias.py --negocio $(NEGOCIO) --listar
+
 agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
 	$(PY) agentes.py --negocio $(NEGOCIO)
 
