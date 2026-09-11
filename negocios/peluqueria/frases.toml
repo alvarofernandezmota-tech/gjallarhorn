@@ -9,14 +9,13 @@
 
 [dice]
 
-pide_dia = "Muy bien, una cita{servicio}. ¿Qué día le viene bien?"
+pide_dia = "Muy bien, una cita. ¿Qué día le viene bien?"
 pide_hora = "Perfecto, {fecha}. ¿A qué hora le viene bien?"
 confirma_franja = "¿{hora}?"
 pide_nombre = "¿A nombre de quién se la apunto?"
 cierra_cita = "Perfecto. Le apunto la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Se lo confirmamos enseguida."
 reservada = "Perfecto. Reservada la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Le esperamos."
 cerrado = "{fecha} estamos cerrados. Tengo hueco {alternativas}. ¿Le viene bien alguno?"
-fuera_horario = "A esa hora no estamos abiertos. {fecha} tengo {alternativas}. ¿Le viene bien alguno?"
 ocupado = "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?"
 sin_huecos = "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos."
 precio_uno = "{servicio}: {precio}{duracion}."
