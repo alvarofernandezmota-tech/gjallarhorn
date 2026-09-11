@@ -118,15 +118,36 @@ def cliente(numero: str) -> dict | None:
 
 
 def recordar_cliente(numero: str, nombre: str | None) -> None:
-    """Apunta el nombre y una llamada mas. Solo si dio el nombre: sin el no hay nada que recordar."""
-    if not numero or not nombre:
+    """Apunta una llamada mas y, si lo dio, el nombre.
+
+    Sin nombre y sin haber llamado antes no hay nada que recordar. Con
+    nombre de antes y ninguno nuevo se conserva el de antes: que Marta pida
+    una cita «a nombre de Lucía» no convierte a Marta en Lucía.
+    """
+    if not numero:
         return
     with _LOCK:
         todos = almacen.cargar(_ruta_clientes(), ESQUEMA_CLIENTES, vacio={})
-        antes = todos.get(numero, {})
-        todos[numero] = {"nombre": nombre, "llamadas": antes.get("llamadas", 0) + 1,
+        antes = todos.get(numero)
+        if not nombre and not antes:
+            return
+        todos[numero] = {"nombre": nombre or antes["nombre"],
+                         "llamadas": (antes or {}).get("llamadas", 0) + 1,
                          "ultima": fechas.hoy()}
         almacen.guardar(_ruta_clientes(), todos, ESQUEMA_CLIENTES)
+
+
+def saludo_a(nombre: str, saludo: str) -> str:
+    """El saludo del negocio, dirigido a alguien conocido, sin saludar dos veces.
+
+    «Hola, Marta. Hola, ha llamado a…» es lo que salía al pegar el nombre
+    delante de un saludo que ya empieza por «hola».
+    """
+    resto = re.sub(r"^\s*(?:hola|buenas|buenos\s+dias|buenos\s+días|buenas\s+tardes)"
+                   r"[\s,.!¡]*", "", saludo, flags=re.IGNORECASE)
+    if not resto:
+        return f"Hola, {nombre}."
+    return f"Hola, {nombre}. {resto[0].upper()}{resto[1:]}"
 
 
 # ---- TwiML ---------------------------------------------------------------
@@ -170,6 +191,8 @@ class Centralita:
         self._llamadas: dict[str, recepcion.Conversacion] = {}
         self._numeros: dict[str, str] = {}
         self._empezadas: dict[str, float] = {}
+        self._conocidos: set[str] = set()     # llamadas de un numero ya visto
+        self._cerradas: dict[str, str | None] = {}   # lo apuntado al colgar nosotros
 
     def ahora(self) -> float:
         return self._ahora() if self._ahora else time.monotonic()
@@ -202,7 +225,8 @@ class Centralita:
             # Se le saluda por su nombre y la conversacion ya lo sabe: no se
             # le vuelve a preguntar «¿a nombre de quien?».
             self._llamadas[sid].nombre = conocido["nombre"]
-            saludo = f"Hola, {conocido['nombre']}. {saludo}"
+            self._conocidos.add(sid)
+            saludo = saludo_a(conocido["nombre"], saludo)
         avisos.registrar("llamada", f"Llamada de {numero or 'número oculto'}"
                          + (f" ({conocido['nombre']})" if conocido else ""))
         return _twiml(_escuchar(saludo, self.voz, ruta_turno))
@@ -221,7 +245,7 @@ class Centralita:
         dicho = (campos.get("SpeechResult") or "").strip()
         if not dicho:
             if silencio:
-                return _twiml(_colgar(self.negocio.despedida, self.voz))
+                return self._colgar(campos, self.negocio.despedida)
             return _twiml(_escuchar(llamada.frases.decir("no_le_oigo"), self.voz, ruta_turno))
 
         respuesta = llamada.atender(dicho)
@@ -230,10 +254,31 @@ class Centralita:
             avisar.en_segundo_plano()
         print(f"☎️  {dicho}\n  → {respuesta.texto}", flush=True)
 
-        if llamada.frases.reconoce("colgar", recepcion._sin_tildes(dicho)) \
-                or respuesta.texto == llamada.frases.decir("despedida"):
-            return _twiml(_colgar(respuesta.texto, self.voz))
+        # Se cuelga cuando la RESPUESTA es la despedida, no cuando la frase
+        # lleva «gracias»: «gracias, ¿y cuánto vale un tinte?» es una pregunta,
+        # y «venga, apúntame el jueves» es una cita. Antes las dos colgaban
+        # después de contestar.
+        if respuesta.cuelga:
+            return self._colgar(campos, respuesta.texto)
         return _twiml(_escuchar(respuesta.texto, self.voz, ruta_turno))
+
+    def _colgar(self, campos: dict[str, str], texto: str) -> str:
+        """Despedirse y colgar. Y cerrar la llamada YA, sin esperar al proveedor.
+
+        `/telefono/fin` solo llega si alguien lo configuró. Si colgamos
+        nosotros, ya sabemos que ha terminado: se apunta en qué quedó ahora,
+        no dentro de dos horas cuando la barra el reloj.
+        """
+        xml = _twiml(_colgar(texto, self.voz))
+        sid = campos.get("CallSid", "")
+        quedo = self.fin(campos)
+        with _LOCK:
+            # Para que el /fin del proveedor, si llega, sepa que quedo. Acotado:
+            # una llamada de cada cien mil no se cierra por aqui.
+            self._cerradas[sid] = quedo
+            while len(self._cerradas) > 100:
+                self._cerradas.pop(next(iter(self._cerradas)))
+        return xml
 
     def fin(self, campos: dict[str, str]) -> str | None:
         """La llamada ha terminado: apuntar en que quedo y recordar al cliente."""
@@ -242,9 +287,13 @@ class Centralita:
             llamada = self._llamadas.pop(sid, None)
             numero = self._numeros.pop(sid, "")
             self._empezadas.pop(sid, None)
-        if llamada is None:
-            return None
-        recordar_cliente(numero, llamada.nombre)
+            conocido = sid in self._conocidos
+            self._conocidos.discard(sid)
+            if llamada is None:
+                return self._cerradas.pop(sid, None)
+        # De un numero ya visto solo se cambia el nombre si se ha presentado
+        # («soy Marta»); un «a nombre de Lucia» es de la cita, no de quien llama.
+        recordar_cliente(numero, llamada.presentado or (None if conocido else llamada.nombre))
         quedo = llamada.colgar()
         if quedo:
             avisar.en_segundo_plano()

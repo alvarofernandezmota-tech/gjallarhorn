@@ -105,12 +105,25 @@ def tarifas(base: Path | None = None) -> list[dict]:
     return servicios
 
 
+# Palabras que no dicen nada del servicio ni de la pregunta: se quitan antes
+# de comparar. Estan las muletillas del telefono («pues nada, gracias») porque
+# si no, «no, gracias» encajaba con la pregunta «¿y si no puedo ir?» por el «no».
 VACIAS = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
-          "vale", "precio", "que", "por", "para", "y", "a", "me", "mi", "quiero"}
+          "que", "y", "si", "no", "se", "puedo", "puede", "hay", "teneis", "tienen",
+          "hace", "falta", "para", "por", "con", "en", "es", "esta", "estais",
+          "vale", "precio", "a", "me", "mi", "quiero", "queria", "quisiera",
+          "pues", "bueno", "nada", "gracias", "mire", "mira", "oye", "oiga",
+          "hola", "buenas", "perdone", "perdon", "entonces", "tambien", "ya",
+          "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame"}
 
 
 def _palabras(texto: str) -> set[str]:
     return {p for p in re.findall(r"\w+", _sin_tildes(texto)) if p not in VACIAS}
+
+
+def vocabulario(base: Path | None = None) -> set[str]:
+    """Todas las palabras con las que se nombra algun servicio de la tabla."""
+    return set().union(*(_palabras(s["servicio"]) for s in tarifas(base)))
 
 
 def mencionado(frase: str, base: Path | None = None) -> dict | None:
@@ -232,6 +245,31 @@ def que_falta(base: Path | None = None) -> list[str]:
 def esta_configurado(base: Path | None = None) -> bool:
     """Si hay conocimiento de verdad. Con False, el agente no sabe nada."""
     return not que_falta(base)
+
+
+def faq(frase: str, base: Path | None = None) -> tuple[str, str] | None:
+    """(pregunta, respuesta) de la FAQ que mejor encaja con lo que han dicho.
+
+    Por palabras con contenido en comun con la **pregunta** de cada bloque:
+    «¿aceptais tarjeta?» y «¿se puede pagar con tarjeta?» comparten «tarjeta».
+    Hace falta al menos una y que no haya empate: ante la duda no se contesta,
+    que un recado es mejor que la respuesta a otra pregunta. El texto de la
+    respuesta se da tal cual, sin parafrasear: lo escribio el dueño.
+    """
+    dichas = _palabras(frase)
+    if not dichas:
+        return None
+    mejor, empate, cuantas = None, False, 0
+    for bloque in re.split(r"\n(?=\*\*)", _leer("faq.md", base)):
+        if not bloque.startswith("**"):
+            continue
+        pregunta, _, respuesta = bloque.partition("\n")
+        comunes = len(dichas & _palabras(pregunta.strip("* ")))
+        if comunes > cuantas:
+            mejor, empate, cuantas = (pregunta.strip("* "), respuesta.strip()), False, comunes
+        elif comunes == cuantas and comunes:
+            empate = True
+    return None if empate or mejor is None or not mejor[1] else mejor
 
 
 def cabe_en(limite: int = LIMITE_COMODO, base: Path | None = None) -> tuple[bool, int]:

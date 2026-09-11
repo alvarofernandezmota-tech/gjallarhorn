@@ -16,25 +16,34 @@ audio → voz.escuchar → Conversacion.atender → voz.hablar → audio
                         avisos.registrar
 ```
 
-Una llamada normal, tal cual la atiende hoy:
+Una llamada normal, tal cual la atiende hoy (`python3 telefonia.py --simular`
+la reproduce por teclado, sin teléfono):
 
 ```
-— Buenas, ¿cuánto vale un tinte?   Tengo varias: Tinte 45 €; Corte y tinte 60 €. ¿Cuál le interesa?
+— Hola, buenas                     Dígame, ¿en qué puedo ayudarle?
+— ¿Cuánto vale un tinte?           Tengo varias: Tinte 45 €; Corte y tinte 60 €. ¿Cuál le interesa?
 — El tinte                         Tinte: 45 €, unos 90 min.
+— ¿Y cuánto tarda?                 Tinte: 45 €, unos 90 min.
 — Vale, pues quiero cita           Muy bien, una cita de tinte. ¿Qué día le viene bien?
-— El jueves                        Perfecto, el jueves 17. ¿A qué hora le viene bien?
-— A las cinco                      ¿Las cinco de la tarde?
-— Sí                               ¿A nombre de quién se la apunto?
-— Me llamo Álvaro                  Le apunto la cita de tinte el jueves 17 a las cinco
-                                   de la tarde, a nombre de Álvaro. Se lo confirmamos.
+— El jueves por la tarde           Perfecto, el jueves 17 por la tarde. ¿A qué hora?
+— A las cinco                      ¿A nombre de quién se la apunto?
+— ¿Aceptáis tarjeta?               Sí, tarjeta y efectivo. ¿A nombre de quién se la apunto?
+— Marta                            Reservada la cita de tinte el jueves 17 a las cinco de la
+                                   tarde, a nombre de Marta. Le esperamos. ¿Algo más?
+— A nombre de Lucía                Anotado: la cita queda a nombre de Lucía.
+— No, nada más, gracias            Gracias a usted. ¡Hasta luego!        (y cuelga)
 ```
 
-**Recuerda.** El tinte del primer turno sigue vivo en el tercero, y «a las
-cinco» —que sola no es nada— es una cita porque el día se dijo antes. Sin
-memoria, esta llamada se cae en el segundo turno.
+**Recuerda.** El tinte del primer turno sigue vivo en el quinto, «por la
+tarde» hace que «a las cinco» sean las cinco de la tarde sin volver a
+preguntarlo, y una pregunta suelta en mitad de la cita se contesta y se retoma
+donde estaba. Sin memoria, esta llamada se cae en el segundo turno.
 
-Cuatro intenciones: **precio**, **cita**, **horario** y **recado**. Y una regla
-por encima de todas:
+Lo que reconoce: **precio** (y «¿cuánto tarda?»), **cita**, **anular** o
+**cambiar** una cita, **horario**, cualquier pregunta que esté escrita en
+`faq.md` (tarjeta, dónde, si hace falta cita…), un **saludo**, la
+**despedida** y, para todo lo demás, el **recado**. Y una regla por encima de
+todas:
 
 > **Un precio sale de la tabla o no sale.** Nunca aproximado, nunca una
 > horquilla. Si el servicio no está, dice que no lo sabe y toma el recado.
@@ -120,8 +129,11 @@ de hablar de cada sitio:
 
 ```toml
 [entiende]
-precio = ["cuanto", "vale", "cuesta", "precio", "me saldria"]
+precio = ["cuanto", "cuanto vale", "cuesta", "precio", "me saldria"]
 ```
+
+(«vale» a secas no está a propósito: «vale, pues nada, gracias» no es una
+pregunta de precio. Se aprendió oyéndolo.)
 
 Lo que no pongas usa el valor de fábrica. Y **una errata no tumba una
 llamada**: un `{fehca}` mal tecleado se avisa al arrancar, y si se cuela, el

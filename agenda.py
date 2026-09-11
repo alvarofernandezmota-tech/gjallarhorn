@@ -266,6 +266,22 @@ class Agenda:
             self._guardar([c for c in citas if c["id"] != id_cita])
             return quitada
 
+    def renombrar(self, id_cita: int, nombre: str) -> dict | None:
+        """Cambia el nombre de una cita ya reservada. None si ya no está.
+
+        «A nombre de Lucía», dicho **después** de reservar, es una corrección,
+        no otra cita. Sin esto se apuntaba la reserva al que llamaba y la
+        que venía a cortarse el pelo no aparecía en ningún sitio.
+        """
+        with _ESCRIBIENDO:
+            citas = self.citas()
+            for cita in citas:
+                if cita["id"] == id_cita:
+                    cita["nombre"] = nombre
+                    self._guardar(citas)
+                    return cita
+            return None
+
     # -- reserva -------------------------------------------------------------
 
     def reservar(self, fecha: str, hora: str, duracion: int, servicio: str | None,
