@@ -27,6 +27,10 @@ from typing import Protocol
 # detecte como portugués o gallego, que es el fallo típico de estos modelos.
 IDIOMA = "es"
 
+# A partir de aqui conviene avisar de que las ruedas pueden no existir todavia.
+# No es un tope: es el punto en el que «no se instala» deja de ser raro.
+VERSION_SIN_RUEDAS = (3, 13)
+
 # `small` es el equilibrio razonable en una máquina sin GPU. Se cronometra con
 # `medir_voz.py` antes de darlo por bueno: la latencia se mide, no se supone.
 MODELO_POR_DEFECTO = "small"
@@ -59,8 +63,10 @@ class Whisper:
                 from faster_whisper import WhisperModel
             except ImportError as error:
                 raise RuntimeError(
-                    "falta faster-whisper: pip install faster-whisper. "
-                    "Va en la maquina donde corre el agente, no en la de desarrollo."
+                    "falta faster-whisper para este Python. Instalalo con el "
+                    "pip de ESTE interprete, que no tiene por que ser el que "
+                    f"contesta a `pip`:\n      {sys.executable} -m pip install "
+                    "faster-whisper"
                 ) from error
             # int8 en CPU: es lo que hace que esto sea viable sin GPU.
             self._motor = WhisperModel(self.modelo, device="cpu", compute_type="int8")
@@ -147,8 +153,9 @@ class Piper:
                 from piper.download_voices import download_voice
             except ImportError as error:
                 raise RuntimeError(
-                    "falta piper-tts: pip install piper-tts. Va en la maquina "
-                    "donde corre el agente, no en la de desarrollo."
+                    "falta piper-tts para este Python. Instalalo con el pip de "
+                    "ESTE interprete, que no tiene por que ser el que contesta "
+                    f"a `pip`:\n      {sys.executable} -m pip install piper-tts"
                 ) from error
             # `load` quiere la ruta de un .onnx, no el nombre de la voz. Se
             # descarga la primera vez y se queda en cache: pedirle a alguien
@@ -250,10 +257,10 @@ def _version(modulo) -> str:
 
 
 def _probar_boca(frase: str, destino: Path) -> dict:
+    locutor = Piper()
+    motor = locutor._cargar()   # si falta, el error ya trae las instrucciones
     import piper
 
-    locutor = Piper()
-    motor = locutor._cargar()
     api = ("synthesize_stream_raw (piper < 1.3)"
            if hasattr(motor, "synthesize_stream_raw") else "synthesize (piper >= 1.3)")
 
@@ -268,9 +275,10 @@ def _probar_boca(frase: str, destino: Path) -> dict:
 
 
 def _probar_oreja(audio: Path) -> dict:
+    transcriptor = Whisper()
+    transcriptor._cargar()      # idem: el mensaje util sale de aqui
     import faster_whisper
 
-    transcriptor = Whisper()
     arranque = time.perf_counter()
     oido = escuchar(audio, transcriptor)
     return {"version": _version(faster_whisper), "modelo": transcriptor.modelo,
@@ -279,7 +287,20 @@ def _probar_oreja(audio: Path) -> dict:
 
 def main() -> int:
     frase = "Hola, ha llamado a la peluquería. ¿En qué puedo ayudarle?"
-    print(f"Python {sys.version.split()[0]}\n")
+    print(f"Python {sys.version.split()[0]} · {sys.executable}")
+    if sys.version_info >= VERSION_SIN_RUEDAS:
+        # Esto no se deduce de un «No module named piper», y es la causa mas
+        # probable en una maquina recien actualizada.
+        print(f"\n⚠️  Python {'.'.join(map(str, sys.version_info[:2]))} es nuevo. "
+              "Piper y Whisper tiran de `onnxruntime` y")
+        print("   `ctranslate2`, que son extensiones en C y tardan meses en")
+        print("   publicar ruedas para cada version. Si `pip install` se pone a")
+        print("   compilar o dice «no matching distribution», es esto y no tu")
+        print("   maquina. La salida es un entorno con un Python que si tenga:")
+        print("\n      python3.12 -m venv .venv")
+        print("      .venv/bin/pip install faster-whisper piper-tts")
+        print("      .venv/bin/python voz.py")
+    print()
 
     with tempfile.TemporaryDirectory() as tmp:
         audio = Path(tmp) / "prueba.wav"

@@ -6,7 +6,7 @@
 *.key
 secrets.json
 
-# ---- Audio: es el diario hablado, no se versiona nunca ----
+# ---- Audio: son llamadas de clientes, no se versiona nunca ----
 *.ogg
 *.oga
 *.mp3

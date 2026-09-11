@@ -202,5 +202,55 @@ class TestEscuchar(CasoVoz):
         self.assertEqual(voz.escuchar(self.destino, voz.TranscriptorFalso()), "")
 
 
+
+class TestLoQueSeDiceCuandoFaltaElPaquete(unittest.TestCase):
+    """El mensaje de «no está instalado» es el que más se lee, y estaba mal.
+
+    Decía `pip install piper-tts` a secas. En una máquina con más de un Python
+    —o sea, en todas— eso manda al `pip` equivocado y el paquete acaba en un
+    sitio que el intérprete que falla no mira. El único `pip` que sirve es el
+    de ese intérprete.
+    """
+
+    def sin_paquete(self, motor):
+        """El import de piper/faster_whisper falla, como en una máquina pelada."""
+        import builtins
+
+        real = builtins.__import__
+
+        def falla(nombre, *args, **kwargs):
+            if nombre.split(".")[0] == motor:
+                raise ImportError(f"No module named {motor!r}")
+            return real(nombre, *args, **kwargs)
+
+        builtins.__import__ = falla
+        self.addCleanup(setattr, builtins, "__import__", real)
+
+    def test_piper_manda_al_pip_de_este_interprete(self):
+        self.sin_paquete("piper")
+        with self.assertRaises(RuntimeError) as caso:
+            voz.Piper()._cargar()
+        mensaje = str(caso.exception)
+        self.assertIn("piper-tts", mensaje)
+        self.assertIn(sys.executable, mensaje)
+        self.assertIn("-m pip install", mensaje)
+
+    def test_whisper_manda_al_pip_de_este_interprete(self):
+        self.sin_paquete("faster_whisper")
+        with self.assertRaises(RuntimeError) as caso:
+            voz.Whisper()._cargar()
+        mensaje = str(caso.exception)
+        self.assertIn("faster-whisper", mensaje)
+        self.assertIn(sys.executable, mensaje)
+
+    def test_el_diagnostico_no_suelta_un_modulenotfound_pelado(self):
+        # Era el fallo: `python3 voz.py` importaba el paquete antes de cargar
+        # el motor, así que salía el ImportError crudo y se perdían las
+        # instrucciones. Primero el motor, que sabe explicarse.
+        self.sin_paquete("piper")
+        with self.assertRaises(RuntimeError):
+            voz._probar_boca("hola", Path("/tmp/no-se-usa.wav"))
+
+
 if __name__ == "__main__":
     unittest.main()
