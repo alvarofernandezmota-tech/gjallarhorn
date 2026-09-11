@@ -111,11 +111,18 @@ class Recepcion(BaseHTTPRequestHandler):
             cuantos -= len(trozo)
 
     def _responder(self, codigo: int, cuerpo: bytes, tipo: str) -> None:
-        self.send_response(codigo)
-        self.send_header("Content-Type", tipo)
-        self.send_header("Content-Length", str(len(cuerpo)))
-        self.end_headers()
-        self.wfile.write(cuerpo)
+        try:
+            self.send_response(codigo)
+            self.send_header("Content-Type", tipo)
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
+        except (BrokenPipeError, ConnectionResetError):
+            # Quien llamaba ya no esta: Safari cierra la conexion al colgar o
+            # al recargar antes de leer la respuesta. No es un fallo nuestro
+            # y un traceback de veinte lineas por cada colgado tapa los de
+            # verdad.
+            self.close_connection = True
 
     def do_GET(self):
         if self.path in ("/", "/index.html"):

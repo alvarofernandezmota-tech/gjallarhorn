@@ -221,3 +221,24 @@ class TestElPuertoOcupado(unittest.TestCase):
 
         _, dicho = self.arrancar_en(ocupado.getsockname()[1])
         self.assertNotIn("http://localhost", dicho)
+
+
+class TestQuienLlamaSeVa(unittest.TestCase):
+    """Safari cierra la conexion al colgar antes de leer la respuesta."""
+
+    def test_un_broken_pipe_no_tumba_ni_ensucia(self):
+        import io
+
+        class Tuberia(io.BytesIO):
+            def write(self, b):
+                raise BrokenPipeError(32, "Broken pipe")
+
+        handler = servidor.Recepcion.__new__(servidor.Recepcion)
+        handler.wfile = Tuberia()
+        handler.request_version = "HTTP/1.1"
+        handler.close_connection = False
+        handler.send_response = lambda *a, **k: None
+        handler.send_header = lambda *a, **k: None
+        handler.end_headers = lambda: None
+        handler._responder(200, b"{}", "application/json")   # no levanta
+        self.assertTrue(handler.close_connection)
