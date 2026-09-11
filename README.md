@@ -153,8 +153,7 @@ gjallarhorn/
 ├─ fechas.py               cuándo quiere la cita, siempre hacia delante
 ├─ almacen.py              los JSON, con escritura atómica
 ├─ medir_voz.py            cuánto tarda en contestar, sin teléfono ni tarjeta
-├─ negocios/peluqueria/    ejemplo copiable
-└─ conocimiento/           en blanco a propósito
+└─ negocios/peluqueria/    el negocio: tarifas.md, faq.md, negocio.toml, frases.toml
 ```
 
 ## Dónde guarda sus datos

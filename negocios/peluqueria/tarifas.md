@@ -1,11 +1,15 @@
 # Tarifas
 
 <!--
-  EJEMPLO de peluquería. No es el conocimiento en uso: lo de verdad va en
-  `conocimiento/`, que está en blanco a propósito.
+  ESTE ES EL FICHERO QUE LEE EL AGENTE. De aquí, y solo de aquí, salen los
+  precios que le dice a quien llama: exactamente lo que ponga en la tabla,
+  ni un céntimo más ni menos. Lo que no esté aquí, no lo sabe y lo dice.
 
-  Para probar con esto:
-      python3 recepcion.py --negocio peluqueria
+  Para cambiar un precio: edita la fila y reinicia el servidor. Para añadir un
+  servicio: una fila más. Sin tocar código.
+
+  La columna Duración es opcional; si está, el agente la dice («unos 90 min»).
+  Este bloque entre <!-- --> no lo lee nadie: puedes borrarlo.
 -->
 
 | Servicio | Precio | Duración |

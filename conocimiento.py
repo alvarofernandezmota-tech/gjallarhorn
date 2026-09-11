@@ -27,13 +27,13 @@ escrito, con el número de `cabe_en()` delante.
 
 ## El formato
 
-`conocimiento/tarifas.md`, una tabla de Markdown:
+`negocios/<negocio>/tarifas.md`, una tabla de Markdown:
 
     | Servicio | Precio | Duración |
     |---|---|---|
     | Revisión completa | 45 € | 60 min |
 
-`conocimiento/faq.md`, texto libre. Markdown porque lo tiene que poder editar
+`negocios/<negocio>/faq.md`, texto libre. Markdown porque lo tiene que poder editar
 quien lleva el negocio, no un programador.
 """
 

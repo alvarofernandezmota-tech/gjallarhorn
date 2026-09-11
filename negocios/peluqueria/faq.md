@@ -1,6 +1,10 @@
 # Preguntas frecuentes
 
-<!-- Negocio de ejemplo. Copia la carpeta para dar de alta otro. -->
+<!--
+  ESTE ES EL FICHERO QUE LEE EL AGENTE para el horario y lo que se pregunta
+  por teléfono. Cada pregunta en negrita, y debajo la respuesta tal cual se
+  va a decir: no se parafrasea. Este bloque no lo lee nadie: puedes borrarlo.
+-->
 
 **¿Qué horario tenéis?**
 De martes a viernes, de 10:00 a 14:00 y de 16:30 a 20:00. Sábados de 9:00 a
