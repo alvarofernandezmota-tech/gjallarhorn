@@ -16,15 +16,15 @@ dónde está el código que lo ejecuta.
 Vacío todavía.
 
 Los **módulos de librería** —`recepcion.py`, `negocio.py`, `conocimiento.py`,
-`voz.py`, `avisos.py`, `fechas.py`, `almacen.py`— viven en la raíz, y también
-los dos ejecutables que no automatizan un procedimiento sino que **son** el
-producto: `servidor.py` y `medir_voz.py`. Esta carpeta es para lo otro.
+`frases.py`, `agenda.py`, `voz.py`, `avisos.py`, `avisar.py`, `fechas.py`,
+`almacen.py`— viven en la raíz, y también lo que no automatiza un
+procedimiento sino que **es** el producto o su operación: `servidor.py`,
+`medir_voz.py`, `diagnostico.py` y el `Makefile`. Esta carpeta es para lo otro.
 
 ## Antes de dar algo por bueno
 
 ```bash
-python3 -m unittest discover -s tests
-ruff check .
+make pruebas
 ```
 
 Desde la raíz del repo. No hay otra verificación real mientras la CI de la

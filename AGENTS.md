@@ -39,17 +39,23 @@ lo contrario de lo que necesita una cita.
 
 ## Estado actual
 
-✅ **De punta a punta, por texto y por voz.** `servidor.py` levanta el MVP en el
-navegador. 119 pruebas, `ruff` limpio.
+✅ **De punta a punta, por voz, desde un móvil.** Conversación con memoria,
+agenda que reserva contra el horario, avisos al móvil por Telegram, y todo
+se opera con `make`. 220 pruebas, `ruff` limpio. Verificado en la máquina de
+casa el 2026-09-11: una llamada por voz desde un iPhone, oída y contestada.
 
-⚠️ Dos cosas que **no** están hechas, y conviene no leerlas al revés:
+⚠️ Lo que **no** está hecho, y conviene no leerlo al revés:
 
-- **La latencia no está medida.** `voz.Whisper` y `voz.Piper` están escritos y
-  probados contra fakes, pero nadie ha cronometrado un turno de verdad. Eso lo
-  hace `medir_voz.py` en la máquina donde vaya a correr, y hasta entonces
-  «tarda poco» es una suposición.
+- **La latencia está medida y no llega.** Whisper `small` en esa máquina:
+  2898 ms para 3,2 s de audio, contra un presupuesto de 2000 ms para el turno
+  entero. Es un número frío; `make medir` da el caliente y `MODELO=base` el del
+  modelo pequeño. Hasta tener esos dos, no se decide nada.
 - **No hay telefonía.** Entra voz y sale voz por el navegador; lo que no hay es
-  una línea. Esa decisión se toma con el número de `medir_voz.py` delante.
+  una línea. Esa decisión se toma con los números de arriba delante: si lo
+  local no baja de dos segundos, toca una API de voz en tiempo real.
+- **No hay LLM.** Cuatro intenciones por reglas; todo lo demás es «tomo nota».
+  Funciona y no se inventa nada, pero cualquier cosa fuera de precio, cita y
+  horario se pierde en un recado.
 
 ## Reglas de la casa
 
@@ -73,12 +79,11 @@ navegador. 119 pruebas, `ruff` limpio.
 ## Verificación
 
 ```bash
-python3 -m unittest discover -s tests
-ruff check .
+make pruebas          # unittest + ruff, con el python del .venv
 ```
 
-Las dos, desde la raíz del repo, y **una comprobación saltada no es una
-comprobación pasada**.
+O a mano: `python3 -m unittest discover -s tests` y `ruff check .`, desde la
+raíz. **Una comprobación saltada no es una comprobación pasada.**
 
 La CI de la cuenta **no arranca** desde el 2026-09-04 por un cobro rechazado:
 las ejecuciones salen en rojo en segundos, sin coger runner y con los logs en
@@ -95,3 +100,6 @@ estas dos órdenes en local son la única verificación real.
 - Abrir un puerto en el router para enseñar la demo.
 - Empezar la telefonía antes de haber medido la latencia.
 - Dar nada por bueno sin correr las pruebas y `ruff`.
+- Meter el token de Telegram, una IP o un nombre de máquina en el repo. Van en
+  `.env` o no van.
+- Marcar un aviso como visto antes de que Telegram confirme que lo tiene.
