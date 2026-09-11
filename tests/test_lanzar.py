@@ -152,3 +152,43 @@ class TestLosPasos(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestBarrerLosHuecos(unittest.TestCase):
+    """Quejarse de una línea muerta y dejarla ahí es dar trabajo.
+
+    Obligaba a salir del lanzador, editar el `.env` a mano y volver a
+    entrar. Y mientras siguiera puesta, `revisar` la sacaba en rojo aunque
+    ya hubieras puesto la buena del otro proveedor.
+    """
+
+    def setUp(self):
+        self.env = Path(tempfile.mkdtemp()) / ".env"
+
+    def test_se_borra_el_hueco_del_ejemplo(self):
+        self.env.write_text("GJALLARHORN_TELEFONO_TOKEN=<tu API Key de Telnyx>\n"
+                            "GJALLARHORN_TELEGRAM_CHAT=123\n", encoding="utf-8")
+        self.assertEqual(avisar.quitar_del_env("GJALLARHORN_TELEFONO_TOKEN", self.env), 1)
+        self.assertEqual(self.env.read_text(encoding="utf-8").splitlines(),
+                         ["GJALLARHORN_TELEGRAM_CHAT=123"])
+
+    def test_lo_comentado_no_se_toca(self):
+        # Un «# CLAVE=» del ejemplo es documentación, no una clave puesta.
+        self.env.write_text("# GJALLARHORN_TELEFONO_TOKEN=\nOTRA=x\n", encoding="utf-8")
+        avisar.quitar_del_env("GJALLARHORN_TELEFONO_TOKEN", self.env)
+        self.assertIn("# GJALLARHORN_TELEFONO_TOKEN=",
+                      self.env.read_text(encoding="utf-8"))
+
+    def test_si_no_esta_no_pasa_nada(self):
+        self.env.write_text("OTRA=x\n", encoding="utf-8")
+        self.assertEqual(avisar.quitar_del_env("NO_ESTA", self.env), 0)
+
+    def test_sin_env_no_revienta(self):
+        self.assertEqual(avisar.quitar_del_env("LO_QUE_SEA", Path("/no/existe/.env")), 0)
+
+    def test_una_credencial_de_verdad_no_se_borra_sola(self):
+        # `_barrer_los_huecos` solo llama a esto para lo que es de relleno.
+        # Una clave buena del proveedor que no usas se queda donde está.
+        from telefono import telefonia
+        self.assertFalse(telefonia.token_de_mentira(
+            "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"))

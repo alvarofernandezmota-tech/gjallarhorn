@@ -120,8 +120,31 @@ def paso_la_firma() -> bool:
             print(f"      {punto.titulo}")
             if punto.detalle:
                 print(f"      {punto.detalle}")
+        _barrer_los_huecos(config)
         print()
     return _pedir_la_clave()
+
+
+def _barrer_los_huecos(config: dict) -> None:
+    """Borra del .env las credenciales que son el hueco del ejemplo.
+
+    Quejarse de una linea muerta y dejarla ahi es dar trabajo: obliga a
+    salir, editar el fichero a mano y volver. Y mientras siga puesta,
+    `revisar` la seguira sacando en rojo aunque ya hayas puesto la buena
+    del otro proveedor, que confunde mas todavia.
+
+    Solo se borra lo que es de relleno —`<...>`, `pon-aqui-el-token`—, que
+    no vale para nada y no hay nada que perder. Una credencial de verdad no
+    se toca nunca, aunque sea del proveedor que no usas.
+    """
+    import os
+    for variable, valor in ((TOKEN_TWILIO, config.get("token")),
+                            (CLAVE_TELNYX, config.get("clave_publica"))):
+        if valor and telefonia.token_de_mentira(valor):
+            avisar.quitar_del_env(variable)
+            os.environ.pop(variable, None)
+            print(f"      → he borrado {variable} del .env: era el hueco del")
+            print("        ejemplo sin rellenar, no servia para nada.")
 
 
 # ---- 2. lo demas del negocio --------------------------------------------

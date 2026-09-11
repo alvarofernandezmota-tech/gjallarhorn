@@ -102,6 +102,21 @@ def poner_en_env(clave: str, valor: str, fichero: Path = RAIZ / ".env") -> str:
     return que
 
 
+def quitar_del_env(clave: str, fichero: Path = RAIZ / ".env") -> int:
+    """Quita esa clave del .env. Devuelve cuantas lineas se han ido.
+
+    Lo comentado no se toca: un `# CLAVE=` del ejemplo es documentacion.
+    """
+    if not fichero.exists():
+        return 0
+    lineas = fichero.read_text(encoding="utf-8").splitlines()
+    quedan = [linea for linea in lineas
+              if not linea.strip().startswith(f"{clave}=")]
+    if len(quedan) != len(lineas):
+        fichero.write_text("\n".join(quedan) + "\n", encoding="utf-8")
+    return len(lineas) - len(quedan)
+
+
 def repetidas_en_env(fichero: Path = RAIZ / ".env") -> list[str]:
     """Claves puestas mas de una vez. Vale la ultima, pero conviene saberlo."""
     visto, repetidas = set(), []
