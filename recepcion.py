@@ -487,7 +487,8 @@ class Conversacion:
         """Cuál de los huecos ofrecidos ha elegido: «sí» al único, «el primero», «el último»."""
         if not self._ofrecidos:
             return None
-        corta = len(comparable.split()) <= 4
+        # «Sí» al único hueco lo coge; «sí, a las seis» dice otra hora y esa manda.
+        corta = len(comparable.split()) <= 4 and fechas.hora_suelta(comparable) is None
         if corta and self.frases.reconoce("si", comparable) and len(self._ofrecidos) == 1:
             return self._ofrecidos[0]
         if re.search(r"\b(?:el|la)\s+primer[oa]\b|\bprimer[oa]\b", comparable):
@@ -887,7 +888,7 @@ class Conversacion:
                 ahora_mismo = _entre_ofrecidos(limpia, self._opciones, self.base)
             if ahora_mismo is not None:
                 self.servicio = ahora_mismo
-                return _precio_de(ahora_mismo, self.frases)
+                return self._con_lo_pendiente(_precio_de(ahora_mismo, self.frases))
             if not conocimiento._palabras(limpia) - RELLENO:
                 # «¿Y cuánto tarda?» sin decir cuál: se vuelve a preguntar cuál.
                 self.esperando = "cual"

@@ -199,6 +199,17 @@ class TestElegirElHuecoOfrecido(CasoHuecos):
         self.assertEqual((self.cita().fecha, self.cita().hora), ("2026-09-15", "10:00"))
         self.assertIn("¿A nombre de quién", dicho)
 
+    def test_si_pero_con_otra_hora_manda_la_hora(self):
+        for hora in ("10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30",
+                     "16:30", "17:00", "17:30", "18:00", "18:30", "19:00"):
+            self.agenda.reservar(JUEVES, hora, 30, "Corte", "Alguien")
+        self.texto("¿tenéis hueco el jueves?")          # solo queda las 19:30
+        dicho = self.texto("sí, a las siete de la tarde")
+        # Lo que dijo manda: las siete estan cogidas, y se le dice, en vez de
+        # apuntarle a las siete y media por el «sí».
+        self.assertIn("ya tengo a alguien", dicho)
+        self.assertIsNone(self.cita().hora)
+
     def test_otra_hora_distinta_se_respeta(self):
         self.texto("¿tenéis hueco el jueves por la tarde?", "a las seis de la tarde")
         self.assertEqual(self.cita().hora, "18:00")
