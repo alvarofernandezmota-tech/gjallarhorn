@@ -63,11 +63,24 @@ def _que_clave_es(dicho: str) -> tuple[str, str] | None:
     from telefono import firmas
     if len(firmas.de_base64(dicho)) == 32:
         return CLAVE_TELNYX, "la clave publica de Telnyx"
-    if dicho.upper().startswith("KEY"):
-        return None                     # una API Key de Telnyx: no sirve
+    # Lo que da cada proveedor y NO vale, con su pinta, para poder decirlo
+    # por su nombre. Enterarse de que has pegado el identificador en vez del
+    # secreto es la diferencia entre diez segundos y una tarde.
+    if _es_un_sid_de_twilio(dicho) or dicho.upper().startswith("KEY"):
+        return None
     if len(dicho) == 32 and all(c in "0123456789abcdefABCDEF" for c in dicho):
         return TOKEN_TWILIO, "el Auth Token de Twilio"
     return None
+
+
+def _es_un_sid_de_twilio(dicho: str) -> bool:
+    """«AC» y 32 hex: el Account SID, que es el identificador, no el secreto.
+
+    Estan pegados el uno al otro en la consola y el Auth Token ademas viene
+    tapado tras un boton «Show», asi que copiar el de arriba es lo normal.
+    """
+    return (len(dicho) == 34 and dicho[:2].upper() == "AC"
+            and all(c in "0123456789abcdefABCDEF" for c in dicho[2:]))
 
 
 def _pedir_la_clave() -> bool:
@@ -89,7 +102,12 @@ def _pedir_la_clave() -> bool:
     cual = _que_clave_es(dicho)
     if cual is None:
         print("\n   ❌ Eso no es ninguna de las dos, asi que no lo escribo.")
-        if dicho.upper().startswith("KEY"):
+        if _es_un_sid_de_twilio(dicho):
+            print("      Eso es el Account SID de Twilio (empieza por AC): es el")
+            print("      identificador de tu cuenta, no el secreto con el que firma.")
+            print("      El Auth Token esta JUSTO DEBAJO en la consola, tapado tras")
+            print("      un boton «Show». Son 32 hex, sin el AC delante.")
+        elif dicho.upper().startswith("KEY"):
             print("      Parece una API Key de Telnyx (empieza por KEY). Lo que hace")
             print("      falta es la clave PUBLICA: Keys & Credentials > Public Key.")
         elif "<" in dicho or ">" in dicho:

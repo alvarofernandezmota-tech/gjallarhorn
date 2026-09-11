@@ -41,6 +41,34 @@ class TestQueClaveEs(unittest.TestCase):
         cual = lanzar._que_clave_es("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6")
         self.assertEqual(cual[0], lanzar.TOKEN_TWILIO)
 
+    def test_el_account_sid_de_twilio_se_rechaza(self):
+        # Pasó de verdad: en la consola el SID está encima del Auth Token, y
+        # el Token viene tapado tras un botón «Show». Copiar el de arriba es
+        # lo normal, y con él el webhook da 403 en todas las llamadas.
+        self.assertIsNone(lanzar._que_clave_es("AC" + "de1a5a" * 5 + "de"))
+        self.assertTrue(lanzar._es_un_sid_de_twilio("AC" + "0" * 32))
+
+    def test_el_auth_token_y_el_sid_no_se_confunden(self):
+        # Se parecen: los dos son hex. Lo que los separa es el «AC» y que el
+        # SID mide 34 y el token 32.
+        self.assertFalse(lanzar._es_un_sid_de_twilio("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6"))
+        self.assertEqual(lanzar._que_clave_es("a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6")[0],
+                         lanzar.TOKEN_TWILIO)
+
+    def test_se_dice_que_es_un_sid_y_donde_esta_el_bueno(self):
+        import builtins
+        import contextlib
+        import io
+        antes = builtins.input
+        builtins.input = lambda *_: "AC" + "de1a5a" * 5 + "de"
+        self.addCleanup(lambda: setattr(builtins, "input", antes))
+        salida = io.StringIO()
+        with contextlib.redirect_stdout(salida):
+            lanzar._pedir_la_clave()
+        dicho = salida.getvalue()
+        self.assertIn("Account SID", dicho)
+        self.assertIn("Show", dicho)
+
     def test_la_api_key_de_telnyx_se_rechaza(self):
         # Es lo que hay que rechazar sí o sí: se parece a una credencial,
         # la da el mismo proveedor, y no sirve para comprobar ninguna firma.
