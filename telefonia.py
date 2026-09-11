@@ -40,12 +40,16 @@ webhook **no arranca**: antes que abierto, apagado.
 ## Como llega el proveedor hasta Madre
 
 En el router no se abre nada (CONTEXT.md, decision 8). `tailscale funnel`
-publica el puerto en internet por una conexion de salida:
+publica un puerto en internet por una conexion de salida:
 
-    tailscale funnel --bg 8080
+    tailscale funnel --bg 8081
     → https://<maquina>.<tailnet>.ts.net/telefono/entrada
 
-Esa URL es la que se pone en el proveedor como webhook de voz.
+**El 8081, no el 8080.** El 8080 es la demo del navegador y no puede salir a
+internet: `/hablar` arranca Whisper con el audio que le manden y `/colgar`
+escribe en la agenda. El 8081 sirve solo `/telefono/*`, y por eso es el
+unico que se publica. `make funnel` publica el que toca y se niega a hacerlo
+si no hay token.
 """
 
 import base64

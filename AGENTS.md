@@ -107,3 +107,5 @@ estas dos órdenes en local son la única verificación real.
 - Dejar que el LLM redacte lo que se le dice al cliente, o ponga un precio.
   Su salida es un JSON de cuatro campos, y así se queda.
 - Atender una petición del webhook de teléfono sin comprobar la firma.
+- Poner una ruta nueva en el puerto del teléfono (el público). Ahí solo vive
+  `/telefono/*`; todo lo demás va en el de la demo, que no sale del tailnet.

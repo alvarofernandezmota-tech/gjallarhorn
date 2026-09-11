@@ -9,7 +9,11 @@ VENV    := .venv
 PY      := $(VENV)/bin/python
 PIP     := $(VENV)/bin/pip
 NEGOCIO ?= peluqueria
+# Dos puertos, y la diferencia importa: el de la demo NO se publica nunca
+# —sirve la pagina, /hablar y /colgar—; el del telefono sirve solo el webhook
+# del proveedor y es el unico que sale a internet.
 PUERTO  ?= 8080
+PUERTO_TELEFONO ?= 8081
 SERVICIO := gjallarhorn
 UNIDAD   := $(HOME)/.config/systemd/user/$(SERVICIO).service
 
@@ -38,15 +42,31 @@ probar: $(PY)  ## el recepcionista por teclado, con memoria y agenda
 	$(PY) recepcion.py --negocio $(NEGOCIO)
 
 servidor: $(PY)  ## el MVP en primer plano (Ctrl+C para parar)
-	$(PY) servidor.py --negocio $(NEGOCIO) --puerto $(PUERTO)
+	$(PY) servidor.py --negocio $(NEGOCIO) --puerto $(PUERTO) --puerto-telefono $(PUERTO_TELEFONO)
+
+serve: $(PY)  ## la demo, visible solo en tu tailnet (para el movil)
+	tailscale serve --bg $(PUERTO)
+	@tailscale serve status
 
 cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
 	$(PY) cerebro.py "$(FRASE)" --negocio $(NEGOCIO)
 
-funnel:  ## publicar el webhook del telefono en internet (sin abrir el router)
-	tailscale funnel --bg $(PUERTO)
-	@echo "→ pon en el proveedor, como webhook de voz:  https://<esta-maquina>.<tailnet>.ts.net/telefono/entrada"
-	@echo "   y como status callback:                  https://<esta-maquina>.<tailnet>.ts.net/telefono/fin"
+funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
+	@$(PY) -c "import telefonia, sys; sys.exit(0 if telefonia.configuracion() else 1)" || \
+	  { echo "❌ sin GJALLARHORN_TELEFONO_TOKEN en .env no hay webhook que publicar."; \
+	    echo "   Publicar esto ahora solo abriria la demo a internet. Pon el token primero."; \
+	    exit 1; }
+	tailscale funnel --bg $(PUERTO_TELEFONO)
+	@echo
+	@echo "Se ha publicado el puerto $(PUERTO_TELEFONO), que sirve SOLO /telefono/*."
+	@echo "El $(PUERTO) (la pagina, /hablar, /colgar) sigue sin salir de tu tailnet."
+	@echo
+	@echo "→ en el proveedor, webhook de voz:  https://<esta-maquina>.<tailnet>.ts.net/telefono/entrada"
+	@echo "  y status callback:                https://<esta-maquina>.<tailnet>.ts.net/telefono/fin"
+
+sin-funnel:  ## dejar de publicar: nada sale a internet
+	tailscale funnel --https=443 off
+	@tailscale funnel status 2>/dev/null || true
 
 avisar: $(PY)  ## mandar al movil los avisos pendientes (Telegram)
 	$(PY) avisar.py
@@ -63,6 +83,7 @@ pruebas: $(PY)  ## las pruebas y el lint
 $(UNIDAD): gjallarhorn.service.in
 	mkdir -p $(dir $(UNIDAD))
 	sed -e 's|@RAIZ@|$(CURDIR)|g' -e 's|@NEGOCIO@|$(NEGOCIO)|g' -e 's|@PUERTO@|$(PUERTO)|g' \
+	    -e 's|@PUERTO_TELEFONO@|$(PUERTO_TELEFONO)|g' \
 	    gjallarhorn.service.in > $(UNIDAD)
 	systemctl --user daemon-reload
 
@@ -88,4 +109,4 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
 	@$(PY) diagnostico.py
 
-.PHONY: ayuda instalar voz medir probar servidor pruebas cerebro funnel avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
+.PHONY: ayuda instalar voz medir probar servidor serve pruebas cerebro funnel sin-funnel avisar telegram-prueba arrancar parar reiniciar log estado diagnostico

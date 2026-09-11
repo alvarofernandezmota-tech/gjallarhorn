@@ -88,15 +88,22 @@ def negocio_y_datos(negocio: str) -> list[str]:
     return lineas
 
 
-def informe(negocio: str, puerto: int, corto: bool) -> str:
+def informe(negocio: str, puerto: int, corto: bool, puerto_telefono: int = 8081) -> str:
     en_venv = sys.prefix != sys.base_prefix
     lineas = [
         f"python {sys.version.split()[0]} · {'venv' if en_venv else 'SIN venv'}",
         f"faster-whisper {_version('faster-whisper')} · piper-tts {_version('piper-tts')} · "
         f"onnxruntime {_version('onnxruntime')} · ctranslate2 {_version('ctranslate2')}",
         *modelos(),
-        f"puerto {puerto}: {'cogido (¿el servidor?)' if puerto_cogido(puerto) else 'libre'}",
+        f"puerto {puerto} (demo, solo tailnet): "
+        f"{'cogido (¿el servidor?)' if puerto_cogido(puerto) else 'libre'}",
     ]
+    import telefonia
+    if telefonia.configuracion() is None:
+        lineas.append("teléfono: sin token, el webhook no arranca")
+    else:
+        lineas.append(f"puerto {puerto_telefono} (teléfono, público si hay funnel): "
+                      f"{'cogido' if puerto_cogido(puerto_telefono) else 'libre'}")
     if corto:
         return "\n".join(lineas + negocio_y_datos(negocio)[:1])
 
@@ -112,9 +119,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Que le pasa a esta maquina")
     parser.add_argument("--negocio", default="peluqueria")
     parser.add_argument("--puerto", type=int, default=8080)
+    parser.add_argument("--puerto-telefono", type=int, default=8081)
     parser.add_argument("--corto", action="store_true")
     args = parser.parse_args()
-    print(informe(args.negocio, args.puerto, args.corto))
+    print(informe(args.negocio, args.puerto, args.corto, args.puerto_telefono))
     return 0
 
 

@@ -34,6 +34,20 @@ puerto expuesto a internet—:
 
     tailscale serve --bg 8080
 
+## Dos puertos, y la diferencia es de seguridad
+
+    8080  la demo: la página, /hablar, /colgar   → tailscale serve (solo tu tailnet)
+    8081  solo /telefono/*                        → tailscale funnel (internet)
+
+El webhook del proveedor tiene que ser alcanzable desde internet. La demo
+**no puede serlo**: `/hablar` arranca Whisper con el audio que le manden y
+`/colgar` escribe en la agenda de un negocio real. Publicar un solo puerto
+con las dos cosas dentro abre lo segundo para conseguir lo primero.
+
+Por eso son dos servidores con **dos tablas de rutas distintas**. Que la demo
+no salga a internet no depende de mirar una cabecera ni de confiar en
+Tailscale: depende de que el puerto que se publica no sabe servirla.
+
 ## Lo que esto NO es
 
 Un servidor de producción. `http.server` es de la librería estándar y atiende
@@ -47,6 +61,7 @@ import errno
 import json
 import sys
 import tempfile
+import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -86,7 +101,9 @@ TOPE_AUDIO = 10 * 1024 * 1024
 TOPE_VACIADO = 4 * TOPE_AUDIO
 
 
-class Recepcion(BaseHTTPRequestHandler):
+class Comun(BaseHTTPRequestHandler):
+    """Lo que comparten los dos puertos. No se sirve por si solo."""
+
     negocio = None
     transcriptor = None
     locutor = None
@@ -128,7 +145,78 @@ class Recepcion(BaseHTTPRequestHandler):
             # verdad.
             self.close_connection = True
 
+    def _telefono(self) -> None:
+        """El webhook del proveedor de telefonia. Firmado o nada."""
+        if self.centralita is None:
+            return self._responder(404, b"sin telefonia configurada", "text/plain; charset=utf-8")
+        largo = int(self.headers.get("Content-Length") or 0)
+        cuerpo = self.rfile.read(min(largo, TOPE_AUDIO))
+        campos = telefonia.campos_de(cuerpo)
+
+        # La URL que firmo el proveedor es la publica, con esquema y host.
+        host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
+        esquema = self.headers.get("X-Forwarded-Proto", "https")
+        url = f"{esquema}://{host}{self.path}"
+        if not telefonia.firma_valida(self.config_telefono["token"], url, campos,
+                                      self.headers.get("X-Twilio-Signature")):
+            avisos.registrar("fallo", f"Petición al webhook de teléfono con firma mala desde {self.client_address[0]}")
+            return self._responder(403, b"firma no valida", "text/plain; charset=utf-8")
+
+        ruta, _, consulta = self.path.partition("?")
+        ruta_turno = f"{esquema}://{host}/telefono/turno"
+        if ruta.endswith("/entrada"):
+            xml = self.centralita.entrada(campos, ruta_turno)
+        elif ruta.endswith("/turno"):
+            xml = self.centralita.turno(campos, ruta_turno, silencio="silencio=1" in consulta)
+        else:
+            self.centralita.fin(campos)
+            xml = telefonia._twiml()
+        self._responder(200, xml.encode("utf-8"), "text/xml; charset=utf-8")
+
+    def _es_de_internet(self) -> bool:
+        """¿Ha entrado por Funnel, o sea desde fuera del tailnet?
+
+        Tailscale marca asi lo que llega de internet. **No es de lo que
+        depende la separacion** —para eso estan los dos puertos— pero si
+        alguien publica el puerto de la demo por error, esto lo para igual.
+        """
+        return bool(self.headers.get("Tailscale-Funnel-Request"))
+
+
+class Telefono(Comun):
+    """El puerto publico: **solo** el webhook del proveedor. Nada mas.
+
+    Este es el unico que se publica en internet (`tailscale funnel`). Que la
+    demo no sea alcanzable desde fuera no depende de mirar una cabecera ni de
+    confiar en Tailscale: depende de que en la tabla de rutas de este puerto
+    **no existen** `/`, `/hablar` ni `/colgar`. Un puerto no puede servir lo
+    que no sabe servir.
+
+    Y aun asi, lo que entra por aqui va firmado con el token del proveedor.
+    Dos cerraduras distintas para la misma puerta, a proposito.
+    """
+
     def do_GET(self):
+        # Ni siquiera la pagina: por aqui solo habla una maquina.
+        self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
+
+    def do_POST(self):
+        if not telefonia.RUTAS.match(self.path):
+            return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
+        self._telefono()
+
+
+class Recepcion(Comun):
+    """El puerto de la demo: la pagina y el navegador. **Nunca se publica.**
+
+    Va detras de `tailscale serve`, que solo lo ve tu tailnet. Aqui hay cosas
+    que no pueden estar abiertas a internet: `/hablar` arranca Whisper con el
+    audio que le manden y `/colgar` reserva en la agenda.
+    """
+
+    def do_GET(self):
+        if self._es_de_internet():
+            return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
         if self.path in ("/", "/index.html"):
             pagina = PAGINA.read_text(encoding="utf-8")
             pagina = pagina.replace("{{NEGOCIO}}", self.negocio.nombre)
@@ -138,14 +226,14 @@ class Recepcion(BaseHTTPRequestHandler):
         self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
     def do_POST(self):
-        if telefonia.RUTAS.match(self.path):
-            return self._telefono()
+        if self._es_de_internet():
+            return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
         if self.path == "/colgar":
             # Colgar apunta en que quedo la llamada y empieza otra de cero.
             # Sin esto, la segunda prueba hereda la cita a medias de la
             # primera y contesta cosas que no vienen a cuento.
-            quedo = Recepcion.charla().colgar()
-            Recepcion.conversacion = recepcion.conversacion_de(self.negocio)
+            quedo = self.charla().colgar()
+            Comun.conversacion = recepcion.conversacion_de(self.negocio)
             if quedo:
                 avisar.en_segundo_plano()
             return self._responder(
@@ -172,34 +260,6 @@ class Recepcion(BaseHTTPRequestHandler):
         self._responder(200, json.dumps(resultado, ensure_ascii=False).encode("utf-8"),
                         "application/json; charset=utf-8")
 
-    def _telefono(self) -> None:
-        """El webhook del proveedor de telefonia. Firmado o nada."""
-        if Recepcion.centralita is None:
-            return self._responder(404, b"sin telefonia configurada", "text/plain; charset=utf-8")
-        largo = int(self.headers.get("Content-Length") or 0)
-        cuerpo = self.rfile.read(min(largo, TOPE_AUDIO))
-        campos = telefonia.campos_de(cuerpo)
-
-        # La URL que firmo el proveedor es la publica, con esquema y host.
-        host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
-        esquema = self.headers.get("X-Forwarded-Proto", "https")
-        url = f"{esquema}://{host}{self.path}"
-        if not telefonia.firma_valida(Recepcion.config_telefono["token"], url, campos,
-                                      self.headers.get("X-Twilio-Signature")):
-            avisos.registrar("fallo", f"Petición al webhook de teléfono con firma mala desde {self.client_address[0]}")
-            return self._responder(403, b"firma no valida", "text/plain; charset=utf-8")
-
-        ruta, _, consulta = self.path.partition("?")
-        ruta_turno = f"{esquema}://{host}/telefono/turno"
-        if ruta.endswith("/entrada"):
-            xml = Recepcion.centralita.entrada(campos, ruta_turno)
-        elif ruta.endswith("/turno"):
-            xml = Recepcion.centralita.turno(campos, ruta_turno, silencio="silencio=1" in consulta)
-        else:
-            Recepcion.centralita.fin(campos)
-            xml = telefonia._twiml()
-        self._responder(200, xml.encode("utf-8"), "text/xml; charset=utf-8")
-
     def _atender(self, cuerpo: bytes) -> dict:
         tipo = self.headers.get("Content-Type", "")
         if tipo.startswith("application/json"):
@@ -220,7 +280,7 @@ class Recepcion(BaseHTTPRequestHandler):
 
         # La misma conversación mientras dure la llamada: es lo que hace que
         # «el jueves» y «a las cinco» signifiquen algo dos turnos despues.
-        respuesta = Recepcion.charla().atender(oido)
+        respuesta = self.charla().atender(oido)
         if respuesta.aviso:
             avisos.registrar(respuesta.tipo_aviso, respuesta.aviso)
             avisar.en_segundo_plano()
@@ -240,67 +300,90 @@ class Recepcion(BaseHTTPRequestHandler):
         return {"oido": oido, "dicho": respuesta.texto, "audio": audio}
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="El recepcionista, en el navegador")
-    parser.add_argument("--negocio", default="peluqueria")
-    parser.add_argument("--puerto", type=int, default=8080)
-    parser.add_argument("--sin-voz", action="store_true",
-                        help="modo texto: sin Whisper ni Piper, para probar sin instalar nada")
-    args = parser.parse_args()
-
+def _abrir(puerto: int, handler, que: str, bandera: str) -> "HTTPServer | None":
+    """Un servidor en un puerto, o None diciendo por que no se pudo."""
     try:
-        Recepcion.negocio = negocios.cargar(args.negocio)
-    except FileNotFoundError as error:
-        print(f"❌ {error}")
-        return 1
-    Recepcion.conversacion = recepcion.conversacion_de(Recepcion.negocio)
-    if Recepcion.negocio.horario is None:
-        print("⚠️  sin [horario] en negocio.toml: se toma nota, no se reserva")
-
-    faltan = __import__("conocimiento").que_falta(Recepcion.negocio.conocimiento)
-    if faltan:
-        print(f"⚠️  {Recepcion.negocio.nombre}: sin rellenar {', '.join(faltan)}")
-    for problema in frases.problemas(Recepcion.negocio.conocimiento):
-        print(f"⚠️  frases.toml: {problema}")
-    if avisar.configuracion() is None:
-        print("ℹ️  sin Telegram: las citas y recados se quedan en avisos.json "
-              "(python3 avisar.py explica cómo configurarlo)")
-    Recepcion.config_telefono = telefonia.configuracion()
-    if Recepcion.config_telefono is None:
-        print("ℹ️  sin teléfono: no hay webhook (GJALLARHORN_TELEFONO_TOKEN en .env lo enciende)")
-    else:
-        Recepcion.centralita = telefonia.Centralita(Recepcion.negocio,
-                                                    Recepcion.config_telefono["voz"])
-        print("☎️  webhook de teléfono en /telefono/entrada · publícalo: tailscale funnel --bg "
-              f"{args.puerto}")
-
-    if not args.sin_voz:
-        Recepcion.transcriptor, Recepcion.locutor = voz.Whisper(), voz.Piper()
-
-    try:
-        servidor = HTTPServer(("0.0.0.0", args.puerto), Recepcion)
+        return HTTPServer(("0.0.0.0", puerto), handler)
     except OSError as error:
         if error.errno != errno.EADDRINUSE:
             raise
         # Casi siempre es un servidor.py anterior que se quedo vivo. El
         # traceback de socketserver no lo dice, y es lo unico que hace falta.
-        print(f"❌ El puerto {args.puerto} ya esta ocupado.")
+        print(f"❌ El puerto {puerto} ({que}) ya esta ocupado.")
         print("   Casi siempre es otro servidor.py que se quedo corriendo.")
-        print(f"   Quien lo tiene:  ss -ltnp | grep :{args.puerto}")
+        print(f"   Quien lo tiene:  ss -ltnp | grep :{puerto}")
         print("   Matarlo:         pkill -f servidor.py")
-        print(f"   U otro puerto:   python3 servidor.py --puerto {args.puerto + 1}")
-        return 1
+        print(f"   U otro puerto:   python3 servidor.py {bandera} {puerto + 1}")
+        return None
 
-    modo = "TEXTO (sin modelos)" if args.sin_voz else "VOZ"
-    print(f"{Recepcion.negocio.nombre} · modo {modo}")
-    print(f"→ http://localhost:{args.puerto}")
-    if not args.sin_voz:
-        print("   Desde el móvil hace falta HTTPS: tailscale serve --bg "
-              f"{args.puerto}")
-    print("   Ctrl+C para parar.\n")
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="El recepcionista, en el navegador")
+    parser.add_argument("--negocio", default="peluqueria")
+    parser.add_argument("--puerto", type=int, default=8080,
+                        help="la demo del navegador. NO se publica: tailscale serve")
+    parser.add_argument("--puerto-telefono", type=int, default=8081,
+                        help="solo el webhook del proveedor. Es el que se publica")
+    parser.add_argument("--sin-voz", action="store_true",
+                        help="modo texto: sin Whisper ni Piper, para probar sin instalar nada")
+    parser.add_argument("--sin-telefono", action="store_true",
+                        help="no levantar el puerto del teléfono aunque haya token")
+    args = parser.parse_args()
 
     try:
-        servidor.serve_forever()
+        Comun.negocio = negocios.cargar(args.negocio)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"❌ {error}")
+        return 1
+    Comun.conversacion = recepcion.conversacion_de(Comun.negocio)
+    if Comun.negocio.horario is None:
+        print("⚠️  sin [horario] en negocio.toml: se toma nota, no se reserva")
+
+    faltan = __import__("conocimiento").que_falta(Comun.negocio.conocimiento)
+    if faltan:
+        print(f"⚠️  {Comun.negocio.nombre}: sin rellenar {', '.join(faltan)}")
+    for problema in frases.problemas(Comun.negocio.conocimiento):
+        print(f"⚠️  frases.toml: {problema}")
+    if avisar.configuracion() is None:
+        print("ℹ️  sin Telegram: las citas y recados se quedan en avisos.json "
+              "(python3 avisar.py explica cómo configurarlo)")
+
+    Comun.config_telefono = None if args.sin_telefono else telefonia.configuracion()
+    if Comun.config_telefono is not None:
+        Comun.centralita = telefonia.Centralita(Comun.negocio,
+                                                Comun.config_telefono["voz"])
+
+    if not args.sin_voz:
+        Comun.transcriptor, Comun.locutor = voz.Whisper(), voz.Piper()
+
+    demo = _abrir(args.puerto, Recepcion, "la demo", "--puerto")
+    if demo is None:
+        return 1
+    telefono = None
+    if Comun.config_telefono is not None:
+        telefono = _abrir(args.puerto_telefono, Telefono, "el teléfono", "--puerto-telefono")
+        if telefono is None:
+            demo.server_close()
+            return 1
+
+    modo = "TEXTO (sin modelos)" if args.sin_voz else "VOZ"
+    print(f"{Comun.negocio.nombre} · modo {modo}")
+    print(f"→ http://localhost:{args.puerto}   (la demo)")
+    if not args.sin_voz:
+        print(f"   Desde el móvil: tailscale serve --bg {args.puerto}   ← solo tu tailnet")
+    if telefono is not None:
+        print(f"☎️  webhook en :{args.puerto_telefono}/telefono/entrada")
+        print(f"   Para que lo alcance el proveedor: tailscale funnel --bg {args.puerto_telefono}")
+        print("   Se publica ESTE puerto y no el de la demo, a propósito.")
+    else:
+        print("ℹ️  sin teléfono: no hay webhook "
+              "(GJALLARHORN_TELEFONO_TOKEN en .env lo enciende)")
+    print("   Ctrl+C para parar.\n")
+
+    if telefono is not None:
+        threading.Thread(target=telefono.serve_forever, daemon=True).start()
+    try:
+        demo.serve_forever()
     except KeyboardInterrupt:
         print("\nHasta luego.")
     return 0

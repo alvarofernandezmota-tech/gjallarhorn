@@ -161,10 +161,27 @@ oye «Hola, Marta» y no se le vuelve a preguntar.
 ```bash
 # .env: GJALLARHORN_TELEFONO_TOKEN=<el Auth Token del proveedor>
 make arrancar
-make funnel          # publica el puerto por Tailscale, sin abrir el router
+make funnel          # publica SOLO el puerto del teléfono, sin abrir el router
 ```
 
 Y en el proveedor, como webhook de voz, `https://<máquina>.<tailnet>.ts.net/telefono/entrada`.
+
+### Dos puertos, y la diferencia es de seguridad
+
+```
+8080  la demo: la página, /hablar, /colgar   → tailscale serve   (solo tu tailnet)
+8081  solo /telefono/*                        → tailscale funnel  (internet)
+```
+
+El webhook tiene que ser alcanzable desde internet; **la demo no puede
+serlo**: `/hablar` arranca Whisper con el audio que le manden y `/colgar`
+escribe en la agenda de un negocio real. Publicar un puerto con las dos
+cosas dentro abre lo segundo para conseguir lo primero.
+
+Son dos servidores con **dos tablas de rutas distintas**. Que la demo no
+salga a internet no depende de mirar una cabecera ni de confiar en Tailscale:
+el puerto que se publica no sabe servirla. `make funnel` publica el que toca
+y **se niega si no hay token**; `make sin-funnel` deja de publicar.
 
 Aquí **no se usan Whisper ni Piper**: el proveedor transcribe y sintetiza en
 su lado. Va en décimas de segundo donde Whisper `small` tarda casi tres, y
@@ -226,6 +243,9 @@ make estado        ¿vivo? ¿qué modelo? últimas citas y avisos
 make diagnostico   el informe entero, para pegarlo de una vez
 make log           el log del servicio, en vivo
 make avisar        mandar al móvil los avisos pendientes
+make serve         la demo, visible solo en tu tailnet (para el móvil)
+make funnel        publicar SOLO el webhook del teléfono
+make sin-funnel    dejar de publicar: nada sale a internet
 ```
 
 `make` a secas lista todo. Tras un `git pull` o editar el negocio: `make reiniciar`.
