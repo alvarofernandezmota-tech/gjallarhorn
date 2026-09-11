@@ -9,6 +9,7 @@ Lo que se vigila aquí:
 """
 
 import shutil
+import os
 import sys
 import tempfile
 import unittest
@@ -173,3 +174,52 @@ class TestElRepoEsPublico(unittest.TestCase):
 
     def test_la_peluqueria_de_ejemplo_esta_limpia(self):
         self.assertEqual(negocios.advertencias(negocios.cargar("peluqueria")), [])
+
+
+class TestDondeVivenLosNegocios(unittest.TestCase):
+    """El negocio puede vivir fuera del repo, y un error suyo se entiende.
+
+    Las dos cosas salieron del mismo día: el dueño editó el `negocio.toml` del
+    ejemplo —que es lo que el README le dice que puede hacer—, escribió un
+    horario con la sintaxis cambiada, y lo que se vio fue un traceback de
+    `tomllib` y 291 pruebas en rojo que no tenían nada que ver con él.
+    """
+
+    def escribir(self, texto, nombre="mi-negocio"):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        carpeta = Path(tmp.name) / nombre
+        carpeta.mkdir()
+        (carpeta / "negocio.toml").write_text(texto, encoding="utf-8")
+        return Path(tmp.name), carpeta
+
+    def test_la_carpeta_de_negocios_se_puede_mover(self):
+        raiz, _ = self.escribir('nombre = "El Mío"\n')
+        antes = os.environ.get(negocios.VARIABLE)
+        os.environ[negocios.VARIABLE] = str(raiz)
+        self.addCleanup(lambda: os.environ.__setitem__(negocios.VARIABLE, antes)
+                        if antes else os.environ.pop(negocios.VARIABLE, None))
+        self.assertEqual(negocios.carpeta_negocios(), raiz.resolve())
+        self.assertEqual(negocios.cargar("mi-negocio").nombre, "El Mío")
+        self.assertIn("mi-negocio", negocios.listar())
+
+    def test_un_toml_mal_escrito_dice_el_fichero_y_como_se_escribe(self):
+        _, carpeta = self.escribir('nombre = "X"\n[horario]\nlunes = [1:00-00:00]\n')
+        with self.assertRaises(ValueError) as fallo:
+            negocios.cargar(carpeta)
+        dicho = str(fallo.exception)
+        self.assertIn("negocio.toml", dicho)
+        self.assertIn('lunes = ["10:00-14:00"', dicho, "hay que decir cómo se escribe")
+        self.assertNotIn("Traceback", dicho)
+
+    def test_un_horario_con_tramos_imposibles_tambien_se_explica(self):
+        _, carpeta = self.escribir('[horario]\nlunes = ["25:00-26:00"]\n')
+        with self.assertRaises(ValueError) as fallo:
+            negocios.cargar(carpeta)
+        self.assertIn("negocio.toml", str(fallo.exception))
+
+    def test_las_pruebas_no_dependen_del_negocio_que_trae_el_repo(self):
+        # Lo que se rompió: la suite usaba `negocios/peluqueria`, que es de
+        # quien lleva el negocio. Ahora el ejemplo de las pruebas es suyo.
+        self.assertEqual(negocios.carpeta_negocios(), entorno.NEGOCIOS)
+        self.assertTrue((entorno.NEGOCIOS / "peluqueria" / "tarifas.md").exists())

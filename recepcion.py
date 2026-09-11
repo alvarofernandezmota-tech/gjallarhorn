@@ -1277,7 +1277,7 @@ def main() -> int:
 
     try:
         negocio = negocios.cargar(args.negocio)
-    except FileNotFoundError as error:
+    except (FileNotFoundError, ValueError) as error:
         print(f"❌ {error}")
         return 1
 

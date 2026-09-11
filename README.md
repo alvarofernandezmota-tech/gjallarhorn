@@ -266,6 +266,22 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+### Tu negocio no tiene por qué vivir dentro del repo
+
+`negocios/peluqueria/` es el **ejemplo** que viene con el código. Tu negocio
+puede vivir donde quieras:
+
+```bash
+export GJALLARHORN_NEGOCIOS=~/negocios      # en .env o en el servicio
+cp -r negocios/peluqueria ~/negocios/mi-negocio
+```
+
+Con eso, tus precios, tu saludo y tus preguntas frecuentes **no se suben a
+GitHub** —este repo es público— y un `git pull` no te los pisa nunca. El
+código no cambia: lee la carpeta que le digas.
+
+Y si prefieres tenerlo dentro del repo, revisa antes que el repo sea privado.
+
 ## El panel: el día, desde el móvil
 
 El dueño se enteraba de las cosas por Telegram —avisos sueltos, según pasan—

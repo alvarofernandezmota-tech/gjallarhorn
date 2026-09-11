@@ -21,6 +21,7 @@ es opcional, y la forma de garantizarlo es que no dependa de que alguien se
 acuerde.
 """
 
+import os
 import re
 import tomllib
 from dataclasses import dataclass
@@ -36,7 +37,26 @@ SENALES_DE_AVISO = ("automatic", "automátic", "asistente virtual", "robot",
                     "inteligencia artificial", "no es una persona")
 
 
+VARIABLE = "GJALLARHORN_NEGOCIOS"
+
+
 def carpeta_negocios() -> Path:
+    """Dónde viven los negocios. Por defecto, aquí dentro; y se puede mover.
+
+    Que se pueda mover no es un capricho de configuración: **este repo es
+    público**, y lo que se deje en `negocios/` se publica con él. El nombre
+    de tu negocio, tus precios y tus preguntas frecuentes puede que quieras
+    publicarlos; el fichero con la forma de saludar a tus clientes y lo que
+    cobras, a lo mejor no.
+
+        export GJALLARHORN_NEGOCIOS=~/negocios
+
+    Y con eso, los datos del negocio viven fuera del repo, no se suben al
+    hacer `git push` y `git pull` no te los pisa nunca.
+    """
+    valor = os.environ.get(VARIABLE, "").strip()
+    if valor:
+        return Path(valor).expanduser().resolve()
     return Path(__file__).resolve().parent / "negocios"
 
 
@@ -99,7 +119,18 @@ def cargar(cual: str | Path) -> Negocio:
     config = {}
     fichero = ruta / "negocio.toml"
     if fichero.exists():
-        config = tomllib.loads(fichero.read_text(encoding="utf-8"))
+        try:
+            config = tomllib.loads(fichero.read_text(encoding="utf-8"))
+        except tomllib.TOMLDecodeError as error:
+            # Esto lo edita quien lleva el negocio, no quien programa: un
+            # error de sintaxis tiene que decir qué fichero y qué línea, no
+            # salir como un traceback de tomllib en mitad del arranque.
+            raise ValueError(
+                f"{fichero}: la línea no está bien escrita ({error}).\n"
+                '   Recuerda: los textos van entre comillas —nombre = "Mi negocio"— y\n'
+                '   los horarios son listas de cadenas: lunes = ["10:00-14:00", "16:30-20:00"],\n'
+                "   y un día cerrado es una lista vacía: domingo = []."
+            ) from error
 
     return Negocio(
         nombre=config.get("nombre", ruta.name),
