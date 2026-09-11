@@ -176,7 +176,7 @@ class TestNoSeCitaEnElPasado(CasoAnular):
         dicho = self.guion(self.a_las(12, 30), "cita para un corte de caballero",
                            "hoy", "a las diez de la mañana")
         self.assertIn("ya ha pasado", dicho)
-        self.assertIn("doce y media", dicho)     # lo que queda de hoy
+        self.assertIn("una de la tarde", dicho)     # lo que queda de hoy
         self.assertEqual(self.agenda.citas(), [])
 
     def test_si_el_dia_se_acabo_se_ofrecen_los_siguientes(self):
@@ -199,8 +199,11 @@ class TestNoSeCitaEnElPasado(CasoAnular):
         agenda = ag.Agenda("peluqueria", self.negocio.horario,
                            ruta=Path(self._tmp.name) / "otra.json",
                            ahora=datetime(2026, 9, 15, 12, 30, tzinfo=MADRID))
+        # A las 12:30 en punto, el hueco de las 12:30 ya no se ofrece: la
+        # agenda lo daría por pasado al reservarlo, y un hueco que se ofrece
+        # y no se puede coger es peor que no ofrecerlo.
         self.assertEqual([h.hora for h in agenda.huecos("2026-09-15", 30)],
-                         ["12:30", "13:00", "13:30"])
+                         ["13:00", "13:30", "16:30"])
 
 
 class TestUnSoloReloj(CasoAnular):

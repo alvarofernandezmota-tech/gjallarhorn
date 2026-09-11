@@ -77,7 +77,8 @@ cita = ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
         "necesito hora", "me gustaria ir"]
 
 horario = ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
-           "cerrado", "hasta que hora", "a que hora", "que dias abris",
+           "abierta", "abiertos", "abiertas", "cerrado", "cerrada", "cerrados",
+           "hasta que hora", "a que hora", "que dias abris",
            "trabajais los", "los findes", "el sabado abris", "hoy abris"]
 
 si = ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale", "perfecto",

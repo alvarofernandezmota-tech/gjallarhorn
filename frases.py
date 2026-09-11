@@ -89,6 +89,10 @@ DICE = {
     "sin_tarifas": ("Ahora mismo no tengo las tarifas cargadas. "
                     "Le tomo el recado y le devolvemos la llamada."),
     "sin_horario": "No tengo el horario a mano. Le tomo el recado y le llamamos.",
+    # «¿Está abierto ahora?» se contesta mirando el reloj, no recitando el
+    # horario entero y que lo traduzca quien llama.
+    "abierto_ahora": "Sí, ahora mismo estamos abiertos, hasta {hora}.",
+    "cerrado_ahora": "Ahora mismo está cerrado. Abrimos {cuando} a {hora}.",
     "recado": "Tomo nota y le devolvemos la llamada en cuanto podamos.",
     # «¿Eres un robot?», «¿puedo hablar con alguien?»: se dice la verdad.
     "humano": ("Soy un asistente automático. Puedo darle precios, horario y citas. "
@@ -114,6 +118,8 @@ HUECOS = {
     "sin_huecos_dia": {"fecha", "alternativas"},
     "primeros_huecos": {"alternativas"},
     "pide_hora_franja": {"fecha", "franja"},
+    "abierto_ahora": {"hora"},
+    "cerrado_ahora": {"cuando", "hora"},
     "lo_de_siempre": {"servicio"},
     "renombrada": {"nombre"},
     "anular_no_hay": {"nombre"},
@@ -139,7 +145,10 @@ ENTIENDE = {
     "saludo": ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
                "oiga", "diga", "digame", "perdone"],
     "cita": ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
-             "pedir hora", "disponible", "disponibilidad", "libre"],
+             "pedir hora", "disponible", "disponibilidad", "libre",
+             # Quien dice esto quiere que le metan cuanto antes: es una cita,
+             # aunque no diga la palabra.
+             "lo mas pronto", "lo antes posible", "cuanto antes"],
     # «¿Tenéis hueco el jueves?» pregunta qué hay, no pide una hora: se le
     # dicen los huecos del día en vez de preguntarle «¿a qué hora?».
     "disponibilidad": ["hueco", "huecos", "disponible", "disponibilidad", "libre",
@@ -156,13 +165,20 @@ ENTIENDE = {
                    "primera hora", "a la hora que sea", "cuando sea", "que huecos",
                    "que teneis", "que tienes", "que hay", "lo que haya"],
     "horario": ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
-                "cerrado", "hasta que hora", "a que hora"],
+                "abierta", "abiertos", "abiertas", "cerrado", "cerrada", "cerrados",
+                "hasta que hora", "a que hora"],
+    # Va antes que «horario» al decidir: quien pregunta si está abierto AHORA
+    # quiere un sí o un no, no la lista de los siete días.
+    "ahora": ["ahora", "ahora mismo", "en este momento", "hoy", "os pillo",
+              "te pillo", "estais abiertos", "esta abierto", "estan abiertos",
+              "sigues abierto", "seguis abiertos"],
     "si": ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale",
            "perfecto", "por la tarde", "de la tarde"],
     "no": ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
            "nada", "nada mas", "eso es todo", "ya esta"],
     "colgar": ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
-               "eso es todo", "colgar", "chao"],
+               "eso es todo", "era eso", "eso era", "ya esta todo", "nada mas era eso",
+               "colgar", "chao"],
     # «¿Cómo?»: se repite lo último que se dijo, sin cambiar nada.
     "repetir": ["repite", "repita", "repitas", "me lo repite", "me lo repites",
                 "como dice", "como has dicho", "que has dicho", "que ha dicho",
@@ -171,6 +187,8 @@ ENTIENDE = {
     # Quien pregunta si habla con una persona, o pide hablar con una.
     # Sin eñes: se compara sin tildes, y la eñe se queda en ene.
     "humano": ["robot", "maquina", "una persona", "un humano", "hablar con alguien",
+               "con quien hablo", "quien eres", "quien habla", "quien me habla",
+               "eres una persona", "eres humano",
                "pasar con", "pasarme con", "pasame con", "me pasas con", "con alguien",
                "con el dueno", "con la duena", "con el encargado", "con la encargada",
                "con alguien", "eres real", "hay alguien", "persona de verdad",

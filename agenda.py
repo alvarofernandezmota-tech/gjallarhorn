@@ -118,6 +118,27 @@ class Horario:
     def abre(self, dia: date) -> bool:
         return bool(self.tramos.get(dia.weekday()))
 
+    def tramo_de(self, dia: date, minutos: int) -> tuple[int, int] | None:
+        """El tramo en el que cae ese minuto, o None si está cerrado."""
+        for ini, fin in self.tramos.get(dia.weekday(), []):
+            if ini <= minutos < fin:
+                return (ini, fin)
+        return None
+
+    def proxima_apertura(self, dia: date, minutos: int, dias: int = 8) -> tuple[date, int] | None:
+        """Cuándo vuelve a abrir a partir de ese momento: (día, minuto).
+
+        Hace falta para contestar «ahora está cerrado, abrimos el martes a
+        las diez» en vez de soltar el horario entero y que quien llama lo
+        traduzca. None si no abre en toda la semana que viene.
+        """
+        for salto in range(dias):
+            cuando = dia + timedelta(days=salto)
+            for ini, _ in self.tramos.get(cuando.weekday(), []):
+                if salto > 0 or ini > minutos:
+                    return (cuando, ini)
+        return None
+
     def cabe(self, dia: date, inicio: int, duracion: int) -> bool:
         """¿Un servicio que empieza a `inicio` y dura `duracion` cae entero dentro?"""
         return any(ini <= inicio and inicio + duracion <= fin
@@ -217,7 +238,11 @@ class Agenda:
         if dia < ahora.date():
             return []
         if dia == ahora.date():
-            minimo = ahora.hour * 60 + ahora.minute
+            # El minuto que corre ya ha pasado para `_ya_paso`, que usa <=.
+            # Sin el +1, `huecos()` ofrecía el hueco de las 10:30 a las 10:30
+            # en punto y `reservar()` lo rechazaba por «pasado»: un hueco
+            # ofrecido que no se puede coger es peor que no ofrecerlo.
+            minimo = ahora.hour * 60 + ahora.minute + 1
             desde = max(desde, minimo) if desde is not None else minimo
         encontrados = []
         for ini, fin in self.horario.tramos.get(dia.weekday(), []):

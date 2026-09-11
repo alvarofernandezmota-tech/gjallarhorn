@@ -8,6 +8,7 @@ minutos y no «una hora».
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -18,6 +19,10 @@ import entorno  # noqa: E402,F401
 import agenda  # noqa: E402
 import negocio as negocios  # noqa: E402
 import recepcion  # noqa: E402
+
+from zoneinfo import ZoneInfo  # noqa: E402
+
+MADRID = ZoneInfo("Europe/Madrid")
 
 HORARIO = agenda.Horario.desde({
     "lunes": [],
@@ -193,3 +198,30 @@ class TestLaConversacionReserva(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnHuecoOfrecidoSePuedeCoger(unittest.TestCase):
+    """Salió solo: la prueba del panel reservó el primer hueco del día y la
+    agenda lo rechazó por «pasado». Era el minuto justo en el que estábamos."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.negocio = negocios.cargar("peluqueria")
+
+    def agenda_a_las(self, hora, minuto):
+        ahora = datetime(2026, 9, 15, hora, minuto, tzinfo=MADRID)   # martes
+        return agenda.Agenda("peluqueria", self.negocio.horario,
+                         ruta=Path(self._tmp.name) / "a.json", ahora=ahora)
+
+    def test_el_hueco_del_minuto_en_punto_no_se_ofrece(self):
+        agenda = self.agenda_a_las(10, 0)
+        self.assertNotIn("10:00", [h.hora for h in agenda.huecos("2026-09-15", 30, tope=9)])
+
+    def test_todos_los_que_ofrece_se_pueden_reservar(self):
+        for minuto in (0, 1, 29, 30, 31):
+            with self.subTest(minuto=minuto):
+                agenda = self.agenda_a_las(10, minuto)
+                for hueco in agenda.huecos("2026-09-15", 30, tope=3):
+                    self.assertIsNone(agenda.por_que_no(hueco.fecha, hueco.hora, 30),
+                                      f"ofrecido y no reservable: {hueco.hora}")

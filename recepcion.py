@@ -1097,6 +1097,12 @@ class Conversacion:
             return self._con_lo_pendiente(self._precio(limpia))
 
         if self.frases.reconoce("horario", comparable):
+            # «¿Está abierto ahora?» quiere un sí o un no, no la lista de los
+            # siete días para que la traduzca quien llama. Con horario y
+            # reloj se sabe, así que se dice.
+            if self.frases.reconoce("ahora", comparable) \
+                    and self.agenda is not None and self.agenda.horario is not None:
+                return self._con_lo_pendiente(self._abierto_ahora(limpia))
             return self._con_lo_pendiente(_responder_horario(limpia, self.base))
 
         # «¿Eres un robot?», «¿me pasas con alguien?»: se dice lo que es y se
@@ -1162,6 +1168,26 @@ class Conversacion:
         return Respuesta(self.frases.decir(clave), "recado",
                          aviso=f"Recado: «{limpia}»", cuelga=clave == "recado_insistente",
                          datos={"falta": "respuesta", "frase": limpia})
+
+    def _abierto_ahora(self, limpia: str) -> Respuesta:
+        """Sí o no, y hasta cuándo o desde cuándo. El horario entero es el plan B."""
+        reloj = self.ahora()
+        horario = self.agenda.horario
+        minutos = reloj.hour * 60 + reloj.minute
+
+        if (tramo := horario.tramo_de(reloj.date(), minutos)) is not None:
+            return Respuesta(self.frases.decir(
+                "abierto_ahora",
+                hora=fechas.hora_en_palabras(_agenda._hora(tramo[1]))), "horario")
+
+        proxima = horario.proxima_apertura(reloj.date(), minutos)
+        if proxima is None:
+            # No abre en toda la semana que viene: eso no se resume, se lee.
+            return _responder_horario(limpia, self.base)
+        dia, ini = proxima
+        return Respuesta(self.frases.decir(
+            "cerrado_ahora", cuando=self._dicha(dia.isoformat()),
+            hora=fechas.hora_en_palabras(_agenda._hora(ini))), "horario")
 
     def _despedida(self) -> Respuesta:
         return Respuesta(self.frases.decir("despedida"), "recado", cuelga=True)
