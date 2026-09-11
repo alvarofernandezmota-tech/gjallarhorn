@@ -1,16 +1,17 @@
 # Preguntas frecuentes
 
-> **Ejemplo, no tus respuestas.** Sustitúyelo. Lo que ponga aquí es lo que el
-> agente contesta por teléfono.
+<!--
+  PLANTILLA — está vacía a propósito.
 
-**¿Qué horario tenéis?**
-De lunes a viernes, de 9:00 a 14:00 y de 16:00 a 19:00. Sábados cerrado.
+  Lo que pongas aquí es lo que el agente contesta por teléfono, con esas
+  palabras. Lo que no esté aquí, no lo sabe: lo dirá y tomará el recado.
 
-**¿Hace falta cita?**
-Para revisiones y cambios sí. Para un presupuesto no.
+  Escribe la pregunta en negrita y la respuesta debajo. Las más pedidas suelen
+  ser: horario, dirección, formas de pago, si hace falta cita, y qué pasa si
+  hay que anular.
 
-**¿Dónde estáis?**
-Se indica al concertar la cita.
+  Ejemplo (bórralo al poner lo tuyo):
 
-**¿Aceptáis tarjeta?**
-Sí, tarjeta y efectivo.
+  **¿Qué horario tenéis?**
+  De lunes a viernes, de 9:00 a 14:00.
+-->

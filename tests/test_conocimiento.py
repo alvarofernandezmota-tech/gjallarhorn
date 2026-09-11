@@ -104,6 +104,59 @@ class TestLoQueVeElModelo(CasoConocimiento):
             self.assertIn(servicio["precio"], texto)
 
 
+class TestLaPlantillaVacia(CasoConocimiento):
+    """Sin conocimiento, el agente no sabe nada — y eso tiene que notarse."""
+
+    PLANTILLA_TARIFAS = """# Tarifas
+
+<!--
+  PLANTILLA — está vacía a propósito. Esto NO puede llegar al modelo.
+  | Servicio | Precio |
+  | Primera consulta | 40 € |
+-->
+
+| Servicio | Precio | Duración |
+|---|---|---|
+"""
+
+    def test_las_instrucciones_de_la_plantilla_no_llegan_al_modelo(self):
+        # Si llegaran, el modelo se creería que «PLANTILLA, está vacía a
+        # propósito» es información del negocio, y el ejemplo de dentro del
+        # comentario sería un precio real que cantarle a un cliente.
+        self.escribir("tarifas.md", self.PLANTILLA_TARIFAS)
+        texto = conocimiento.para_prompt(self.base)
+        self.assertNotIn("PLANTILLA", texto)
+        self.assertNotIn("40 €", texto)
+
+    def test_una_tabla_sin_filas_no_es_una_tarifa(self):
+        self.escribir("tarifas.md", self.PLANTILLA_TARIFAS)
+        self.assertEqual(conocimiento.tarifas(self.base), [])
+
+    def test_con_la_plantilla_el_prompt_va_completamente_vacio(self):
+        # Ni siquiera la cabecera «### TARIFAS»: un título seguido de nada
+        # invita al modelo a rellenar el hueco.
+        self.escribir("tarifas.md", self.PLANTILLA_TARIFAS)
+        self.escribir("faq.md", "# Preguntas frecuentes\n\n<!-- vacía -->\n")
+        self.assertEqual(conocimiento.para_prompt(self.base), "")
+
+    def test_dice_que_ficheros_siguen_sin_rellenar(self):
+        self.escribir("tarifas.md", self.PLANTILLA_TARIFAS)
+        self.escribir("faq.md", "# Preguntas frecuentes\n\n<!-- vacía -->\n")
+        self.assertEqual(conocimiento.que_falta(self.base), ["tarifas.md", "faq.md"])
+        self.assertFalse(conocimiento.esta_configurado(self.base))
+
+    def test_una_sola_fila_de_verdad_ya_cuenta_como_rellenado(self):
+        self.escribir("tarifas.md", self.PLANTILLA_TARIFAS + "| Primera consulta | 40 € | 45 min |\n")
+        self.assertNotIn("tarifas.md", conocimiento.que_falta(self.base))
+        self.assertIn("40 €", conocimiento.para_prompt(self.base))
+
+    def test_la_plantilla_del_repo_esta_vacia_de_verdad(self):
+        # Si alguien deja datos de ejemplo aquí, el agente se los canta a un
+        # cliente creyendo que son de verdad.
+        self.assertEqual(conocimiento.que_falta(), ["tarifas.md", "faq.md"])
+        self.assertEqual(conocimiento.para_prompt(), "")
+
+
 class TestCuandoTocaraRag(CasoConocimiento):
     def test_dice_si_cabe_y_cuanto_ocupa(self):
         self.escribir("tarifas.md", TABLA)
@@ -119,9 +172,9 @@ class TestCuandoTocaraRag(CasoConocimiento):
         self.assertFalse(cabe)
         self.assertGreater(tamano, conocimiento.LIMITE_COMODO)
 
-    def test_el_conocimiento_de_ejemplo_del_repo_cabe_de_sobra(self):
+    def test_la_plantilla_del_repo_cabe_de_sobra(self):
         cabe, tamano = conocimiento.cabe_en()
-        self.assertTrue(cabe, f"el ejemplo ya no cabe: {tamano}")
+        self.assertTrue(cabe, f"ya no cabe: {tamano}")
 
 
 if __name__ == "__main__":

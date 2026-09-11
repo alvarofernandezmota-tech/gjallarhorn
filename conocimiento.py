@@ -54,6 +54,13 @@ LIMITE_COMODO = 6000
 
 FILA = re.compile(r"^\|(?!\s*[-: ]+\|)(.+)\|\s*$", re.M)
 
+# Los comentarios de Markdown llevan las instrucciones de la plantilla. NO
+# pueden llegar al prompt: el modelo se creeria que "PLANTILLA, esta vacia a
+# proposito" es informacion del negocio y se la contaria a un cliente.
+COMENTARIO = re.compile(r"<!--.*?-->", re.S)
+# Un fichero con solo el titulo esta vacio, aunque tenga bytes.
+SOLO_TITULO = re.compile(r"^\s*#+ .*$", re.M)
+
 
 def carpeta() -> Path:
     valor = os.environ.get(VARIABLE, "").strip()
@@ -66,8 +73,18 @@ def _sin_tildes(texto: str) -> str:
 
 
 def _leer(nombre: str, base: Path | None = None) -> str:
+    """El contenido del fichero **sin los comentarios de la plantilla**."""
     ruta = (base or carpeta()) / nombre
-    return ruta.read_text(encoding="utf-8") if ruta.exists() else ""
+    if not ruta.exists():
+        return ""
+    return COMENTARIO.sub("", ruta.read_text(encoding="utf-8"))
+
+
+def _texto_util(texto: str) -> str:
+    """Lo que queda quitando titulos, tablas y espacios: el contenido de verdad."""
+    resto = SOLO_TITULO.sub("", texto)
+    resto = re.sub(r"^\s*\|.*$", "", resto, flags=re.M)
+    return resto.strip()
 
 
 def tarifas(base: Path | None = None) -> list[dict]:
@@ -142,9 +159,39 @@ def para_prompt(base: Path | None = None) -> str:
     partes = []
     for nombre, titulo in (("tarifas.md", "TARIFAS"), ("faq.md", "PREGUNTAS FRECUENTES")):
         texto = _leer(nombre, base).strip()
-        if texto:
+        # Sin contenido real no se manda la cabecera: un "### TARIFAS" seguido
+        # de nada invita al modelo a rellenar el hueco, que es justo lo que no
+        # puede hacer con un precio.
+        if _hay_algo(nombre, base):
             partes.append(f"### {titulo}\n{texto}")
     return "\n\n".join(partes)
+
+
+def _hay_algo(nombre: str, base: Path | None = None) -> bool:
+    """Si ese fichero tiene contenido de verdad y no solo la plantilla.
+
+    Por fichero y no con una regla comun: en `tarifas.md` lo que cuenta es que
+    haya FILAS —la cabecera de la tabla sola no es una tarifa—, y en `faq.md`
+    lo que cuenta es que quede texto. Una regla generica se comia las filas
+    con datos junto con la cabecera.
+    """
+    if nombre == "tarifas.md":
+        return bool(tarifas(base))
+    return bool(_texto_util(_leer(nombre, base)))
+
+
+def que_falta(base: Path | None = None) -> list[str]:
+    """Qué ficheros de conocimiento siguen siendo la plantilla vacía.
+
+    Existe para poder decirlo en voz alta antes de que lo descubra un cliente
+    al teléfono.
+    """
+    return [n for n in ("tarifas.md", "faq.md") if not _hay_algo(n, base)]
+
+
+def esta_configurado(base: Path | None = None) -> bool:
+    """Si hay conocimiento de verdad. Con False, el agente no sabe nada."""
+    return not que_falta(base)
 
 
 def cabe_en(limite: int = LIMITE_COMODO, base: Path | None = None) -> tuple[bool, int]:
