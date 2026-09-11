@@ -467,9 +467,22 @@ class Conversacion:
             encontrados = conocimiento.buscar(frase, self.base)
             servicio = encontrados[0] if len(encontrados) == 1 else None
         if servicio is not None:
+            # De lo que se viene hablando SÍ cambia: así «¿y cuánto dura?»
+            # después de nombrar las mechas contesta lo de las mechas.
             self.servicio = servicio
+            # Pero el servicio de la CITA no se pisa por nombrar otro. Esto
+            # apuntaba mechas a quien había pedido un tinte y solo había
+            # preguntado «¿hace falta cita para las mechas?»: nombrar algo
+            # no es pedirlo, y aquí se acaba yendo a la peluquería a otra
+            # cosa. Se cambia cuando no había ninguno, o cuando lo dicen con
+            # todas las letras («mejor unas mechas»), que es lo que mira la
+            # lista `en_vez`.
             if self.cita and not self.cita.cerrada:
-                self.cita.servicio = servicio["servicio"]
+                comparable = _sin_tildes(frase)
+                if not self.cita.servicio \
+                        or self.frases.reconoce("en_vez", comparable) \
+                        or self.frases.reconoce("quiere", comparable):
+                    self.cita.servicio = servicio["servicio"]
         nombre = None
         if (dado := _nombre_en(frase, self.base)) is not None:
             nombre, se_presenta = dado
@@ -1152,8 +1165,12 @@ class Conversacion:
         if viva and self._rellenar_con(limpia):
             return self._seguir_cita()
 
-        if self.frases.reconoce("cita", comparable) \
-                or self.frases.reconoce("disponibilidad", comparable):
+        # Preguntar por la cita no es pedirla: «¿hace falta cita para las
+        # mechas?» lleva la palabra y no quiere una. Se deja pasar a la FAQ,
+        # que es donde el dueño tiene escrito lo que se contesta a eso.
+        if (self.frases.reconoce("cita", comparable)
+                or self.frases.reconoce("disponibilidad", comparable)) \
+                and not self.frases.reconoce("pregunta_cita", comparable):
             self._abrir_cita()
             self._rellenar_con(limpia)
             # «¿Tenéis hueco el jueves?» pregunta qué hay: se le dice, en vez
@@ -1179,6 +1196,23 @@ class Conversacion:
                     and self.agenda is not None and self.agenda.horario is not None:
                 return self._con_lo_pendiente(self._abierto_ahora(limpia))
             return self._con_lo_pendiente(_responder_horario(limpia, self.base))
+
+        # «Ah no, mejor unas mechas»: cambiar de servicio a mitad de la cita.
+        # No lo cogía nadie: `_rellenar_con` pone fecha, hora y nombre, pero
+        # nunca el servicio, así que la frase caía hasta la FAQ y contestaba
+        # si hace falta cita para las mechas, **pegado** a la pregunta
+        # pendiente. Quien llamaba oía un párrafo que no había pedido y
+        # luego la pregunta, que es lo que hace que esto suene a roto.
+        #
+        # Va después del precio: «¿y cuánto vale el tinte?» en mitad de una
+        # cita de mechas es una pregunta de precio, no un cambio de servicio.
+        # Se pide una marca de cambio —«mejor», «en vez de», «no, …»— y no
+        # vale con nombrar el servicio: «¿hace falta cita para las mechas?»
+        # lo nombra igual y es una pregunta, que la contesta la FAQ.
+        if viva and (self.frases.reconoce("en_vez", comparable)
+                     or self.frases.reconoce("quiere", comparable)) \
+                and conocimiento.mencionado(limpia, self.base) is not None:
+            return self._seguir_cita()
 
         # «Quiero un tinte», «me corto el pelo»: nombra un servicio de la
         # tabla y quiere algo, pero no dice «cita» por ningun lado. Por

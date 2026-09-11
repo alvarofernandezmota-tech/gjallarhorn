@@ -154,6 +154,22 @@ ENTIENDE = {
              # Quien dice esto quiere que le metan cuanto antes: es una cita,
              # aunque no diga la palabra.
              "lo mas pronto", "lo antes posible", "cuanto antes"],
+    # PREGUNTAR por la cita no es PEDIRLA. «¿Hace falta cita para las
+    # mechas?» lleva la palabra «cita» y abría una, en vez de contestar lo
+    # que el dueño tiene escrito en el faq.md. Quien llamaba a informarse
+    # se encontraba con «¿qué día le viene bien?».
+    "pregunta_cita": ["hace falta", "hay que pedir", "hay que coger",
+                      "es necesario", "sin cita", "hace falta pedir",
+                      "se puede ir sin", "puedo ir sin", "necesito pedir cita"],
+
+    # Cambiar de idea a mitad: «ah no, mejor unas mechas». Hace falta
+    # distinguirlo de PREGUNTAR por un servicio —«¿hace falta cita para las
+    # mechas?»—, que nombra lo mismo y no cambia nada. Por eso se pide una
+    # marca de cambio y no vale con nombrar el servicio a secas.
+    "en_vez": ["mejor", "en vez de", "en lugar de", "prefiero", "mas bien",
+               "que sea", "cambio a", "me refiero a", "quise decir",
+               "digo", "perdon", "no, "],
+
     # Querer algo, a secas. Por si solo no dice nada —«quiero saber el
     # horario» tambien lo lleva—, asi que solo cuenta cuando ADEMAS se
     # nombra un servicio de la tabla: «quiero un tinte» es pedir cita,
