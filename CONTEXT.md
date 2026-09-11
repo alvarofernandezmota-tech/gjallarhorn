@@ -99,6 +99,18 @@ Solapar es pisarse en minutos, no empezar a la misma hora: un tinte de 90 min
 a las 10 ocupa hasta las 11:30. Y la agenda vuelve a comprobar al reservar,
 porque entre la pregunta y la reserva puede haber entrado otra llamada.
 
+### 5 quater. El aviso se registra siempre; a Telegram va lo que no es ruido
+
+**Decisión**: todo se apunta en `avisos.json`. A Telegram van por defecto
+citas, llamadas y fallos, no las tarifas. Un aviso no se marca como visto
+hasta que Telegram confirma. El envío va en un hilo aparte.
+
+**Razón**: el registro es la verdad; el móvil es la comodidad. Perder un
+aviso porque falló la red es lo peor que puede pasar aquí, así que la marca
+de «visto» va detrás de la confirmación, nunca delante. Y mandar veinte
+«preguntó el precio» al día es la forma segura de que se deje de mirar el
+chat. El token y el chat van en `.env`, nunca en el repo: es público.
+
 ### 6. El aviso de que es automático no se puede quitar
 
 **Decisión**: `negocio.toml` deja personalizar el saludo, pero si el saludo
@@ -142,9 +154,14 @@ esto son datos, no código.
 MVP en el navegador; con `--sin-voz` se prueba el recepcionista hoy, sin
 instalar ningún modelo.
 
+Medido en la máquina de casa el 2026-09-11: Piper 210 ms; **Whisper `small`
+2898 ms** para 3,2 s de audio, por encima del presupuesto de 2000 ms para el
+turno entero. Es un número frío (primera transcripción tras cargar).
+
 Pendiente, por orden:
 
-1. Correr `medir_voz.py` en la máquina donde vaya a vivir, después de `pip
-   install faster-whisper piper-tts`. Hasta que haya un número medido, la
-   latencia es una suposición.
-2. Decidir la telefonía a la vista de ese número.
+1. `make medir` y `make medir MODELO=base`: el número caliente, y el del
+   modelo pequeño. Ese es el que decide.
+2. Decidir la telefonía a la vista de ese número: si lo local no baja de dos
+   segundos, hay que irse a una API de voz en tiempo real, que funciona mejor
+   y manda el audio a un tercero.

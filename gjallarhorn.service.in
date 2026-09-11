@@ -10,6 +10,7 @@ ExecStart=@RAIZ@/.venv/bin/python servidor.py --negocio @NEGOCIO@ --puerto @PUER
 Restart=on-failure
 RestartSec=3
 Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-@RAIZ@/.env
 
 [Install]
 WantedBy=default.target

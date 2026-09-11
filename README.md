@@ -148,6 +148,22 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+## Los avisos llegan al móvil
+
+Cada cita reservada, cada recado y cada fallo se apunta en `avisos.json` y,
+si hay Telegram configurado, **llega al móvil en el momento**, en un hilo
+aparte para no sumarle la red al tiempo de la llamada.
+
+```bash
+cp .env.example .env      # y rellena token y chat
+make telegram-prueba      # ¿llega?
+```
+
+Un aviso no se da por visto hasta que Telegram confirma que lo tiene: si la
+red falla, sale en el siguiente envío. Y las tarifas no se mandan por defecto:
+veinte «preguntó el precio del corte» al día son ruido, y el ruido es lo que
+hace que se deje de mirar. `python3 avisos.py` los lista todos.
+
 ## Operarlo: `make`
 
 ```
@@ -158,6 +174,7 @@ make arrancar      servicio systemd: siempre encendido, se reinicia si cae
 make estado        ¿vivo? ¿qué modelo? últimas citas y avisos
 make diagnostico   el informe entero, para pegarlo de una vez
 make log           el log del servicio, en vivo
+make avisar        mandar al móvil los avisos pendientes
 ```
 
 `make` a secas lista todo. Tras un `git pull` o editar el negocio: `make reiniciar`.
@@ -188,6 +205,9 @@ gjallarhorn/
 ├─ recepcion.py            quién atiende, y Conversacion: la llamada con memoria
 ├─ frases.py               lo que dice y lo que entiende, editable por negocio
 ├─ agenda.py               los huecos: reserva de verdad contra el horario
+├─ avisar.py               los avisos, al móvil por Telegram
+├─ diagnostico.py          qué le pasa a esta máquina, en veinte líneas
+├─ Makefile                instalar, arrancar, medir, estado: un comando cada uno
 ├─ negocio.py              un negocio = una carpeta
 ├─ conocimiento.py         tarifas y FAQ, sin RAG (y por qué)
 ├─ voz.py                  la oreja (Whisper) y la boca (Piper), las dos locales
