@@ -25,9 +25,27 @@ precio_no_esta = "No tengo ese servicio en la lista de precios. Le tomo el recad
 no_le_oigo = "Perdone, no le he oído. ¿Me lo repite?"
 recado = "Tomo nota y le devolvemos la llamada en cuanto podamos."
 digame = "Dígame, ¿en qué puedo ayudarle?"
+humano = "Soy un asistente automático. Puedo darle precios, horario y citas. Si prefiere hablar con una persona, le tomo el recado y le devuelven la llamada en cuanto puedan."
 algo_mas = "¿Le puedo ayudar en algo más?"
 cual_servicio = "¿De qué servicio? Así le digo el precio y lo que se tarda."
 despedida = "Gracias a usted. ¡Hasta luego!"
+
+# Cómo llama la gente a lo que hay en tarifas.md. La palabra de la izquierda
+# tiene que estar en el nombre del servicio; las de la derecha son lo que dice
+# quien llama. Vale poner trozos de frase: «corte de pelo» → «corte».
+[sinonimos]
+corte = ["cortar", "cortarme", "cortarse", "cortarle", "corte de pelo",
+         "cortar el pelo", "cortarme el pelo", "cortarle el pelo", "pelarme"]
+tinte = ["teñir", "teñirme", "teñirse", "tintar", "color", "tinte de pelo"]
+mechas = ["reflejos", "balayage", "babylights", "californianas"]
+caballero = ["hombre", "chico", "señor", "de hombre", "masculino"]
+"señora" = ["mujer", "chica", "de mujer", "femenino"]
+infantil = ["niño", "niña", "niños", "mi hijo", "mi hija", "el peque", "la peque",
+            "para el niño", "para la niña"]
+lavar = ["lavado", "lavarme"]
+peinar = ["peinado", "peinarme"]
+keratina = ["queratina", "alisado", "alisarme", "alisado de keratina"]
+recogido = ["recogerme el pelo", "un moño", "peinado de boda", "de novia"]
 
 [entiende]
 

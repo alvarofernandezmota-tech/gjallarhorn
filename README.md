@@ -151,6 +151,24 @@ precio = ["cuanto", "cuanto vale", "cuesta", "precio", "me saldria"]
 («vale» a secas no está a propósito: «vale, pues nada, gracias» no es una
 pregunta de precio. Se aprendió oyéndolo.)
 
+`[sinonimos]` es cómo llama la gente a lo que hay en `tarifas.md`. Nadie dice
+«corte de caballero»: dice «cortarme el pelo» o «un corte de hombre».
+
+```toml
+[sinonimos]
+corte = ["cortarme", "cortar el pelo", "corte de pelo"]
+caballero = ["hombre", "chico", "señor"]
+mechas = ["reflejos", "balayage"]
+```
+
+Con eso, «¿cuánto vale cortarme el pelo?» encuentra los cortes de la tabla, y
+«reflejos» son las mechas. Sin tocar la tabla ni el código.
+
+Otras dos cosas que se atienden solas: «¿cómo?, ¿me lo repite?» repite lo
+último tal cual, y «¿eres un robot?, ¿puedo hablar con alguien?» dice la
+verdad —que es un asistente automático— y toma el recado. Nunca se hace pasar
+por una persona.
+
 Lo que no pongas usa el valor de fábrica. Y **una errata no tumba una
 llamada**: un `{fehca}` mal tecleado se avisa al arrancar, y si se cuela, el
 agente dice la frase de fábrica y deja un aviso. Lo que no puede fallar no se

@@ -368,7 +368,16 @@ class Recepcion(Comun):
                 avisos.registrar("fallo", f"No se pudo sintetizar: {error}")
             finally:
                 ruta.unlink(missing_ok=True)
-        return {"oido": oido, "dicho": respuesta.texto, "audio": audio}
+        resultado = {"oido": oido, "dicho": respuesta.texto, "audio": audio}
+        if respuesta.cuelga:
+            # Como en el telefono: la despedida termina la llamada. Se apunta
+            # en que quedo y la siguiente frase empieza una de cero.
+            quedo = self.charla().colgar()
+            Comun.conversacion = recepcion.conversacion_de(self.negocio)
+            if quedo:
+                avisar.en_segundo_plano()
+            resultado.update(fin=True, colgado=quedo)
+        return resultado
 
 
 def _abrir(puerto: int, handler, que: str, bandera: str, lan: bool = False):

@@ -162,9 +162,36 @@ def _decir(texto: str, voz: str) -> str:
             f'{escape(voz_.para_decir(texto))}</Say>')
 
 
-def _escuchar(texto: str, voz: str, accion: str) -> str:
-    """Decir algo y quedarse escuchando; lo que se oiga llega a `accion`."""
+# Lo que el proveedor tiene que esperar oír, ademas de los servicios de la
+# tabla: le ayuda a transcribir «mechas» como «mechas» y no como «meses».
+PISTAS_FIJAS = ["cita", "precio", "cuánto vale", "anular", "cambiar", "horario",
+                "por la mañana", "por la tarde", "a las", "y media", "menos cuarto",
+                "hoy", "mañana", "pasado mañana", "lunes", "martes", "miércoles",
+                "jueves", "viernes", "sábado", "domingo", "tarjeta", "cuando podáis",
+                "a nombre de", "me llamo", "sí", "no", "gracias", "adiós"]
+
+
+def pistas_de(negocio) -> str:
+    """Las palabras que el proveedor debe esperar oír, para transcribir mejor."""
+    import conocimiento
+    servicios = [s["servicio"] for s in conocimiento.tarifas(negocio.conocimiento)]
+    vistas, pistas = set(), []
+    for pista in servicios + PISTAS_FIJAS:
+        if pista.lower() not in vistas:
+            vistas.add(pista.lower())
+            pistas.append(pista.replace(",", " "))
+    return ", ".join(pistas)[:1000]
+
+
+def _escuchar(texto: str, voz: str, accion: str, pistas: str = "") -> str:
+    """Decir algo y quedarse escuchando; lo que se oiga llega a `accion`.
+
+    `hints` y el modelo de llamada telefonica son cosa del proveedor: con
+    ellos «tinte» se transcribe «tinte» y no «tiende». Sin pistas se omite.
+    """
+    ayuda = f' hints="{escape(pistas, quote=True)}"' if pistas else ""
     return (f'<Gather input="speech" language="{IDIOMA}" speechTimeout="auto" '
+            f'speechModel="phone_call" enhanced="true"{ayuda} '
             f'action="{escape(accion, quote=True)}" method="POST">'
             f'{_decir(texto, voz)}</Gather>'
             # Si no dice nada, se le pregunta una vez mas y se cuelga.
@@ -187,6 +214,7 @@ class Centralita:
     def __init__(self, negocio, voz: str = VOZ_POR_DEFECTO, ahora=None):
         self.negocio = negocio
         self.voz = voz
+        self.pistas = pistas_de(negocio)
         self._ahora = ahora
         self._llamadas: dict[str, recepcion.Conversacion] = {}
         self._numeros: dict[str, str] = {}
@@ -229,7 +257,7 @@ class Centralita:
             saludo = saludo_a(conocido["nombre"], saludo)
         avisos.registrar("llamada", f"Llamada de {numero or 'número oculto'}"
                          + (f" ({conocido['nombre']})" if conocido else ""))
-        return _twiml(_escuchar(saludo, self.voz, ruta_turno))
+        return _twiml(_escuchar(saludo, self.voz, ruta_turno, self.pistas))
 
     def turno(self, campos: dict[str, str], ruta_turno: str, silencio: bool = False) -> str:
         """Lo que dijo el cliente, ya transcrito por el proveedor. Se contesta y se sigue."""
@@ -246,7 +274,8 @@ class Centralita:
         if not dicho:
             if silencio:
                 return self._colgar(campos, self.negocio.despedida)
-            return _twiml(_escuchar(llamada.frases.decir("no_le_oigo"), self.voz, ruta_turno))
+            return _twiml(_escuchar(llamada.frases.decir("no_le_oigo"), self.voz, ruta_turno,
+                                    self.pistas))
 
         respuesta = llamada.atender(dicho)
         if respuesta.aviso:
@@ -260,7 +289,7 @@ class Centralita:
         # después de contestar.
         if respuesta.cuelga:
             return self._colgar(campos, respuesta.texto)
-        return _twiml(_escuchar(respuesta.texto, self.voz, ruta_turno))
+        return _twiml(_escuchar(respuesta.texto, self.voz, ruta_turno, self.pistas))
 
     def _colgar(self, campos: dict[str, str], texto: str) -> str:
         """Despedirse y colgar. Y cerrar la llamada YA, sin esperar al proveedor.

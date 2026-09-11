@@ -96,7 +96,7 @@ class TestPrecioSinNombrarElServicio(CasoProfesional):
         primera = self.texto("¿cuánto vale el tinte?")
         self.assertIn("¿Cuál le interesa?", primera)
         self.assertIn("¿Cuál le interesa?", self.texto("¿y cuánto tarda?"))
-        self.assertIn("90 min", self.texto("el tinte"))
+        self.assertIn("una hora y media", self.texto("el tinte"))
 
     def test_otra_cosa_que_no_esta_sigue_sin_estar(self):
         # La regla de siempre: nombrar otra cosa NO devuelve el precio anterior.
@@ -105,10 +105,10 @@ class TestPrecioSinNombrarElServicio(CasoProfesional):
         self.assertIn("No tengo ese servicio", dicho)
 
     def test_cuanto_tarda_da_el_servicio_con_su_duracion(self):
-        self.assertIn("120 min", self.texto("¿cuánto valen las mechas?", "¿y cuánto tarda?"))
+        self.assertIn("dos horas", self.texto("¿cuánto valen las mechas?", "¿y cuánto tarda?"))
 
     def test_cuanto_tarda_nombrando_el_servicio(self):
-        self.assertIn("120 min", self.texto("¿cuánto tardan las mechas?"))
+        self.assertIn("dos horas", self.texto("¿cuánto tardan las mechas?"))
 
 
 class TestLaFaqContesta(CasoProfesional):

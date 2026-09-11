@@ -287,6 +287,33 @@ def hora_en_palabras(hora: str) -> str:
     return f"{articulo} {dicha}{minutos} {franja}"
 
 
+def duracion_en_palabras(texto: str | None) -> str | None:
+    """«90 min» → «una hora y media». None si no se entiende lo escrito.
+
+    «Unos 90 minutos» se entiende; «una hora y media» es lo que diría una
+    persona. Lo que no se sepa leer se deja tal cual escrito, no se inventa.
+    """
+    if not texto:
+        return None
+    t = sin_tildes(texto).replace(",", ".")
+    if m := re.fullmatch(r"\s*(\d+)\s*h(?:oras?)?\s*(?:y\s*)?(\d+)?\s*(?:min\w*)?\s*", t):
+        minutos = int(m.group(1)) * 60 + int(m.group(2) or 0)
+    elif m := re.fullmatch(r"\s*(\d+)\s*(?:min\w*|m)\s*", t):
+        minutos = int(m.group(1))
+    else:
+        return None
+    horas, resto = divmod(minutos, 60)
+    if horas == 0:
+        return {15: "un cuarto de hora", 30: "media hora",
+                45: "tres cuartos de hora"}.get(resto, f"unos {resto} minutos")
+    dichas = {1: "una hora", 2: "dos horas", 3: "tres horas"}.get(horas, f"{horas} horas")
+    if resto == 0:
+        return dichas
+    if resto == 30:
+        return f"{dichas} y media"
+    return f"{dichas} y {resto} minutos"
+
+
 def hora_suelta(frase: str) -> tuple[str, bool] | None:
     """(hora, ¿acotada?) de una frase que solo dice la hora, o None.
 
