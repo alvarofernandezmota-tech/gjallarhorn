@@ -119,9 +119,11 @@ def _responder_precio(frase: str, base: Path | None = None) -> Respuesta:
 
 
 def _responder_cita(frase: str, base: Path | None = None) -> Respuesta:
-    """Toma la petición de cita. **No confirma nada**: no hay agenda todavía.
+    """La versión de una sola frase: toma nota y **no confirma nada**.
 
-    Prometer un hueco que nadie ha comprobado es peor que no cogerlo: el
+    Es la que usa `atender()` suelto, sin memoria ni agenda. La que reserva
+    de verdad es `Conversacion`, que mira el horario y los huecos. Aquí,
+    prometer un hueco que nadie ha comprobado es peor que no cogerlo: el
     cliente se presenta y no hay sitio.
     """
     encontrado = fechas.interpretar(frase)
@@ -316,6 +318,7 @@ class Conversacion:
         self.servicio: dict | None = None     # del que se viene hablando
         self.nombre: str | None = None
         self.esperando: str | None = None     # qué se acaba de preguntar
+        self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
         self.turnos: list[tuple[str, str]] = []
 
     # -- lo que se recuerda de cada frase, se pregunte lo que se pregunte ----
@@ -485,7 +488,7 @@ class Conversacion:
         """Resuelve el «¿las 5 de la tarde?» que se acaba de preguntar."""
         cita = self.cita
         h, minutos = int(cita.hora[:2]), cita.hora[3:]
-        propuesta = getattr(self, "_propuesta", f"{h + 12:02d}:{minutos}")
+        propuesta = self._propuesta or f"{h + 12:02d}:{minutos}"
         la_otra = f"{h:02d}:{minutos}" if propuesta.startswith(f"{h + 12:02d}") \
             else f"{h + 12:02d}:{minutos}"
         if self.frases.reconoce("si", comparable):

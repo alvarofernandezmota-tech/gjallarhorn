@@ -3,8 +3,10 @@
 Un recepcionista telefónico: atiende la llamada, informa de tarifas y toma la
 cita. **Proyecto independiente, sin dependencias de ningún otro repo.**
 
-> **Estado: funciona de punta a punta por texto y por voz.** Falta la telefonía
-> —que una llamada de verdad entre— y eso es lo único que puede tumbarlo.
+> **Estado: funciona de punta a punta por voz, desde un móvil.** Conversa con
+> memoria, reserva contra el horario y avisa por Telegram. Falta la telefonía
+> —que una llamada de verdad entre— y eso depende de un número: cuánto tarda
+> Whisper en la máquina donde viva (`make medir`).
 
 ## Qué hace
 
