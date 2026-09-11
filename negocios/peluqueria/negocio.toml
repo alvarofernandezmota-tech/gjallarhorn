@@ -4,14 +4,14 @@
 #
 # y cambia el nombre, tarifas.md y faq.md. No hay que tocar código.
 
-nombre = "scort"
+nombre = "Peluquería"
 
 # El saludo es opcional. Si no lo pones, se usa el genérico.
 #
 # OJO: pongas lo que pongas, al cargarlo se comprueba que avisa de que se
 # habla con un sistema automático, y si no lo dice SE LE AÑADE. No es un
 # descuido que se pueda cometer editando este fichero.
-saludo = "Hola, ha llamado a la scort gabriela. braslera de 1,92con tood bien gustoso y voluctuoso"
+saludo = "Hola, ha llamado a la peluquería. Puedo darle precios y tomarle una cita."
 
 despedida = "Gracias por llamar. ¡Hasta luego!"
 
@@ -21,10 +21,10 @@ despedida = "Gracias por llamar. ¡Hasta luego!"
 #
 # Cada día es una lista de tramos "HH:MM-HH:MM". Lista vacía = cerrado.
 [horario]
-lunes = [1:00-00:00]
-martes = [1:00-00:00]
-miercoles = [1:00-00:00]
-jueves = [1:00-00:00]
-viernes = [1:00-00:00]
-sabado = [1:00-00:00]
-domingo = [1:00-00:00]
+lunes = []
+martes = ["10:00-14:00", "16:30-20:00"]
+miercoles = ["10:00-14:00", "16:30-20:00"]
+jueves = ["10:00-14:00", "16:30-20:00"]
+viernes = ["10:00-14:00", "16:30-20:00"]
+sabado = ["09:00-14:00"]
+domingo = []
