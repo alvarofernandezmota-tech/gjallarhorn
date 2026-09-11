@@ -6,7 +6,6 @@ las rutas en un temporal, como en `test_acciones.py`: **el diario de verdad no
 se toca**.
 """
 
-import os
 import sys
 import tempfile
 import unittest
@@ -15,10 +14,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-if not os.environ.get("MIDGAROR_RAIZ"):
-    candidato = RAIZ.parent / "midgaror"
-    if (candidato / "diario" / "bifrost_bridge.py").exists():
-        os.environ["MIDGAROR_RAIZ"] = str(candidato)
+import entorno  # noqa: E402,F401 — fija MIDGAROR_DATOS antes de cualquier import
 
 import acciones  # noqa: E402
 import agente  # noqa: E402

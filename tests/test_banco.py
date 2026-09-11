@@ -12,6 +12,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
+import entorno  # noqa: E402,F401 — antes que nada
 import banco  # noqa: E402
 import medir  # noqa: E402
 

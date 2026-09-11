@@ -10,7 +10,6 @@ dedicada a que eso siga siendo cierto, porque es el error que no se puede
 cometer ni una vez: el bot escribe ahí en producción.
 """
 
-import os
 import sys
 import tempfile
 import unittest
@@ -22,10 +21,7 @@ sys.path.insert(0, str(RAIZ))
 # gjallarhorn se desarrolla fuera del árbol de midgaror, así que la posición de
 # submódulo no vale y hay que decir dónde está. Antes del primer import: el
 # sys.path de midgaror.py se monta al importarlo.
-if not os.environ.get("MIDGAROR_RAIZ"):
-    candidato = RAIZ.parent / "midgaror"
-    if (candidato / "diario" / "bifrost_bridge.py").exists():
-        os.environ["MIDGAROR_RAIZ"] = str(candidato)
+import entorno  # noqa: E402,F401 — fija MIDGAROR_DATOS antes de cualquier import
 
 import acciones  # noqa: E402
 import midgaror  # noqa: E402
@@ -54,6 +50,24 @@ class CasoAcciones(unittest.TestCase):
 
     def rutas(self) -> dict:
         return {m: self.base / f"{m}.json" for m in ("tareas", "agenda", "habitos")}
+
+
+class TestElAislamientoSigueEnSuSitio(unittest.TestCase):
+    """Sin esto, un olvido vuelve a escribir en los datos de Alvaro."""
+
+    def test_la_raiz_de_datos_es_un_temporal(self):
+        ubicacion = midgaror.modulo("ubicacion")
+        self.assertEqual(ubicacion.raiz(), entorno.DATOS.resolve(),
+                         "MIDGAROR_DATOS no apunta al temporal de las pruebas")
+
+    def test_los_json_por_defecto_caen_fuera_de_midgaror(self):
+        # La comprobacion directa: donde escribiria una accion que se olvide
+        # de pasar `ruta`.
+        for modelo in ("tareas", "agenda", "habitos", "registro"):
+            ruta = midgaror.modulo("ubicacion").json_modelo(modelo)
+            self.assertFalse(
+                str(ruta).startswith(str(midgaror.MIDGAROR)),
+                f"{modelo}: por defecto escribiria en midgaror de verdad ({ruta})")
 
 
 class TestElDiarioRealNoSeToca(CasoAcciones):
@@ -179,23 +193,25 @@ class TestEjecutar(CasoAcciones):
 
         `ejecutar` recibia el nombre de la accion en un parametro llamado
         `nombre`, y `marcar_habito` tiene un argumento que tambien se llama
-        `nombre`: «got multiple values for argument 'nombre'». Esto recorre
-        TODAS las acciones con TODOS sus parametros declarados, asi que la
-        proxima colision sale sola.
+        `nombre`: «got multiple values for argument 'nombre'».
+
+        Se comprueba **atando la firma, sin ejecutar nada**. La primera version
+        de esta prueba SI ejecutaba, sin pasar `ruta`, y escribio cuatro tareas
+        «algo» y cuatro cafes en el tareas.json y el registro.json de verdad de
+        Alvaro --commiteados incluidos--. Para comprobar que la llamada encaja
+        no hace falta llamar.
         """
+        import inspect
         muestras = {"texto": "algo", "nombre": "gimnasio", "que": "cafe",
                     "fecha": HOY, "valor": 1, "unidad": "h"}
+        firma = inspect.signature(acciones.ejecutar)
         for accion in acciones.ACCIONES.values():
             argumentos = {p: muestras[p] for p in accion.propiedades if p in muestras}
             with self.subTest(accion=accion.nombre):
                 try:
-                    acciones.ejecutar(accion.nombre, **argumentos)
+                    firma.bind(accion.nombre, **argumentos)
                 except TypeError as error:
                     self.fail(f"{accion.nombre} choca con ejecutar(): {error}")
-                except Exception:
-                    # Que la accion falle por otra cosa (ruta real, datos) no
-                    # es lo que se prueba aqui: lo que se prueba es la llamada.
-                    pass
 
     def test_sin_lo_obligatorio_avisa_de_que_falta(self):
         with self.assertRaises(ValueError) as caso:

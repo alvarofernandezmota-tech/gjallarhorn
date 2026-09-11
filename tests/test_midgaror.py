@@ -15,18 +15,15 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-if not os.environ.get("MIDGAROR_RAIZ"):
-    candidato = RAIZ.parent / "midgaror"
-    if (candidato / "diario" / "bifrost_bridge.py").exists():
-        os.environ["MIDGAROR_RAIZ"] = str(candidato)
+import entorno  # noqa: E402,F401 — fija MIDGAROR_DATOS antes de cualquier import
 
 import midgaror  # noqa: E402
 
 
-def _en_proceso_aparte(codigo: str, entorno: dict) -> subprocess.CompletedProcess:
+def _en_proceso_aparte(codigo: str, variables: dict) -> subprocess.CompletedProcess:
     """midgaror.py monta el sys.path AL IMPORTARSE, así que cambiar la variable
     dentro del mismo proceso no prueba nada. Cada caso, su intérprete."""
-    env = {**os.environ, **entorno, "PYTHONPATH": str(RAIZ)}
+    env = {**os.environ, **variables, "PYTHONPATH": str(RAIZ)}
     return subprocess.run([sys.executable, "-c", codigo],
                           capture_output=True, text=True, env=env)
 
