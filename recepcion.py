@@ -51,6 +51,7 @@ ayudarte?» a secas es quitar el aviso, no mejorar el texto.
 import re
 import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 import agenda as _agenda
@@ -321,6 +322,9 @@ class Conversacion:
         self.nombre: str | None = None
         self.esperando: str | None = None     # qué se acaba de preguntar
         self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
+        self._candidatas: list[dict] = []     # citas entre las que hay que elegir al anular
+        self._cambiando = False               # anular para poner otra, no solo anular
+        self._sin_entender = 0                # seguidas; a la tercera se toma el recado
         self.turnos: list[tuple[str, str]] = []
 
     # -- lo que se recuerda de cada frase, se pregunte lo que se pregunte ----
@@ -362,7 +366,7 @@ class Conversacion:
             return Respuesta(self.frases.decir("pide_dia", servicio=que), "cita")
         if falta == "hora":
             return Respuesta(self.frases.decir(
-                "pide_hora", fecha=fechas.en_palabras(cita.fecha), servicio=que), "cita")
+                "pide_hora", fecha=self._dicha(cita.fecha), servicio=que), "cita")
         if falta == "franja":
             return self._preguntar_franja()
         if falta == "nombre":
@@ -376,13 +380,113 @@ class Conversacion:
             cita.cerrada = True
             self.esperando = None
             return Respuesta(self.frases.decir(
-                "cierra_cita", servicio=que, fecha=fechas.en_palabras(cita.fecha),
+                "cierra_cita", servicio=que, fecha=self._dicha(cita.fecha),
                 hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre), "cita")
         if (no_cabe := self._si_no_cabe(que)) is not None:
             # Entre la comprobacion de antes y ahora ha podido entrar otra
             # llamada. Se vuelve a mirar; la agenda lo mira otra vez al reservar.
             return no_cabe
         return self._reservar(que)
+
+    # -- anular --------------------------------------------------------------
+
+    def _anular(self, frase: str) -> Respuesta:
+        """Quitar una cita. Sin agenda se toma nota; con agenda se quita."""
+        if self.agenda is None:
+            self.esperando = None
+            return Respuesta(self.frases.decir("sin_agenda_anular"), "cita",
+                             aviso=f"Quiere anular una cita: «{frase}»", tipo_aviso="cita")
+        if not self.nombre:
+            self.esperando = "anular_nombre"
+            return Respuesta(self.frases.decir("anular_nombre"), "cita")
+        return self._anular_de(self.nombre, frase)
+
+    def _anular_de(self, nombre: str, frase: str) -> Respuesta:
+        suyas = self.agenda.citas_de(nombre)
+        if not suyas:
+            self.esperando = None
+            return Respuesta(
+                self.frases.decir("anular_no_hay", nombre=nombre), "cita",
+                aviso=f"Quiso anular y no hay ninguna cita a nombre de {nombre}. "
+                      f"Frase: «{frase}»", tipo_aviso="fallo")
+
+        if (dicho := fechas.interpretar(frase, self.ahora())) is not None:
+            suyas = self._del_dia(suyas, dicho[0]) or suyas
+
+        if len(suyas) > 1:
+            self._candidatas = suyas
+            self.esperando = "anular_cual"
+            listado = ", ".join(
+                f"{self._dicha(c['fecha'])} a {fechas.hora_en_palabras(c['hora'])}"
+                for c in suyas)
+            return Respuesta(self.frases.decir("anular_cual", citas=listado), "cita")
+        return self._quitar(suyas[0])
+
+    @staticmethod
+    def _del_dia(citas: list[dict], fecha: str) -> list[dict]:
+        """Las citas de esa fecha; si no hay ninguna, las de ese día de la semana.
+
+        Lo segundo no es un apaño: quien tiene cita el viernes que viene dice
+        «la del viernes», y si hoy es viernes la fecha resuelta es **hoy**. Sin
+        el respaldo por día de la semana, decir el día correcto no sirve de
+        nada y hay que preguntar igual.
+        """
+        exactas = [c for c in citas if c["fecha"] == fecha]
+        if exactas:
+            return exactas
+        try:
+            dia = date.fromisoformat(fecha).weekday()
+        except ValueError:
+            return []
+        mismo_dia = [c for c in citas if date.fromisoformat(c["fecha"]).weekday() == dia]
+        # Solo si no hay ambigüedad: dos viernes distintos se preguntan.
+        return mismo_dia if len(mismo_dia) == 1 else []
+
+    def _elegir_candidata(self, frase: str) -> dict | None:
+        """Cuál de las citas ofrecidas, por el día que diga. None si no se sabe."""
+        if (dicho := fechas.interpretar(frase, self.ahora())) is None:
+            return None
+        encontradas = self._del_dia(self._candidatas, dicho[0])
+        return encontradas[0] if len(encontradas) == 1 else None
+
+    def _quitar(self, cita: dict) -> Respuesta:
+        quitada = self.agenda.anular(cita["id"])
+        self._candidatas, self.esperando = [], None
+        if quitada is None:
+            # Se la ha llevado otra llamada entre la pregunta y ahora.
+            return Respuesta(self.frases.decir("anular_no_hay", nombre=self.nombre or ""),
+                             "cita", aviso=f"Intentó anular la cita {cita['id']}, "
+                                           "que ya no estaba", tipo_aviso="fallo")
+        que = f" de {quitada['servicio'].lower()}" if quitada.get("servicio") else ""
+        aviso = (f"ANULADA: {quitada.get('servicio') or 'cita'}, el {quitada['fecha']} "
+                 f"a las {quitada['hora']}, a nombre de {quitada.get('nombre')}")
+
+        if self._cambiando:
+            # Se abre la nueva ya, para que no cuelgue sin cita ni aviso.
+            self._cambiando = False
+            self.cita = Cita(servicio=quitada.get("servicio"), nombre=quitada.get("nombre"))
+            self.esperando = "fecha"
+            return Respuesta(self.frases.decir(
+                "anulada_y_otra", servicio=que,
+                fecha=self._dicha(quitada["fecha"]),
+                hora=fechas.hora_en_palabras(quitada["hora"])), "cita",
+                aviso=aviso + " — pidió cambiarla", tipo_aviso="cita")
+
+        return Respuesta(self.frases.decir(
+            "anulada", servicio=que, fecha=self._dicha(quitada["fecha"]),
+            hora=fechas.hora_en_palabras(quitada["hora"])), "cita",
+            aviso=aviso, tipo_aviso="cita")
+
+    def ahora(self):
+        """El reloj de esta llamada. **Uno solo**, y por eso sale de la agenda.
+
+        Antes `fechas.interpretar` usaba el reloj del sistema y la agenda el
+        suyo. En producción coinciden, así que no se notaba; en cuanto se fija
+        uno para probar, «hoy» significa un día en la conversación y otro en
+        la agenda, y la cita se va a un día que nadie pidió. Dos relojes en el
+        mismo sitio son un fallo esperando a que alguien los separe.
+        """
+        return self.agenda.ahora() if self.agenda is not None else fechas.ahora()
 
     def _duracion(self) -> int:
         return _agenda.duracion_en_minutos(
@@ -395,7 +499,7 @@ class Conversacion:
         cita.cerrada = True
         self.esperando = None
         return Respuesta(self.frases.decir(
-            "reservada", servicio=que, fecha=fechas.en_palabras(cita.fecha),
+            "reservada", servicio=que, fecha=self._dicha(cita.fecha),
             hora=fechas.hora_en_palabras(cita.hora), nombre=cita.nombre),
             "cita", aviso=f"Reservada: {cita.resumen()} (id {reservada['id']})",
             tipo_aviso="cita")
@@ -414,13 +518,19 @@ class Conversacion:
         if motivo is None:
             return None
 
-        dia_dicho = fechas.en_palabras(cita.fecha)
-        if motivo == "cerrado":
+        dicho = self._dicha(cita.fecha)
+        dia_dicho = dicho[0].upper() + dicho[1:]
+
+        # Cerrado obliga a cambiar de día. «Ya ha pasado» también, pero solo
+        # si no queda nada de hoy: si aún hay huecos más tarde, se ofrecen.
+        cambia_dia = motivo == "cerrado" or (
+            motivo == "pasado" and not self.agenda.huecos(cita.fecha, duracion))
+
+        if cambia_dia:
             huecos = self.agenda.proximos_huecos(cita.fecha, duracion, por_dia=1)
             dichos = [h.dicho for h in huecos]
             cita.fecha, cita.hora, cita.acotada = None, None, False
             self.esperando = "fecha"
-            dia_dicho = dia_dicho[0].upper() + dia_dicho[1:]
         else:
             pedida = _agenda._minutos(cita.hora)
             huecos = (self.agenda.huecos(cita.fecha, duracion, desde=pedida)
@@ -428,7 +538,6 @@ class Conversacion:
             dichos = [fechas.hora_en_palabras(h.hora) for h in huecos]
             cita.hora, cita.acotada = None, False
             self.esperando = "hora"
-            dia_dicho = dia_dicho[0].upper() + dia_dicho[1:]
 
         if not huecos:
             cita.cerrada = True
@@ -437,9 +546,14 @@ class Conversacion:
                              aviso=f"Sin huecos para: {cita.resumen()}", tipo_aviso="fallo")
 
         alternativas = ", ".join(dichos[:-1]) + (" o " if len(dichos) > 1 else "") + dichos[-1]
-        clave = {"cerrado": "cerrado", "fuera": "fuera_horario", "ocupado": "ocupado"}[motivo]
+        clave = {"cerrado": "cerrado", "fuera": "fuera_horario",
+                 "ocupado": "ocupado", "pasado": "pasado"}[motivo]
         return Respuesta(self.frases.decir(clave, fecha=dia_dicho, alternativas=alternativas),
                          "cita")
+
+    def _dicha(self, fecha: str) -> str:
+        """La fecha como se dice, con el reloj de esta llamada."""
+        return fechas.en_palabras(fecha, self.ahora().date())
 
     def _preguntar_franja(self) -> Respuesta:
         """«A las cinco»: ¿de la mañana o de la tarde? Se propone la plausible.
@@ -471,7 +585,7 @@ class Conversacion:
         """Mete en la cita lo que traiga esta frase. ¿Ha aportado algo?"""
         cita, puesto = self.cita, False
 
-        if not cita.fecha and (encontrado := fechas.interpretar(frase)) is not None:
+        if not cita.fecha and (encontrado := fechas.interpretar(frase, self.ahora())) is not None:
             cita.fecha, hora, acotada, _ = encontrado
             puesto = True
             if hora and not cita.hora:
@@ -516,6 +630,8 @@ class Conversacion:
             return Respuesta(self.frases.decir("no_le_oigo"), "recado")
 
         respuesta = self._decidir(limpia)
+        if respuesta.intencion != "recado":
+            self._sin_entender = 0
         self.turnos.append((limpia, respuesta.texto))
         return respuesta
 
@@ -548,6 +664,24 @@ class Conversacion:
         if viva and self.esperando == "franja":
             if (hecho := self._confirmar_franja(comparable)) is not None:
                 return hecho
+
+        # Se está anulando: lo que llegue es el nombre o cuál de las citas.
+        if self.esperando == "anular_nombre":
+            if (nombre := _nombre_a_secas(limpia)) is not None:
+                self.nombre = nombre
+                return self._anular_de(nombre, limpia)
+        if self.esperando == "anular_cual" and self._candidatas:
+            if (elegida := self._elegir_candidata(limpia)) is not None:
+                return self._quitar(elegida)
+
+        # **Anular gana a cita**, y no es un detalle de orden: «anular mi cita
+        # del jueves» lleva las dos palabras. Al revés, quien llama para
+        # anular cuelga con una cita NUEVA, creyendo que la ha quitado. Dos
+        # huecos ocupados y nadie enterado hasta que no aparece.
+        if (self.frases.reconoce("anular", comparable)
+                or self.frases.reconoce("cambiar", comparable)):
+            self._cambiando = self.frases.reconoce("cambiar", comparable)
+            return self._anular(limpia)
 
         # Una frase que trae el dato que se acababa de pedir. Va antes que las
         # intenciones: «el jueves» no lleva la palabra «cita» y aun así lo es.
@@ -586,7 +720,13 @@ class Conversacion:
         # soltar un «tomo nota» que la abandona.
         if viva:
             return self._seguir_cita()
-        return Respuesta(self.frases.decir("recado"), "recado",
+
+        # A la tercera seguida sin entender se deja de repetir la misma frase.
+        # Un contestador que contesta lo mismo tres veces es un contestador;
+        # una persona dice «mire, le tomo el recado y le llamamos».
+        self._sin_entender += 1
+        clave = "recado_insistente" if self._sin_entender >= 3 else "recado"
+        return Respuesta(self.frases.decir(clave), "recado",
                          aviso=f"Recado: «{limpia}»")
 
     def _segun_el_modelo(self, entendido, limpia: str) -> Respuesta | None:
