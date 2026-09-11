@@ -8,8 +8,21 @@ gjallarhorn no depende de ningún otro repo: aquí solo se desvían **sus** dato
 
 import atexit
 import os
+from pathlib import Path
 import shutil
 import tempfile
+
+
+# El negocio con el que se prueba es **de las pruebas**, y vive en
+# `tests/negocios/`. Antes se usaba el que trae el repo en `negocios/`, y eso
+# convertía el fichero de configuración de un negocio de verdad en parte de la
+# suite: el día que su dueño lo editó —que es lo que el README le dice que
+# puede hacer— se cayeron 291 pruebas que no tenían nada que ver.
+NEGOCIOS = Path(__file__).resolve().parent / "negocios"
+
+
+def _negocio_de_pruebas() -> None:
+    os.environ.setdefault("GJALLARHORN_NEGOCIOS", str(NEGOCIOS))
 
 
 def _datos_de_mentira() -> None:
@@ -23,6 +36,7 @@ def _datos_de_mentira() -> None:
 
 
 _datos_de_mentira()
+_negocio_de_pruebas()
 
 
 def aislar(caso) -> str:

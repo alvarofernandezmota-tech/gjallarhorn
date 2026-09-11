@@ -365,7 +365,11 @@ def main() -> int:
     parser.add_argument("--puerto", type=int, default=8081)
     args = parser.parse_args()
 
-    n = negocios.cargar(args.negocio)
+    try:
+        n = negocios.cargar(args.negocio)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"❌ {error}")
+        return 1
     config = configuracion()
     if not args.simular:
         parser.print_help()

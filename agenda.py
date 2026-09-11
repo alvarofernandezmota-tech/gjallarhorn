@@ -98,6 +98,15 @@ class Horario:
                 m = TRAMO.match(str(tramo))
                 if not m:
                     raise ValueError(f"[horario] {nombre}: «{tramo}» no es un tramo HH:MM-HH:MM")
+                # Un reloj tiene 24 horas y 60 minutos. «25:00» encajaba en el
+                # patrón y se guardaba como 1500 minutos: un tramo al que no
+                # llega ningún día, o sea, un negocio que nunca abre y nadie
+                # sabe por qué.
+                for hora, minutos in ((m.group(1), m.group(2)), (m.group(3), m.group(4))):
+                    if int(hora) > 23 or int(minutos) > 59:
+                        raise ValueError(
+                            f"[horario] {nombre}: «{tramo}» no es una hora "
+                            f"(las horas van de 00 a 23 y los minutos de 00 a 59)")
                 ini = int(m.group(1)) * 60 + int(m.group(2))
                 fin = int(m.group(3)) * 60 + int(m.group(4))
                 if fin <= ini:

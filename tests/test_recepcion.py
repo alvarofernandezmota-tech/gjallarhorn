@@ -22,7 +22,7 @@ import entorno  # noqa: E402,F401 — antes que nada
 import conocimiento  # noqa: E402
 import recepcion  # noqa: E402
 
-PELUQUERIA = RAIZ / "negocios" / "peluqueria"
+PELUQUERIA = entorno.NEGOCIOS / "peluqueria"
 
 
 class CasoRecepcion(unittest.TestCase):

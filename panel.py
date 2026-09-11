@@ -201,7 +201,11 @@ def main(argumentos: list[str] | None = None) -> int:
     parser.add_argument("--negocio", default="peluqueria")
     args = parser.parse_args(argumentos)
 
-    datos = vista(negocios.cargar(args.negocio))
+    try:
+        datos = vista(negocios.cargar(args.negocio))
+    except (FileNotFoundError, ValueError) as error:
+        print(f"❌ {error}")
+        return 1
     print(f"{datos['negocio']} · {datos['ahora']}")
     for jornada in datos["dias"]:
         cabeza = jornada["dicho"][0].upper() + jornada["dicho"][1:]
