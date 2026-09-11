@@ -84,6 +84,9 @@ def _buscar_fecha(texto: str, hoy_: date) -> tuple[date, str] | None:
     """(fecha, trozo que la expresaba), o None si no dice ningún día."""
     if m := re.search(r"\bpasado\s+manana\b", texto):
         return hoy_ + timedelta(days=2), m.group(0)
+    # «Esta tarde» es hoy, y la franja la recoge `franja_en` por su cuenta.
+    if m := re.search(r"\best[ae]\s+(?:tarde|noche|manana|mediodia)\b", texto):
+        return hoy_, m.group(0)
     if m := re.search(r"\bmanana\b", texto):
         # «mañana» es el día siguiente; «por la mañana» es una franja. La
         # preposición delante es lo único que las distingue.
@@ -96,7 +99,7 @@ def _buscar_fecha(texto: str, hoy_: date) -> tuple[date, str] | None:
                       r"(\s+que\s+viene|\s+proximo)?\b", texto):
         return _dia_de_la_semana(m.group(1), hoy_, bool(m.group(2))), m.group(0)
 
-    if m := re.search(rf"\bel\s+(\d{{1,2}})(?:\s+de\s+({'|'.join(MESES)}))?\b", texto):
+    if m := re.search(rf"\bel\s+(?:dia\s+)?(\d{{1,2}})(?:\s+de\s+({'|'.join(MESES)}))?\b", texto):
         dia = int(m.group(1))
         mes = MESES.index(m.group(2)) + 1 if m.group(2) else hoy_.month
         anio = hoy_.year
@@ -116,31 +119,66 @@ def _buscar_fecha(texto: str, hoy_: date) -> tuple[date, str] | None:
     return None
 
 
+# «Y media», «menos cuarto», «y veinte»: los minutos como se dicen.
+MINUTOS_DICHOS = {"cinco": 5, "diez": 10, "cuarto": 15, "veinte": 20,
+                  "veinticinco": 25, "media": 30, "treinta": 30}
+
+# «A las», «sobre las», «hacia las», «a eso de las»: todo es la misma hora.
+_PREFIJO_HORA = r"\b(?:a\s+eso\s+de\s+|sobre\s+|hacia\s+|a\s+)las?\s+"
+_HORA = (rf"(\d{{1,2}}|{'|'.join(NUMEROS)})"
+         rf"(?:\s*[:.]\s*(\d{{2}})|\s*h(?:oras)?\b|\s+(y|menos)\s+({'|'.join(MINUTOS_DICHOS)}|\d{{1,2}}))?")
+
+
+def _componer(crudo: str, exactos: str | None, signo: str | None, cuanto: str | None,
+              franja: str | None) -> tuple[str, bool] | None:
+    """La hora a partir de sus trozos: (hora, ¿acotada?), o None si no es una hora.
+
+    Acotada quiere decir que no hay duda de si es de la mañana o de la tarde:
+    porque se dijo la franja o porque ya son más de las doce. **«A las 5:30»
+    no está acotada**: es como escribe «las cinco y media» quien transcribe,
+    y antes se daba por buena y se citaba a alguien a las cinco y media de la
+    madrugada.
+    """
+    hora = int(crudo) if crudo.isdigit() else NUMEROS[crudo]
+    if exactos is not None:
+        minutos = int(exactos)
+    elif cuanto is None:
+        minutos = 0
+    else:
+        minutos = int(cuanto) if cuanto.isdigit() else MINUTOS_DICHOS[cuanto]
+        if signo == "menos":
+            # «Las cinco menos cuarto» son las 04:45. «La una menos cuarto»
+            # son las 12:45: las 00:45 no son hora de ningún negocio.
+            hora, minutos = (hora - 1) or 12, 60 - minutos
+    if hora > 23 or minutos > 59:
+        return None
+    dicha = acotar(f"{hora:02d}:{minutos:02d}", franja)
+    return dicha, bool(franja) or int(dicha[:2]) >= 12
+
+
 def _buscar_hora(texto: str) -> tuple[str, bool, str] | None:
-    """(hora, ¿venía con franja?, trozo), o None.
+    """(hora, ¿está acotada?, trozo), o None.
 
     El segundo campo es el que importa: dice si «las cinco» las acotó el
     cliente o no. Sin él, alguien acaba citado a las 05:00.
     """
     franja = next((f for f in FRANJAS if re.search(rf"\b{f}\b", texto)), None)
+    if (m := re.search(_PREFIJO_HORA + _HORA, texto)) is None:
+        return None
+    if (compuesta := _componer(m.group(1), m.group(2), m.group(3), m.group(4), franja)) is None:
+        return None
+    return compuesta[0], compuesta[1], m.group(0)
 
-    if m := re.search(r"\ba\s+las?\s+(\d{1,2})[:.](\d{2})\b", texto):
-        return f"{int(m.group(1)):02d}:{m.group(2)}", True, m.group(0)
-    if m := re.search(r"\ba\s+las?\s+(\d{1,2})\s*h\b", texto):
-        return f"{int(m.group(1)):02d}:00", True, m.group(0)
 
-    palabras = "|".join(NUMEROS)
-    if m := re.search(rf"\ba\s+las?\s+(\d{{1,2}}|{palabras})"
-                      r"(\s+y\s+media|\s+y\s+cuarto)?\b", texto):
-        crudo = m.group(1)
-        hora = int(crudo) if crudo.isdigit() else NUMEROS[crudo]
-        minutos = 30 if (m.group(2) or "").strip() == "y media" else \
-                  15 if (m.group(2) or "").strip() == "y cuarto" else 0
-        # Con franja de tarde o noche, «las cinco» son las 17:00. Sin franja
-        # NO se traduce: se devuelve tal cual y se marca como sin acotar.
-        hora = acotar(f"{hora:02d}:{minutos:02d}", franja)
-        return hora, bool(franja), m.group(0)
-    return None
+# La frase que es SOLO una hora, contestando a «¿a qué hora?»: «las cinco»,
+# «cinco y media», «el de las once», «sobre las diez, mejor». Sin el «a las»
+# delante, que por teléfono casi nadie dice al contestar.
+_SOLO_HORA = re.compile(
+    r"^\W*(?:(?:pues|mejor|entonces|a|de|el\s+de|la\s+de|sobre|hacia|a\s+eso\s+de)\s+)*"
+    r"(?:las?\s+)?" + _HORA +
+    r"(?:\s+(?:de\s+la\s+|por\s+la\s+|del\s+|al\s+)?(manana|tarde|noche|mediodia))?"
+    r"(?:\s+(?:mejor|por\s+favor|estaria\s+bien|si\s+puede\s+ser|si\s+hay|"
+    r"me\s+viene\s+bien|me\s+va\s+bien|si\s+se\s+puede))?\W*$")
 
 
 def acotar(hora: str, franja: str | None) -> str:
@@ -231,12 +269,10 @@ def hora_en_palabras(hora: str) -> str:
     except (AttributeError, ValueError):
         return str(hora)
 
-    franja = ("de la mañana" if h < 12 else "del mediodía" if h == 12
-              else "de la tarde" if h < 21 else "de la noche")
-    dicha = HORAS_DICHAS[h % 12]
-    articulo = "la" if h % 12 == 1 else "las"
-
-    if m == 0:
+    if m == 45:
+        # «Las cinco menos cuarto», no «las cuatro y 45».
+        h, m, minutos = (h + 1) % 24, 0, " menos cuarto"
+    elif m == 0:
         minutos = ""
     elif m == 15:
         minutos = " y cuarto"
@@ -244,6 +280,10 @@ def hora_en_palabras(hora: str) -> str:
         minutos = " y media"
     else:
         minutos = f" y {m}"
+    franja = ("de la mañana" if h < 12 else "del mediodía" if h == 12
+              else "de la tarde" if h < 21 else "de la noche")
+    dicha = HORAS_DICHAS[h % 12]
+    articulo = "la" if h % 12 == 1 else "las"
     return f"{articulo} {dicha}{minutos} {franja}"
 
 
@@ -255,8 +295,13 @@ def hora_suelta(frase: str) -> tuple[str, bool] | None:
     el día se dijo dos frases antes y quien lleva la cuenta lo recuerda. Esta
     función es solo el trozo de reconocer la hora, sin opinar sobre si basta.
     """
-    encontrada = _buscar_hora(sin_tildes(frase or ""))
-    return (encontrada[0], encontrada[1]) if encontrada else None
+    texto = sin_tildes(frase or "")
+    if (encontrada := _buscar_hora(texto)) is not None:
+        return encontrada[0], encontrada[1]
+    if (m := _SOLO_HORA.match(texto)) is None:
+        return None
+    return _componer(m.group(1), m.group(2), m.group(3), m.group(4),
+                     m.group(5) or franja_en(texto))
 
 
 def interpretar(frase: str, ahora_=None) -> tuple[str, str | None, bool, str] | None:

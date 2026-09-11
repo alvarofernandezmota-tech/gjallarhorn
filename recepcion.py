@@ -51,7 +51,7 @@ ayudarte?» a secas es quitar el aviso, no mejorar el texto.
 import re
 import unicodedata
 from dataclasses import dataclass, replace
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import agenda as _agenda
@@ -374,6 +374,7 @@ class Conversacion:
         self._ultima_reserva: int | None = None   # por si luego corrige el nombre
         self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
         self._candidatas: list[dict] = []     # citas entre las que hay que elegir al anular
+        self._ofrecidos: list = []            # huecos ofrecidos; «sí» o «el primero» elige uno
         self._opciones: list[dict] = []       # servicios ofrecidos en «¿cuál le interesa?»
         self._cambiando = False               # anular para poner otra, no solo anular
         self._sin_entender = 0                # seguidas; a la tercera se toma el recado
@@ -413,7 +414,83 @@ class Conversacion:
     def _abrir_cita(self) -> Cita:
         self.cita = Cita(servicio=self.servicio["servicio"] if self.servicio else None,
                          nombre=self.nombre)
+        self._ofrecidos = []
         return self.cita
+
+    @staticmethod
+    def _enumerar(dichos: list[str]) -> str:
+        """«A, B o C»: como se lee una lista en voz alta."""
+        return ", ".join(dichos[:-1]) + (" o " if len(dichos) > 1 else "") + dichos[-1]
+
+    def _ofrecer_huecos(self) -> Respuesta:
+        """Los huecos del día que ha dicho, en la franja que ha dicho si la ha dicho.
+
+        «¿Tenéis hueco el jueves por la tarde?» se contesta con los huecos de
+        la tarde del jueves, no con «¿a qué hora le viene bien?». Si ese día
+        no queda nada, se ofrecen los primeros de los días siguientes.
+        """
+        cita, duracion = self.cita, self._duracion()
+        desde = hasta = None
+        if cita.franja in ("tarde", "noche"):
+            desde = 14 * 60
+        elif cita.franja == "manana":
+            hasta = 14 * 60
+        elif cita.franja == "mediodia":
+            desde, hasta = 12 * 60, 16 * 60
+        huecos = (self.agenda.huecos(cita.fecha, duracion, desde=desde, hasta=hasta)
+                  or self.agenda.huecos(cita.fecha, duracion))
+        dicho = self._dicha(cita.fecha)
+        dia = dicho[0].upper() + dicho[1:]
+        if huecos:
+            self._ofrecidos, self.esperando = huecos, "hora"
+            return Respuesta(self.frases.decir(
+                "ofrece_huecos", fecha=dia,
+                alternativas=self._enumerar([fechas.hora_en_palabras(h.hora) for h in huecos])),
+                "cita")
+        siguiente = (date.fromisoformat(cita.fecha) + timedelta(days=1)).isoformat()
+        proximos = self.agenda.proximos_huecos(siguiente, duracion, por_dia=1)
+        if not proximos:
+            return self._sin_huecos()
+        self._ofrecidos, self.esperando = proximos, "fecha"
+        cita.fecha, cita.franja = None, None
+        return Respuesta(self.frases.decir(
+            "sin_huecos_dia", fecha=dia,
+            alternativas=self._enumerar([h.dicho for h in proximos])), "cita")
+
+    def _primeros_huecos(self) -> Respuesta:
+        """«Cuando podáis», sin día: lo más pronto que hay, un hueco por día."""
+        proximos = self.agenda.proximos_huecos(self.ahora().strftime("%Y-%m-%d"),
+                                               self._duracion(), por_dia=1)
+        if not proximos:
+            return self._sin_huecos()
+        self._ofrecidos, self.esperando = proximos, "fecha"
+        return Respuesta(self.frases.decir(
+            "primeros_huecos", alternativas=self._enumerar([h.dicho for h in proximos])), "cita")
+
+    def _sin_huecos(self) -> Respuesta:
+        self.cita.cerrada = True
+        self.esperando = None
+        return Respuesta(self.frases.decir("sin_huecos"), "cita",
+                         aviso=f"Sin huecos para: {self.cita.resumen()}", tipo_aviso="fallo")
+
+    def _hueco_elegido(self, comparable: str) -> "_agenda.Hueco | None":
+        """Cuál de los huecos ofrecidos ha elegido: «sí» al único, «el primero», «el último»."""
+        if not self._ofrecidos:
+            return None
+        corta = len(comparable.split()) <= 4
+        if corta and self.frases.reconoce("si", comparable) and len(self._ofrecidos) == 1:
+            return self._ofrecidos[0]
+        if re.search(r"\b(?:el|la)\s+primer[oa]\b|\bprimer[oa]\b", comparable):
+            return self._ofrecidos[0]
+        if re.search(r"\b(?:el|la)\s+ultim[oa]\b", comparable):
+            return self._ofrecidos[-1]
+        return None
+
+    def _coger_hueco(self, hueco) -> Respuesta:
+        cita = self.cita
+        cita.fecha, cita.hora, cita.acotada = hueco.fecha, hueco.hora, True
+        self._ofrecidos = []
+        return self._seguir_cita()
 
     def _seguir_cita(self) -> Respuesta:
         """La siguiente pregunta, o el cierre si ya no falta nada."""
@@ -640,16 +717,13 @@ class Conversacion:
             self.esperando = "hora"
 
         if not huecos:
-            cita.cerrada = True
-            self.esperando = None
-            return Respuesta(self.frases.decir("sin_huecos"), "cita",
-                             aviso=f"Sin huecos para: {cita.resumen()}", tipo_aviso="fallo")
+            return self._sin_huecos()
 
-        alternativas = ", ".join(dichos[:-1]) + (" o " if len(dichos) > 1 else "") + dichos[-1]
+        self._ofrecidos = huecos
         clave = {"cerrado": "cerrado", "fuera": "fuera_horario",
                  "ocupado": "ocupado", "pasado": "pasado"}[motivo]
-        return Respuesta(self.frases.decir(clave, fecha=dia_dicho, alternativas=alternativas),
-                         "cita")
+        return Respuesta(self.frases.decir(clave, fecha=dia_dicho,
+                                           alternativas=self._enumerar(dichos)), "cita")
 
     def _dicha(self, fecha: str) -> str:
         """La fecha como se dice, con el reloj de esta llamada."""
@@ -693,6 +767,22 @@ class Conversacion:
         elif cita.fecha and not cita.hora and (h := fechas.hora_suelta(frase)) is not None:
             cita.hora, cita.acotada = h
             puesto = True
+
+        # Lo ofrecido completa lo que falte: si ofrecí «el martes a las diez» y
+        # dice «el martes», son las diez; si ofrecí las cinco de la tarde y dice
+        # «las cinco», son las de la tarde y no se vuelve a preguntar.
+        if puesto and self._ofrecidos:
+            del_dia = [h for h in self._ofrecidos if h.fecha == cita.fecha]
+            if cita.hora and not cita.acotada:
+                horas = {h.hora for h in del_dia}
+                for candidata in (cita.hora, fechas.acotar(cita.hora, "tarde")):
+                    if candidata in horas:
+                        cita.hora, cita.acotada = candidata, True
+                        break
+            elif not cita.hora and len(del_dia) == 1:
+                cita.hora, cita.acotada = del_dia[0].hora, True
+            if cita.hora:
+                self._ofrecidos = []
 
         # «Por la tarde» se recuerda aunque venga sin hora: cuando llegue «a
         # las cinco», ya son las cinco de la tarde y no hay que preguntarlo.
@@ -822,14 +912,40 @@ class Conversacion:
             self._cambiando = self.frases.reconoce("cambiar", comparable)
             return self._anular(limpia, nombre_dado)
 
+        # He ofrecido huecos y me dicen cuál: «sí» al único, «el primero»…
+        if viva and self.esperando in ("hora", "fecha") and self._ofrecidos:
+            if (hueco := self._hueco_elegido(comparable)) is not None:
+                return self._coger_hueco(hueco)
+            if len(comparable.split()) <= 4 and self.frases.reconoce("si", comparable):
+                return Respuesta(self.frases.decir("cual_hueco"), "cita")
+
+        # «Cuando podáis», «el que tengáis»: se ofrecen huecos en vez de
+        # insistir con «¿a qué hora?». Solo con agenda: sin ella no hay huecos.
+        if self.agenda is not None and self.frases.reconoce("cualquiera", comparable) \
+                and (viva or self.frases.reconoce("cita", comparable)):
+            if not viva:
+                self._abrir_cita()
+            self._rellenar_con(limpia)
+            if self.cita.fecha and not self.cita.hora:
+                return self._ofrecer_huecos()
+            if not self.cita.fecha:
+                return self._primeros_huecos()
+            return self._seguir_cita()
+
         # Una frase que trae el dato que se acababa de pedir. Va antes que las
         # intenciones: «el jueves» no lleva la palabra «cita» y aun así lo es.
         if viva and self._rellenar_con(limpia):
             return self._seguir_cita()
 
-        if self.frases.reconoce("cita", comparable):
+        if self.frases.reconoce("cita", comparable) \
+                or self.frases.reconoce("disponibilidad", comparable):
             self._abrir_cita()
             self._rellenar_con(limpia)
+            # «¿Tenéis hueco el jueves?» pregunta qué hay: se le dice, en vez
+            # de preguntarle a él la hora.
+            if self.agenda is not None and self.cita.fecha and not self.cita.hora \
+                    and self.frases.reconoce("disponibilidad", comparable):
+                return self._ofrecer_huecos()
             return self._seguir_cita()
 
         if self.frases.reconoce("precio", comparable) \

@@ -47,6 +47,12 @@ DICE = {
     "ocupado": "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?",
     "pasado": "Esa hora ya ha pasado. Me queda {alternativas}. ¿Le viene bien alguno?",
     "sin_huecos": "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos.",
+    # «¿Tenéis hueco el jueves?» / «cuando podáis»: se ofrecen los huecos.
+    "ofrece_huecos": "{fecha} tengo {alternativas}. ¿Cuál le viene bien?",
+    "sin_huecos_dia": "{fecha} no me queda ningún hueco. Tengo {alternativas}. ¿Le viene bien alguno?",
+    "primeros_huecos": "Lo más pronto que tengo es {alternativas}. ¿Le viene bien alguno?",
+    # «Sí» a varios huecos: ¿cuál?
+    "cual_hueco": "¿Cuál de ellos le viene mejor?",
     # Anular. Quien llama para anular NO puede acabar con una cita nueva.
     "anular_nombre": "Claro. ¿A nombre de quién está la cita?",
     "anular_cual": "A ese nombre tengo {citas}. ¿Cuál le anulo?",
@@ -94,6 +100,9 @@ HUECOS = {
     "ocupado": {"fecha", "alternativas"},
     "pasado": {"fecha", "alternativas"},   # {fecha} se admite; la de fábrica no la usa
     "anular_cual": {"citas"},
+    "ofrece_huecos": {"fecha", "alternativas"},
+    "sin_huecos_dia": {"fecha", "alternativas"},
+    "primeros_huecos": {"alternativas"},
     "pide_hora_franja": {"fecha", "franja"},
     "renombrada": {"nombre"},
     "anular_no_hay": {"nombre"},
@@ -120,6 +129,17 @@ ENTIENDE = {
                "oiga", "diga", "digame", "perdone"],
     "cita": ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
              "pedir hora", "disponible", "disponibilidad", "libre"],
+    # «¿Tenéis hueco el jueves?» pregunta qué hay, no pide una hora: se le
+    # dicen los huecos del día en vez de preguntarle «¿a qué hora?».
+    "disponibilidad": ["hueco", "huecos", "disponible", "disponibilidad", "libre",
+                       "sitio", "teneis algo", "tienes algo", "hay algo", "que horas"],
+    # «Cuando podáis»: se ofrecen huecos en vez de insistir con «¿a qué hora?».
+    "cualquiera": ["cuando podais", "cuando pueda", "cuando puedas", "cuando tengais",
+                   "cuando tengas", "la que tengais", "lo que tengais", "el que tengais",
+                   "la que tengas", "lo que tengas", "me da igual", "me es igual",
+                   "cualquiera", "cualquier hora", "lo antes posible", "cuanto antes",
+                   "primera hora", "a la hora que sea", "cuando sea", "que huecos",
+                   "que teneis", "que tienes", "que hay", "lo que haya"],
     "horario": ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
                 "cerrado", "hasta que hora", "a que hora"],
     "si": ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale",
