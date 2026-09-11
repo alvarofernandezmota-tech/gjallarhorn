@@ -68,6 +68,7 @@ import avisar
 import avisos
 import fechas
 import recepcion
+import voz as voz_
 
 RAIZ = Path(__file__).resolve().parent
 VOZ_POR_DEFECTO = "Polly.Lucia"      # castellano de España, en el proveedor
@@ -135,7 +136,9 @@ def _twiml(*trozos: str) -> str:
 
 
 def _decir(texto: str, voz: str) -> str:
-    return f'<Say voice="{escape(voz, quote=True)}" language="{IDIOMA}">{escape(texto)}</Say>'
+    # Lo que se lee en voz alta no es lo que se escribe: «45 €» → «45 euros».
+    return (f'<Say voice="{escape(voz, quote=True)}" language="{IDIOMA}">'
+            f'{escape(voz_.para_decir(texto))}</Say>')
 
 
 def _escuchar(texto: str, voz: str, accion: str) -> str:
@@ -257,3 +260,72 @@ def campos_de(cuerpo: bytes) -> dict[str, str]:
 
 
 RUTAS = re.compile(r"^/telefono/(entrada|turno|fin)(\?.*)?$")
+
+
+def _solo_texto(xml: str) -> str:
+    """Lo que diria la voz, sacado del TwiML. Para leerlo en una terminal."""
+    import html
+    return " ".join(html.unescape(t) for t in re.findall(r"<Say[^>]*>(.*?)</Say>", xml, re.S))
+
+
+def main() -> int:
+    """`python3 telefonia.py --simular`: una llamada entera por la terminal.
+
+    Sin proveedor ni numero: se hace de proveedor, mandando los formularios
+    que mandaria Twilio y leyendo el TwiML que se le devuelve. Si hay token
+    en .env, ademas imprime un `curl` firmado contra el servidor local para
+    probar el webhook de verdad, firma incluida, antes de pagar por un numero.
+    """
+    import argparse
+    import sys as _sys
+
+    import negocio as negocios
+
+    parser = argparse.ArgumentParser(description="El telefono, sin telefono")
+    parser.add_argument("--simular", action="store_true", help="una llamada por teclado")
+    parser.add_argument("--negocio", default="peluqueria")
+    parser.add_argument("--numero", default="+34600000000", help="desde que numero se llama")
+    parser.add_argument("--puerto", type=int, default=8081)
+    args = parser.parse_args()
+
+    n = negocios.cargar(args.negocio)
+    config = configuracion()
+    if not args.simular:
+        parser.print_help()
+        return 0
+
+    centralita = Centralita(n, (config or {}).get("voz", VOZ_POR_DEFECTO))
+    sid = "SIMULADA"
+    turno = f"https://localhost:{args.puerto}/telefono/turno"
+    print(f"☎️  Llamada simulada desde {args.numero}. Escribe lo que dirias; vacio = cuelgas.\n")
+    print(f"  🔊 {_solo_texto(centralita.entrada({'CallSid': sid, 'From': args.numero}, turno))}")
+    for linea in _sys.stdin:
+        dicho = linea.strip()
+        if not dicho:
+            break
+        xml = centralita.turno({"CallSid": sid, "From": args.numero, "SpeechResult": dicho}, turno)
+        print(f"  🔊 {_solo_texto(xml)}")
+        if "<Hangup/>" in xml:
+            break
+    quedo = centralita.fin({"CallSid": sid})
+    print(f"\n📞 Colgado. {('Apuntado: ' + quedo) if quedo else 'Nada que apuntar.'}")
+
+    if config:
+        campos = {"CallSid": "CAprueba", "From": args.numero}
+        url = f"https://localhost:{args.puerto}/telefono/entrada"
+        firma = base64.b64encode(hmac.new(
+            config["token"].encode(), (url + "".join(k + campos[k] for k in sorted(campos))).encode(),
+            hashlib.sha1).digest()).decode()
+        datos = "&".join(f"{k}={v}" for k, v in campos.items())
+        print("\nCon el servidor arrancado (make arrancar), esto prueba el webhook real, firma incluida:")
+        print(f"  curl -s -X POST http://127.0.0.1:{args.puerto}/telefono/entrada "
+              f"-H 'Host: localhost:{args.puerto}' -H 'X-Forwarded-Proto: https' "
+              f"-H 'X-Twilio-Signature: {firma}' -d '{datos}'")
+        print("  → tiene que devolver un <Response> con <Gather>. Sin la cabecera de firma, 403.")
+    else:
+        print("\nSin GJALLARHORN_TELEFONO_TOKEN en .env: el webhook no arranca. Ponlo y repite.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

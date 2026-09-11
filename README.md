@@ -243,6 +243,8 @@ make estado        ¿vivo? ¿qué modelo? últimas citas y avisos
 make diagnostico   el informe entero, para pegarlo de una vez
 make log           el log del servicio, en vivo
 make avisar        mandar al móvil los avisos pendientes
+make nuevo         dar de alta otro negocio: make nuevo NEGOCIO=mi-negocio
+make telefono-prueba  una llamada por teclado, como la vería el proveedor
 make auto          que la máquina se actualice sola desde GitHub cada 5 min
 make serve         la demo, visible solo en tu tailnet (para el móvil)
 make funnel        publicar SOLO el webhook del teléfono

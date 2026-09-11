@@ -254,3 +254,31 @@ class TestLoQueSeDiceCuandoFaltaElPaquete(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLoQueSeDiceEnVozAlta(unittest.TestCase):
+    """`para_decir`: lo escrito se queda; lo hablado se lee como una persona."""
+
+    def test_euros(self):
+        self.assertEqual(voz.para_decir("Tinte: 45 €."), "Tinte: 45 euros.")
+        self.assertEqual(voz.para_decir("Corte 1 €"), "Corte 1 euro")
+        self.assertEqual(voz.para_decir("Mechas 14,50 €"), "Mechas 14 euros con 50")
+        self.assertEqual(voz.para_decir("Lavar 9.05 €"), "Lavar 9 euros con 5")
+
+    def test_minutos_y_horas_sin_comerse_la_puntuacion(self):
+        self.assertEqual(voz.para_decir("unos 90 min."), "unos 90 minutos.")
+        self.assertEqual(voz.para_decir("1 min"), "1 minuto")
+        self.assertEqual(voz.para_decir("2 h"), "2 horas")
+
+    def test_el_punto_y_coma_se_vuelve_pausa_corta(self):
+        self.assertEqual(voz.para_decir("A 1 €; B 2 €"), "A 1 euro, B 2 euros")
+
+    def test_lo_que_no_es_numero_no_se_toca(self):
+        frase = "Perfecto, el jueves 17 a las cinco de la tarde. ¿A nombre de quién?"
+        self.assertEqual(voz.para_decir(frase), frase)
+
+    def test_hablar_convierte_antes_de_sintetizar(self):
+        locutor = voz.LocutorFalso()
+        with tempfile.TemporaryDirectory() as tmp:
+            voz.hablar("Tinte: 45 €, unos 90 min.", Path(tmp) / "x.wav", locutor)
+        self.assertEqual(locutor.dicho, ["Tinte: 45 euros, unos 90 minutos."])

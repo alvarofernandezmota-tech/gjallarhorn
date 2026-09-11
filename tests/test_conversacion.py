@@ -163,3 +163,24 @@ class TestColgar(CasoLlamada):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElegirEntreLoOfrecido(CasoLlamada):
+    """«El de caballero» tras «¿cuál le interesa?» elige por lo que distingue."""
+
+    def test_la_palabra_que_distingue_basta(self):
+        self.decir("¿cuánto vale un corte?")
+        self.assertIn("14 €", self.decir("el de caballero"))
+
+    def test_la_palabra_comun_a_todos_no_elige(self):
+        # «corte» está en las tres opciones: no dice cuál.
+        self.decir("¿cuánto vale un corte?")
+        self.assertNotIn("14 €", self.decir("el corte"))
+
+    def test_fuera_de_ese_momento_no_se_adivina(self):
+        # Sin haber ofrecido nada, «el de caballero» no es una pregunta de precio.
+        self.assertNotIn("14 €", self.decir("el de caballero"))
+
+    def test_elegir_deja_el_servicio_recordado_para_la_cita(self):
+        self.decir("¿cuánto vale un corte?", "el de caballero")
+        self.assertIn("caballero", self.decir("pues quiero cita").lower())

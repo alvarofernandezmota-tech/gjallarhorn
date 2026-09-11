@@ -21,6 +21,7 @@ es opcional, y la forma de garantizarlo es que no dependa de que alguien se
 acuerde.
 """
 
+import re
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -108,6 +109,29 @@ def cargar(cual: str | Path) -> Negocio:
         voz=config.get("voz"),
         horario=_horario(config.get("horario"), fichero),
     )
+
+
+TELEFONO = re.compile(r"(?<![\d.])(?:\+34\s?)?[6789]\d{2}[\s.-]?\d{3}[\s.-]?\d{3}(?![\d.])")
+
+
+def advertencias(negocio: Negocio) -> list[str]:
+    """Lo que conviene saber antes de arrancar. Vacío si nada.
+
+    De momento una sola cosa, pero importa: **este repositorio es público**.
+    Un teléfono escrito en `faq.md` o `negocio.toml` acaba en GitHub a la
+    vista de cualquiera. Si es el del negocio y quiere que se diga, adelante;
+    si es el de alguien, que lo sepa antes de que lo indexe un buscador.
+    """
+    encontradas = []
+    for fichero in ("negocio.toml", "tarifas.md", "faq.md", "frases.toml"):
+        ruta = negocio.ruta / fichero
+        if not ruta.exists():
+            continue
+        for numero in TELEFONO.findall(ruta.read_text(encoding="utf-8")):
+            encontradas.append(
+                f"{fichero} lleva un teléfono ({numero.strip()}). Este repositorio es "
+                "público: si no es del negocio y para decirlo a quien llame, fuera.")
+    return encontradas
 
 
 def listar() -> list[str]:

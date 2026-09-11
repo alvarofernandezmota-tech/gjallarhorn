@@ -94,6 +94,25 @@ def _seccion_faq(clave: str, base: Path | None = None) -> str:
     return ""
 
 
+def _entre_ofrecidos(frase: str, ofrecidos: list[dict]) -> dict | None:
+    """Cuál de los servicios ofrecidos nombra la frase, por sus palabras.
+
+    Entre «Corte de caballero» y «Corte de señora», «el de caballero» solo
+    comparte una palabra con el primero: basta. La búsqueda general exige
+    cubrir más de la mitad del nombre y aquí fallaba —«caballero» es 1 de
+    2— justo cuando el cliente acaba de elegir.
+    """
+    dichas = conocimiento._palabras(frase)
+    if not dichas:
+        return None
+    candidatos = [s for s in ofrecidos if dichas & conocimiento._palabras(s["servicio"])]
+    if len(candidatos) != 1:
+        return None
+    # La palabra tiene que distinguirlo, no ser la comun a todos («corte»).
+    comunes = set.intersection(*(conocimiento._palabras(s["servicio"]) for s in ofrecidos))
+    return candidatos[0] if dichas & conocimiento._palabras(candidatos[0]["servicio"]) - comunes else None
+
+
 def _precio_de(servicio: dict, frases) -> Respuesta:
     """Un servicio y su precio, dicho igual se llegue por donde se llegue."""
     duracion = f", unos {servicio['duracion']}" if servicio.get("duracion") else ""
@@ -323,6 +342,7 @@ class Conversacion:
         self.esperando: str | None = None     # qué se acaba de preguntar
         self._propuesta: str | None = None    # la hora propuesta al preguntar la franja
         self._candidatas: list[dict] = []     # citas entre las que hay que elegir al anular
+        self._opciones: list[dict] = []       # servicios ofrecidos en «¿cuál le interesa?»
         self._cambiando = False               # anular para poner otra, no solo anular
         self._sin_entender = 0                # seguidas; a la tercera se toma el recado
         self.turnos: list[tuple[str, str]] = []
@@ -648,7 +668,13 @@ class Conversacion:
         # respuesta es que no lo tengo, no el precio del anterior.
         if self.esperando == "cual":
             self.esperando = None
+            if ahora_mismo is None:
+                # «El de caballero»: no nombra el servicio entero, nombra lo
+                # que lo distingue de los otros que se acaban de ofrecer. Se
+                # busca solo entre esos, y solo si queda uno.
+                ahora_mismo = _entre_ofrecidos(limpia, self._opciones)
             if ahora_mismo is not None:
+                self.servicio = ahora_mismo
                 return _precio_de(ahora_mismo, self.frases)
             if not (self.frases.reconoce("cita", comparable)
                     or self.frases.reconoce("horario", comparable)
@@ -700,7 +726,9 @@ class Conversacion:
                                  tipo_aviso="fallo")
             respuesta = _responder_precio(limpia, self.base)
             # Si he ofrecido varias, la siguiente frase será cuál de ellas.
-            self.esperando = "cual" if "¿Cuál le interesa?" in respuesta.texto else None
+            encontrados = conocimiento.buscar(limpia, self.base)
+            self._opciones = encontrados if len(encontrados) > 1 else []
+            self.esperando = "cual" if self._opciones else None
             return respuesta
 
         if self.frases.reconoce("horario", comparable):
@@ -836,6 +864,8 @@ def main() -> int:
               f"No podrá dar esa información.\n")
     for problema in _frases.problemas(negocio.conocimiento):
         print(f"⚠️  frases.toml: {problema}")
+    for aviso_ in negocios.advertencias(negocio):
+        print(f"⚠️  {aviso_}")
 
     locutor = voz.Piper(negocio.voz or voz.VOZ_POR_DEFECTO) if args.hablar else None
 
