@@ -21,10 +21,10 @@ despedida = "Gracias por llamar. ¡Hasta luego!"
 #
 # Cada día es una lista de tramos "HH:MM-HH:MM". Lista vacía = cerrado.
 [horario]
-lunes = [00:00-00:00]
-martes = [00:00-00:00]
-miercoles = [00:00-00:00]
-jueves = [00:00-00:00]
-viernes = [00:00-00:00]
-sabado = [00:00-00:00]
-domingo = [00:00-00:00]
+lunes = [1:00-00:00]
+martes = [1:00-00:00]
+miercoles = [1:00-00:00]
+jueves = [1:00-00:00]
+viernes = [1:00-00:00]
+sabado = [1:00-00:00]
+domingo = [1:00-00:00]
