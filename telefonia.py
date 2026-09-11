@@ -494,21 +494,57 @@ def main() -> int:
     quedo = centralita.fin({"CallSid": sid})
     print(f"\n📞 Colgado. {('Apuntado: ' + quedo) if quedo else 'Nada que apuntar.'}")
 
-    if config:
+    _lo_del_webhook(config, args)
+    return 0
+
+
+def _lo_del_webhook(config: dict | None, args) -> None:
+    """Como probar el webhook de verdad, segun el proveedor que haya puesto.
+
+    Con Twilio se puede firmar aqui mismo: el Auth Token es un secreto
+    compartido, o sea que con el se firma igual que comprueba. Con Telnyx
+    **no se puede, y es a proposito**: firma con su clave privada y lo que
+    tenemos es la publica. Poder fabricar una firma buena desde aqui seria
+    justo el agujero que ese esquema evita. Asi que ahi se dice la verdad y
+    se prueba lo que si se puede probar sin proveedor.
+    """
+    if not config:
+        print("\nSin nada en .env con que comprobar la firma, el webhook no arranca:")
+        print("  GJALLARHORN_TELEFONO_TOKEN=…          (el Auth Token de Twilio)")
+        print("  GJALLARHORN_TELEFONO_CLAVE_PUBLICA=…  (la clave publica de Telnyx)")
+        return
+
+    puestos = proveedores(config)
+    if not puestos:
+        print("\nHay algo puesto en .env pero no sirve. «make revisar» dice que es.")
+        return
+
+    if "twilio" in puestos:
         campos = {"CallSid": "CAprueba", "From": args.numero}
         url = f"https://localhost:{args.puerto}/telefono/entrada"
         firma = base64.b64encode(hmac.new(
-            config["token"].encode(), (url + "".join(k + campos[k] for k in sorted(campos))).encode(),
+            config["token"].encode(),
+            (url + "".join(k + campos[k] for k in sorted(campos))).encode(),
             hashlib.sha1).digest()).decode()
         formulario = "&".join(f"{k}={v}" for k, v in campos.items())
         print("\nCon el servidor arrancado (make arrancar), esto prueba el webhook real, firma incluida:")
         print(f"  curl -s -X POST http://127.0.0.1:{args.puerto}/telefono/entrada "
               f"-H 'Host: localhost:{args.puerto}' -H 'X-Forwarded-Proto: https' "
-              f"-H 'X-Twilio-Signature: {firma}' -d '{formulario}'")
+              f"-H '{CABECERA_TWILIO}: {firma}' -d '{formulario}'")
         print("  → tiene que devolver un <Response> con <Gather>. Sin la cabecera de firma, 403.")
-    else:
-        print("\nSin GJALLARHORN_TELEFONO_TOKEN en .env: el webhook no arranca. Ponlo y repite.")
-    return 0
+
+    if "telnyx" in puestos:
+        print("\nCon Telnyx no se puede firmar una prueba desde aqui, y eso es bueno:")
+        print("  firma con su clave privada, que no sale de Telnyx; aqui solo esta la")
+        print("  publica. Si desde aqui se pudiera fabricar una firma buena, cualquiera")
+        print("  que leyera tu .env podria llamar a tu webhook haciendose pasar por ellos.")
+        print("\n  Lo que si se puede comprobar sin gastar una llamada:")
+        print(f"  curl -s -o /dev/null -w '%{{http_code}}\\n' -X POST "
+              f"http://127.0.0.1:{args.puerto}/telefono/entrada -d 'CallSid=CAprueba'")
+        print("  → tiene que decir 403. Eso es el servidor vivo y rechazando lo que no")
+        print("    viene firmado, que es la mitad que depende de ti. La otra mitad la")
+        print("    prueba la primera llamada de verdad; «make log» la enseña entrando.")
+    return
 
 
 if __name__ == "__main__":
