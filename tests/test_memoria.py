@@ -261,10 +261,26 @@ class TestLaLlamadaAlimentaLaFicha(unittest.TestCase):
     def decir(self, sid, frase):
         return self.centralita.turno({"CallSid": sid, "SpeechResult": frase}, self.TURNO)
 
-    def citarse(self, sid, cuando="el jueves a las cinco de la tarde"):
+    def cuando(self, cual=0):
+        """Un hueco de verdad, dicho como lo diría quien llama.
+
+        Con fechas escritas a mano —«el viernes a las cinco»— esta prueba
+        dependía de la hora a la que se corriera: pasadas las cinco de un
+        viernes, esa cita ya era pasado y la agenda la rechazaba. Se piden
+        los huecos que hay y se dicen tal cual.
+        """
+        import fechas
+        agenda = ag.Agenda("peluqueria", self.negocio.horario)
+        huecos = agenda.proximos_huecos(agenda.ahora().strftime("%Y-%m-%d"), 90,
+                                        dias=14, tope=4, por_dia=1)
+        hueco = huecos[cual]
+        return (f"{fechas.en_palabras(hueco.fecha, agenda.ahora().date())} "
+                f"a {fechas.hora_en_palabras(hueco.hora)}")
+
+    def citarse(self, sid, cuando=None):
         self.llamar(sid)
         self.decir(sid, "quiero cita para un tinte")
-        self.decir(sid, cuando)
+        self.decir(sid, cuando or self.cuando(0))
         self.decir(sid, "me llamo Marta")
         self.centralita.fin({"CallSid": sid})
 
@@ -278,7 +294,7 @@ class TestLaLlamadaAlimentaLaFicha(unittest.TestCase):
 
     def test_a_la_segunda_ya_hay_costumbre_y_se_le_ofrece(self):
         self.citarse("CA1")
-        self.citarse("CA2", "el viernes a las cinco de la tarde")
+        self.citarse("CA2", self.cuando(1))
         self.assertEqual(memoria.ficha(UN_NUMERO).habitual, "Tinte")
 
         self.llamar("CA3")
