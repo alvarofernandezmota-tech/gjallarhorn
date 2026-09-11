@@ -309,8 +309,8 @@ class TestTelefoniaProfesional(unittest.TestCase):
                       "a nombre de Lucía"):
             self.decir("CA2", frase)
         self.centralita.fin({"CallSid": "CA2"})
-        self.assertEqual(telefonia.cliente("+34600000007")["nombre"], "Marta")
-        self.assertEqual(telefonia.cliente("+34600000007")["llamadas"], 2)
+        self.assertEqual(telefonia.cliente("+34600000007").nombre, "Marta")
+        self.assertEqual(telefonia.cliente("+34600000007").llamadas, 2)
 
     def test_presentarse_si_corrige_el_nombre_recordado(self):
         self.llamar("CA1", "+34600000008")
@@ -319,14 +319,14 @@ class TestTelefoniaProfesional(unittest.TestCase):
         self.llamar("CA2", "+34600000008")
         self.decir("CA2", "soy Ana")
         self.centralita.fin({"CallSid": "CA2"})
-        self.assertEqual(telefonia.cliente("+34600000008")["nombre"], "Ana")
+        self.assertEqual(telefonia.cliente("+34600000008").nombre, "Ana")
 
     def test_recordar_sin_nombre_solo_cuenta_si_ya_se_conocia(self):
         telefonia.recordar_cliente("+34600000009", None)
         self.assertIsNone(telefonia.cliente("+34600000009"))
         telefonia.recordar_cliente("+34600000009", "Marta")
         telefonia.recordar_cliente("+34600000009", None)
-        self.assertEqual(telefonia.cliente("+34600000009")["llamadas"], 2)
+        self.assertEqual(telefonia.cliente("+34600000009").llamadas, 2)
 
 
 if __name__ == "__main__":

@@ -69,6 +69,7 @@ def negocio_y_datos(negocio: str) -> list[str]:
     import fechas
     import conocimiento
     import frases
+    import memoria
     import negocio as negocios
 
     lineas = []
@@ -92,6 +93,13 @@ def negocio_y_datos(negocio: str) -> list[str]:
         proximas = sorted(c["fecha"] for c in citas if c["fecha"] >= fechas.hoy())
         lineas.append(f"citas: {len(citas)} en total, {len(proximas)} por venir"
                       + (f" (la próxima el {proximas[0]})" if proximas else ""))
+
+    # Cuentas, nunca fichas: aqui no sale el telefono ni el nombre de nadie.
+    cuentas = memoria.cuentas()
+    lineas.append(f"clientes: {cuentas['fichas']} fichas · "
+                  f"{cuentas['con_nombre']} con nombre · "
+                  f"{cuentas['repiten']} repiten · "
+                  f"{cuentas['con_costumbre']} con servicio habitual")
 
     todos = avisos.listar()
     por_tipo = {}

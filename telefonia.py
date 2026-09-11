@@ -63,17 +63,15 @@ from html import escape
 from pathlib import Path
 from urllib.parse import parse_qs
 
-import almacen
 import avisar
 import avisos
-import fechas
+import memoria
 import recepcion
 import voz as voz_
 
 RAIZ = Path(__file__).resolve().parent
 VOZ_POR_DEFECTO = "Polly.Lucia"      # castellano de España, en el proveedor
 IDIOMA = "es-ES"
-ESQUEMA_CLIENTES = 1
 _LOCK = threading.Lock()
 
 
@@ -106,35 +104,26 @@ def firma_valida(token: str, url: str, campos: dict[str, str], firma: str | None
 
 # ---- los clientes que ya han llamado -----------------------------------
 
-def _ruta_clientes() -> Path:
-    valor = os.environ.get("GJALLARHORN_DATOS", "").strip()
-    base = Path(valor).expanduser() if valor else RAIZ / "datos"
-    return base / "clientes.json"
+def cliente(numero: str) -> "memoria.Ficha | None":
+    """Lo que se sabe de quien llama desde ese numero, o None si es la primera vez.
 
-
-def cliente(numero: str) -> dict | None:
-    """Lo que se sabe de quien llama desde ese numero, o None si es la primera vez."""
-    return almacen.cargar(_ruta_clientes(), ESQUEMA_CLIENTES, vacio={}).get(numero)
+    La ficha vive en `memoria.py`; aqui solo se sabe de que numero es. La
+    frontera es esa a proposito: el numero lo maneja la centralita y lo que
+    se puede guardar de alguien lo decide quien lleva la ficha.
+    """
+    return memoria.ficha(numero)
 
 
 def recordar_cliente(numero: str, nombre: str | None) -> None:
     """Apunta una llamada mas y, si lo dio, el nombre.
 
-    Sin nombre y sin haber llamado antes no hay nada que recordar. Con
-    nombre de antes y ninguno nuevo se conserva el de antes: que Marta pida
-    una cita «a nombre de Lucía» no convierte a Marta en Lucía.
+    Sin nombre y sin ficha previa no hay nada que recordar: un numero que no
+    ha dicho nada y del que no se sabe nada no es un cliente, es una llamada.
+    El nombre de antes NO se pisa con un vacio; de eso se encarga `memoria`.
     """
-    if not numero:
+    if not numero or (not nombre and memoria.ficha(numero) is None):
         return
-    with _LOCK:
-        todos = almacen.cargar(_ruta_clientes(), ESQUEMA_CLIENTES, vacio={})
-        antes = todos.get(numero)
-        if not nombre and not antes:
-            return
-        todos[numero] = {"nombre": nombre or antes["nombre"],
-                         "llamadas": (antes or {}).get("llamadas", 0) + 1,
-                         "ultima": fechas.hoy()}
-        almacen.guardar(_ruta_clientes(), todos, ESQUEMA_CLIENTES)
+    memoria.apuntar_llamada(numero, nombre)
 
 
 def saludo_a(nombre: str, saludo: str) -> str:
@@ -249,14 +238,17 @@ class Centralita:
             self._numeros[sid] = numero
             self._empezadas[sid] = self.ahora()
         saludo = self.negocio.saludo
-        if (conocido := cliente(numero)) is not None:
-            # Se le saluda por su nombre y la conversacion ya lo sabe: no se
-            # le vuelve a preguntar «¿a nombre de quien?».
-            self._llamadas[sid].nombre = conocido["nombre"]
-            self._conocidos.add(sid)
-            saludo = saludo_a(conocido["nombre"], saludo)
+        conocido = cliente(numero)
+        if conocido is not None:
+            # La conversacion se queda con la ficha entera: el nombre para no
+            # volver a preguntarlo, y lo que suele pedir y a que hora para
+            # ofrecerselo en vez de hacerle empezar de cero.
+            self._llamadas[sid].recordar(conocido)
+            if conocido.conocido:
+                self._conocidos.add(sid)
+                saludo = saludo_a(conocido.nombre, saludo)
         avisos.registrar("llamada", f"Llamada de {numero or 'número oculto'}"
-                         + (f" ({conocido['nombre']})" if conocido else ""))
+                         + (f" ({conocido.nombre})" if conocido and conocido.conocido else ""))
         return _twiml(_escuchar(saludo, self.voz, ruta_turno, self.pistas))
 
     def turno(self, campos: dict[str, str], ruta_turno: str, silencio: bool = False) -> str:
@@ -323,6 +315,13 @@ class Centralita:
         # De un numero ya visto solo se cambia el nombre si se ha presentado
         # («soy Marta»); un «a nombre de Lucia» es de la cita, no de quien llama.
         recordar_cliente(numero, llamada.presentado or (None if conocido else llamada.nombre))
+        if numero:
+            # Lo que ha pasado en la llamada, a la ficha: con qué se ha citado
+            # y a qué hora, que es lo que luego se le ofrece sin preguntar.
+            for reservada in llamada.reservadas:
+                memoria.apuntar_cita(numero, reservada.get("servicio"), reservada.get("hora"))
+            for _ in range(llamada.anulaciones):
+                memoria.apuntar_anulacion(numero)
         quedo = llamada.colgar()
         if quedo:
             avisar.en_segundo_plano()

@@ -133,7 +133,7 @@ class TestColgarYRecordar(CasoCentralita):
         xml = self.llamar("CA2", "+34600000007")
         self.assertIn("Hola, Marta", xml)
         self.assertEqual(self.centralita._llamadas["CA2"].nombre, "Marta")
-        self.assertEqual(telefonia.cliente("+34600000007")["llamadas"], 1)
+        self.assertEqual(telefonia.cliente("+34600000007").llamadas, 1)
 
     def test_sin_nombre_no_se_recuerda_nada(self):
         self.llamar("CA1", "+34600000008")

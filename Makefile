@@ -61,6 +61,13 @@ cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
 buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
 	$(PY) rag.py "$(FRASE)" --negocio $(NEGOCIO)
 
+clientes: $(PY)  ## las fichas de quien ha llamado (esto SI lleva nombres)
+	$(PY) memoria.py
+
+olvidar: $(PY)  ## borrar la ficha de un numero: make olvidar TELEFONO=+34600...
+	@test -n "$(TELEFONO)" || { echo "Falta el numero: make olvidar TELEFONO=+34600000000"; exit 1; }
+	$(PY) memoria.py --olvidar "$(TELEFONO)"
+
 funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@$(PY) -c "import telefonia, sys; sys.exit(0 if telefonia.configuracion() else 1)" || \
 	  { echo "❌ sin GJALLARHORN_TELEFONO_TOKEN en .env no hay webhook que publicar."; \
