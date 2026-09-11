@@ -89,6 +89,6 @@ no = ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
       "para nada", "en absoluto", "mejor no", "nada", "nada mas", "eso es todo",
       "ya esta"]
 
-colgar = ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
-          "eso es todo", "colgar", "chao", "venga", "vale gracias",
+colgar = ["adios", "hasta luego", "gracias", "nada", "nada mas", "ya esta",
+          "eso es todo", "era eso", "colgar", "chao", "venga", "vale gracias",
           "muchas gracias adios", "nos vemos"]

@@ -241,3 +241,68 @@ class TestDejaDeRepetirse(CasoAnular):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPreguntarPorLaCitaDeUno(CasoAnular):
+    """«¿Tengo yo cita mañana?» abría una cita nueva: quien llamaba a
+    confirmar colgaba con dos. Es de las llamadas más comunes que hay."""
+
+    def test_se_le_dice_cual_es(self):
+        self.reservar(nombre="Marta")
+        dicho = self.guion(self.llamada("Marta"), "¿tengo yo cita para mañana?")
+        self.assertIn("tiene cita de tinte", dicho)
+        self.assertIn("cinco de la tarde", dicho)
+        self.assertEqual(len(self.agenda.citas()), 1, "no puede abrir otra")
+
+    def test_si_no_se_sabe_quien_es_se_pregunta(self):
+        self.reservar(nombre="Marta")
+        llamada = self.llamada()
+        self.assertIn("¿A nombre de quién", llamada.atender("¿tengo cita?").texto)
+        self.assertIn("tiene cita", llamada.atender("Marta").texto)
+
+    def test_con_varias_se_dicen_todas(self):
+        self.reservar(nombre="Marta")
+        self.reservar(fecha=VIERNES_18, hora="11:00", nombre="Marta")
+        dicho = self.guion(self.llamada("Marta"), "¿cuándo tengo cita?")
+        self.assertIn(" o ", dicho)
+        self.assertIn("once de la mañana", dicho)
+
+    def test_sin_cita_a_ese_nombre_se_dice(self):
+        self.reservar(nombre="Marta")
+        dicho = self.guion(self.llamada("Pepe"), "¿tengo yo cita?")
+        self.assertIn("No encuentro ninguna cita", dicho)
+
+    def test_sin_agenda_se_toma_nota(self):
+        llamada = recepcion.Conversacion(self.negocio.conocimiento)
+        self.assertIn("Tomo nota", llamada.atender("¿tengo yo cita mañana?").texto)
+
+
+class TestMoverLaCita(CasoAnular):
+    def test_mover_mi_cita_anula_la_vieja_y_abre_la_nueva(self):
+        self.reservar(nombre="Marta")
+        llamada = self.llamada("Marta")
+        dicho = llamada.atender("quería mover mi cita").texto
+        self.assertIn("anulo", dicho.lower())
+        self.assertIn("¿Qué día", dicho)
+        self.assertEqual(self.agenda.citas(), [], "la vieja se ha quitado")
+
+    def test_y_la_nueva_conserva_el_servicio(self):
+        self.reservar(nombre="Marta")
+        llamada = self.llamada("Marta")
+        self.guion(llamada, "quiero moverla", "el viernes 18", "a las once", "sí")
+        citas = self.agenda.citas()
+        self.assertEqual(len(citas), 1)
+        self.assertEqual(citas[0]["servicio"], "Tinte")
+
+    def test_las_formas_de_decirlo(self):
+        # Una hora distinta por frase: si no, la segunda reserva choca con la
+        # primera y el fallo parece de la frase y es de la prueba.
+        formas = [("quería mover mi cita", "10:00"),
+                  ("¿me la puedes adelantar?", "11:30"),
+                  ("necesito cambiar de hora", "16:30"),
+                  ("quiero retrasarla", "18:00")]
+        for frase, hora in formas:
+            with self.subTest(frase=frase):
+                self.reservar(hora=hora, nombre="Marta")
+                dicho = self.guion(self.llamada("Marta"), frase)
+                self.assertIn("anulo", dicho.lower(), frase)

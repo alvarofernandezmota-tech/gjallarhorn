@@ -637,6 +637,40 @@ class Conversacion:
 
     # -- anular --------------------------------------------------------------
 
+    def _mis_citas(self, frase: str, nombre: str | None = None) -> Respuesta:
+        """«¿Tengo yo cita mañana?»: se le dice cuál es, no se le abre otra.
+
+        Es de las llamadas más comunes que hay —la gente no se acuerda de la
+        hora— y acababa abriendo una cita nueva, así que quien llamaba a
+        confirmar colgaba con dos.
+        """
+        if self.agenda is None:
+            self.esperando = None
+            return Respuesta(self.frases.decir("sin_agenda_anular"), "cita",
+                             aviso=f"Pregunta por su cita: «{frase}»", tipo_aviso="cita")
+        nombre = nombre or self.nombre
+        if not nombre:
+            self.esperando = "consultar_nombre"
+            return Respuesta(self.frases.decir("anular_nombre"), "cita")
+
+        suyas = self.agenda.citas_de(nombre)
+        self.esperando = None
+        if not suyas:
+            return Respuesta(
+                self.frases.decir("anular_no_hay", nombre=nombre), "cita",
+                aviso=f"Preguntó por su cita y no hay ninguna a nombre de {nombre}. "
+                      f"Frase: «{frase}»", tipo_aviso="fallo")
+        if len(suyas) == 1:
+            cita = suyas[0]
+            que = f" de {cita['servicio'].lower()}" if cita.get("servicio") else ""
+            return Respuesta(self.frases.decir(
+                "cita_suya", servicio=que, fecha=self._dicha(cita["fecha"]),
+                hora=fechas.hora_en_palabras(cita["hora"])), "cita")
+        listado = self._enumerar([
+            f"{self._dicha(c['fecha'])} a {fechas.hora_en_palabras(c['hora'])}"
+            for c in suyas])
+        return Respuesta(self.frases.decir("citas_suyas", citas=listado), "cita")
+
     def _anular(self, frase: str, nombre: str | None = None) -> Respuesta:
         """Quitar una cita. Sin agenda se toma nota; con agenda se quita.
 
@@ -1019,6 +1053,12 @@ class Conversacion:
             if (hecho := self._confirmar_franja(comparable)) is not None:
                 return hecho
 
+        # Se preguntó de quién era la cita que quiere consultar.
+        if self.esperando == "consultar_nombre":
+            if (nombre := _nombre_a_secas(limpia)) is not None:
+                self.nombre = nombre
+                return self._mis_citas(limpia, nombre)
+
         # Se está anulando: lo que llegue es el nombre o cuál de las citas.
         if self.esperando == "anular_nombre":
             if (nombre := _nombre_a_secas(limpia)) is not None:
@@ -1027,6 +1067,11 @@ class Conversacion:
         if self.esperando == "anular_cual" and self._candidatas:
             if (elegida := self._elegir_candidata(limpia)) is not None:
                 return self._quitar(elegida)
+
+        # Preguntar por la suya gana a pedir una: «¿tengo yo cita mañana?»
+        # lleva la palabra «cita» y acababa abriendo una nueva.
+        if self.frases.reconoce("consultar", comparable):
+            return self._mis_citas(limpia, nombre_dado)
 
         # **Anular gana a cita**, y no es un detalle de orden: «anular mi cita
         # del jueves» lleva las dos palabras. Al revés, quien llama para

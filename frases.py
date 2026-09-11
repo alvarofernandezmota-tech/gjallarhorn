@@ -58,6 +58,9 @@ DICE = {
     "anular_cual": "A ese nombre tengo {citas}. ¿Cuál le anulo?",
     "anular_no_hay": ("No encuentro ninguna cita a nombre de {nombre}. "
                       "Le tomo el recado y lo miramos."),
+    # Preguntar por la cita de uno: se dice cuál es, no se abre otra.
+    "cita_suya": "Sí, tiene cita{servicio} {fecha} a {hora}.",
+    "citas_suyas": "Tiene {citas}.",
     "anulada": "Hecho, le anulo la cita{servicio} {fecha} a {hora}.",
     "anulada_y_otra": ("Hecho, le anulo la cita{servicio} {fecha} a {hora}. "
                        "¿Qué día le viene bien la nueva?"),
@@ -114,6 +117,8 @@ HUECOS = {
     "ocupado": {"fecha", "alternativas"},
     "pasado": {"fecha", "alternativas"},   # {fecha} se admite; la de fábrica no la usa
     "anular_cual": {"citas"},
+    "cita_suya": {"servicio", "fecha", "hora"},
+    "citas_suyas": {"citas"},
     "ofrece_huecos": {"fecha", "alternativas"},
     "sin_huecos_dia": {"fecha", "alternativas"},
     "primeros_huecos": {"alternativas"},
@@ -177,7 +182,7 @@ ENTIENDE = {
            "perfecto", "por la tarde", "de la tarde"],
     "no": ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
            "nada", "nada mas", "eso es todo", "ya esta"],
-    "colgar": ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
+    "colgar": ["adios", "hasta luego", "gracias", "nada", "nada mas", "ya esta",
                "eso es todo", "era eso", "eso era", "ya esta todo", "nada mas era eso",
                "colgar", "chao"],
     # «¿Cómo?»: se repite lo último que se dijo, sin cambiar nada.
@@ -200,8 +205,17 @@ ENTIENDE = {
                "quitar mi cita", "no voy a poder ir", "no puedo ir",
                "no podre ir", "me es imposible ir", "dar de baja"],
     "cambiar": ["cambiar la cita", "cambiar mi cita", "cambiar la hora",
-                "mover la cita", "cambiarla", "pasarla a otro dia",
-                "para otro dia"],
+                "cambiar de hora", "cambiar de dia", "mover la cita",
+                "mover mi cita", "moverla", "moverme la cita", "cambiarla",
+                "adelantar la cita", "retrasar la cita", "adelantarla",
+                "retrasarla", "adelantar", "retrasar", "moverme la cita",
+                "cambiarme la cita", "pasarla a otro dia", "para otro dia"],
+    # «¿Tengo yo cita mañana?» no es pedir hora: es preguntar por la suya.
+    # Va antes que «cita» al decidir, que si no abre una nueva.
+    "consultar": ["tengo cita", "tengo yo cita", "tengo hora", "cuando tengo",
+                  "que dia tengo", "a que hora tengo", "a que hora tenia",
+                  "cuando tenia", "que cita tengo", "mi cita cuando",
+                  "confirmar mi cita", "comprobar mi cita", "sigo teniendo cita"],
 }
 
 # «si» y «no» solo valen al principio de la frase: en mitad de una conversacion
