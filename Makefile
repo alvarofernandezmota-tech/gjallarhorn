@@ -96,7 +96,11 @@ arrancar: $(PY) $(UNIDAD)  ## servicio systemd: siempre encendido, se reinicia s
 parar:  ## parar el servicio
 	systemctl --user disable --now $(SERVICIO) 2>/dev/null || true
 
-reiniciar:  ## tras un git pull o editar el negocio
+# Depende de la unidad a proposito: un `git pull` puede traer una plantilla
+# nueva —puertos, argumentos— y reiniciar sin regenerarla deja el servicio
+# arrancando con los argumentos viejos, sin decirlo. Make ya sabe si hay que
+# rehacerla: si no ha cambiado, esto no hace nada.
+reiniciar: $(UNIDAD)  ## tras un git pull o editar el negocio
 	systemctl --user restart $(SERVICIO)
 
 log:  ## el log del servicio, en vivo
@@ -104,6 +108,8 @@ log:  ## el log del servicio, en vivo
 
 estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 	@systemctl --user is-active $(SERVICIO) >/dev/null 2>&1 && echo "servicio: activo" || echo "servicio: parado"
+	@test -f $(UNIDAD) -a gjallarhorn.service.in -nt $(UNIDAD) && \
+	  echo "⚠️  la unidad de systemd se quedo atras: make reiniciar" || true
 	@$(PY) diagnostico.py --corto
 
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
