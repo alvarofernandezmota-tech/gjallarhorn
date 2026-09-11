@@ -259,6 +259,19 @@ class Frases:
                                   f"Estaba escrita así: {plantilla!r}")
 
 
+def _quejarse_del_fichero(fichero: Path, error) -> None:
+    import avisos
+
+    aviso = (f"{fichero} no es un TOML válido ({error}). Se está hablando con "
+             "las frases de fábrica: lo que hayas escrito ahí NO se está "
+             "diciendo. Míralo con «make frases».")
+    print(f"⚠️  {aviso}", flush=True)
+    try:
+        avisos.registrar("fallo", aviso)
+    except Exception:  # noqa: BLE001 — si ni el registro va, que siga la llamada
+        pass
+
+
 def revisar(dice: dict) -> list[str]:
     """Los problemas de unas frases propias. Lista vacía si están bien.
 
@@ -318,7 +331,18 @@ def cargar(base: Path | None = None) -> Frases:
     fichero = Path(base) / "frases.toml" if base else None
     propias: dict = {}
     if fichero and fichero.exists():
-        propias = tomllib.loads(fichero.read_text(encoding="utf-8"))
+        try:
+            propias = tomllib.loads(fichero.read_text(encoding="utf-8"))
+        except tomllib.TOMLDecodeError as error:
+            # Esto es lo que promete la cabecera de este fichero: **una
+            # plantilla mal escrita no puede tumbar una llamada**. Y la
+            # tumbaba: un `frases.toml` con una clave sin comillas levantaba
+            # aquí, dentro de `Conversacion.__init__`, así que el bot
+            # arrancaba y se caía en cuanto descolgaba alguien. Con el
+            # fichero roto se habla con las frases de fábrica y se deja el
+            # aviso; hablar raro es mucho mejor que no hablar.
+            _quejarse_del_fichero(fichero, error)
+            propias = {}
         dice.update(propias.get("dice", {}))
         for intencion, trozos in propias.get("entiende", {}).items():
             # Se sustituye, no se suma: quien escribe su lista quiere la suya.

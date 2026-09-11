@@ -179,3 +179,47 @@ class TestComoTrataElBot(unittest.TestCase):
         trato, descolgadas = frases.mezcla_de_tratos(frases.DICE)
         self.assertEqual(trato, "usted")
         self.assertEqual(descolgadas, [], "las de fábrica no pueden ir cada una por su lado")
+
+
+class TestUnFicheroRotoNoTumbaLaLlamada(unittest.TestCase):
+    """La promesa de la cabecera de frases.py, que no se estaba cumpliendo.
+
+    Un `frases.toml` con una clave sin comillas levantaba dentro de
+    `Conversacion.__init__`: el bot arrancaba, y se caía en cuanto descolgaba
+    alguien. Se descubrió mirando el negocio de ejemplo publicado, que tenía
+    justo eso.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.base = Path(self.tmp.name)
+        (self.base / "tarifas.md").write_text(
+            "| Servicio | Precio |\n|---|---|\n| Corte | 10 € |\n", encoding="utf-8")
+        # Una clave con un espacio y sin comillas: TOML inválido.
+        (self.base / "frases.toml").write_text(
+            '[sinonimos]\nfrances natural = ["frances"]\n', encoding="utf-8")
+        frases.olvidar()
+        self.addCleanup(frases.olvidar)
+
+    def test_se_carga_con_las_de_fabrica_en_vez_de_levantar(self):
+        cargadas = frases.cargar(self.base)
+        self.assertEqual(cargadas.dice["recado"], frases.DICE["recado"])
+        self.assertEqual(cargadas.sinonimos, {})
+
+    def test_la_llamada_sigue_atendiendose(self):
+        import recepcion
+        llamada = recepcion.Conversacion(self.base)
+        self.assertIn("10 €", llamada.atender("¿cuánto vale un corte?").texto)
+
+    def test_queda_aviso_de_que_sus_frases_no_se_estan_diciendo(self):
+        import avisos
+        entorno.aislar(self)
+        frases.olvidar()
+        frases.cargar(self.base)
+        ultimo = avisos.listar()[0]
+        self.assertEqual(ultimo["tipo"], "fallo")
+        self.assertIn("no es un TOML válido", ultimo["texto"])
+
+    def test_y_problemas_lo_dice_al_arrancar(self):
+        self.assertTrue(any("TOML" in p for p in frases.problemas(self.base)))
