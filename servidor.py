@@ -43,6 +43,7 @@ verdad, no. Se cambia cuando exista la telefonía, que es cuando importará.
 
 import argparse
 import base64
+import errno
 import json
 import sys
 import tempfile
@@ -182,6 +183,20 @@ def main() -> int:
     if not args.sin_voz:
         Recepcion.transcriptor, Recepcion.locutor = voz.Whisper(), voz.Piper()
 
+    try:
+        servidor = HTTPServer(("0.0.0.0", args.puerto), Recepcion)
+    except OSError as error:
+        if error.errno != errno.EADDRINUSE:
+            raise
+        # Casi siempre es un servidor.py anterior que se quedo vivo. El
+        # traceback de socketserver no lo dice, y es lo unico que hace falta.
+        print(f"❌ El puerto {args.puerto} ya esta ocupado.")
+        print("   Casi siempre es otro servidor.py que se quedo corriendo.")
+        print(f"   Quien lo tiene:  ss -ltnp | grep :{args.puerto}")
+        print("   Matarlo:         pkill -f servidor.py")
+        print(f"   U otro puerto:   python3 servidor.py --puerto {args.puerto + 1}")
+        return 1
+
     modo = "TEXTO (sin modelos)" if args.sin_voz else "VOZ"
     print(f"{Recepcion.negocio.nombre} · modo {modo}")
     print(f"→ http://localhost:{args.puerto}")
@@ -190,7 +205,6 @@ def main() -> int:
               f"{args.puerto}")
     print("   Ctrl+C para parar.\n")
 
-    servidor = HTTPServer(("0.0.0.0", args.puerto), Recepcion)
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:

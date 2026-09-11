@@ -129,3 +129,56 @@ class TestNoSeRompeCaro(CasoServidor):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestElPuertoOcupado(unittest.TestCase):
+    """Arrancar dos veces es el error más común, y daba un traceback.
+
+    `HTTPServer` levanta un `OSError` de `socketserver` que habla de bind y de
+    direcciones. Lo único que hace falta saber es que ya hay uno corriendo y
+    cómo matarlo, así que eso es lo que se dice.
+    """
+
+    def arrancar_en(self, puerto):
+        import contextlib
+        import io
+
+        argv = sys.argv
+        sys.argv = ["servidor.py", "--sin-voz", "--puerto", str(puerto)]
+        salida = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(salida):
+                codigo = servidor.main()
+        finally:
+            sys.argv = argv
+        return codigo, salida.getvalue()
+
+    def test_lo_dice_en_vez_de_reventar(self):
+        import socket
+
+        ocupado = socket.socket()
+        self.addCleanup(ocupado.close)
+        ocupado.bind(("0.0.0.0", 0))
+        ocupado.listen(1)
+        puerto = ocupado.getsockname()[1]
+
+        codigo, dicho = self.arrancar_en(puerto)
+
+        self.assertEqual(codigo, 1)
+        self.assertIn(str(puerto), dicho)
+        self.assertIn("ocupado", dicho)
+        self.assertIn("pkill", dicho)      # cómo salir del paso
+        self.assertIn("--puerto", dicho)   # o cómo esquivarlo
+
+    def test_no_anuncia_una_url_que_no_esta_sirviendo(self):
+        # Antes el banner se imprimía antes de coger el puerto: salía
+        # «→ http://localhost:8080» y justo debajo el traceback.
+        import socket
+
+        ocupado = socket.socket()
+        self.addCleanup(ocupado.close)
+        ocupado.bind(("0.0.0.0", 0))
+        ocupado.listen(1)
+
+        _, dicho = self.arrancar_en(ocupado.getsockname()[1])
+        self.assertNotIn("http://localhost", dicho)
