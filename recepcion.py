@@ -392,6 +392,7 @@ class Conversacion:
         self._opciones: list[dict] = []       # servicios ofrecidos en «¿cuál le interesa?»
         self._cambiando = False               # anular para poner otra, no solo anular
         self._sin_entender = 0                # seguidas; a la tercera se toma el recado
+        self._consultas = 0                   # al LLM; hay tope por llamada
         self.turnos: list[tuple[str, str]] = []
 
     def recordar(self, ficha) -> None:
@@ -1058,12 +1059,22 @@ class Conversacion:
             return Respuesta(self.frases.decir("humano"), "recado",
                              aviso=f"Pide hablar con una persona: «{limpia}»")
 
-        # Nada que reconocer por reglas. Antes de rendirse, el LLM, si lo hay:
-        # devuelve intencion y datos con forma fija, y se atiende como si las
-        # reglas lo hubieran entendido. Ni el precio ni la frase los pone el.
-        if (entendido := cerebro.entender(limpia, self.base, preguntar=self.preguntar)):
-            if (respuesta := self._segun_el_modelo(entendido, limpia)) is not None:
-                return respuesta
+        # Nada que reconocer por reglas ni en lo que hay escrito. Antes de
+        # rendirse, el LLM, si lo hay: devuelve intención y datos con forma
+        # fija, y se atiende como si las reglas lo hubieran entendido. Ni el
+        # precio ni la frase los pone él.
+        #
+        # Con lo que se lleva dicho y con lo que se le acaba de preguntar:
+        # «el jueves» no significa nada suelto, y «Marta» tampoco.
+        if self._consultas < cerebro.TOPE_CONSULTAS:
+            self._consultas += 1
+            entendido = cerebro.entender(limpia, self.base, preguntar=self.preguntar,
+                                         turnos=self.turnos, esperando=self.esperando)
+            # Con poca confianza no se hace nada: el modelo mismo dice que está
+            # adivinando, y una cita adivinada es peor que un recado.
+            if entendido is not None and entendido.fiable:
+                if (respuesta := self._segun_el_modelo(entendido, limpia)) is not None:
+                    return respuesta
 
         # Si hay una cita a medias, se insiste con lo que falta en vez de
         # soltar un «tomo nota» que la abandona.
@@ -1127,6 +1138,9 @@ class Conversacion:
             self.nombre = entendido.nombre.title()
             if self.cita and not self.cita.cerrada:
                 self.cita.nombre = self.nombre
+        if entendido.intencion in ("anular", "cambiar"):
+            self._cambiando = entendido.intencion == "cambiar"
+            return self._anular(limpia, self.nombre)
 
         if entendido.intencion == "precio":
             if self.servicio and entendido.servicio:
@@ -1139,6 +1153,9 @@ class Conversacion:
                 self._abrir_cita()
             if entendido.cuando:
                 self._rellenar_con(entendido.cuando)
+            # La franja después de rellenar: antes la cita todavía no existía.
+            if entendido.franja and not self.cita.acotada:
+                self.cita.franja = entendido.franja
             return self._seguir_cita()
         if entendido.intencion == "horario":
             return _responder_horario(limpia, self.base)

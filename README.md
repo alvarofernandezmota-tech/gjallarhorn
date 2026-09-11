@@ -306,25 +306,64 @@ Sin token no hay webhook: antes que abierto, apagado.
 
 ## Un LLM, opcional, y solo donde las reglas no llegan
 
-Las reglas cubren precio, cita, horario y despedida; lo demás es «tomo nota».
-Con `ANTHROPIC_API_KEY` en `.env`, cuando las reglas **no** entienden una
-frase se le pregunta a Claude qué quería decir, y contesta con **datos de
-forma fija** —intención, servicio de la tabla, cuándo, nombre— que se
-atienden por el mismo camino que una frase entendida por reglas.
+Las reglas y el buscador cubren lo que se pide por teléfono. Para lo que no
+—«oye, que me han dicho que hacéis lo del alisado ese»— entra Claude, y
+**solo para devolver datos**:
 
 ```
-— Oye, ¿hacéis lo del color ese?     → Tinte: 45 €, unos 90 min.   ← el precio, de la tabla
-— ¿Hacéis alisado?                    → No tengo ese servicio…       ← no está: no se inventa
+intencion   precio | cita | anular | cambiar | horario | despedida | otro
+servicio    uno de los de tarifas.md, o ninguno
+cuando      «el jueves a las cinco», tal cual lo dijo
+franja      manana | tarde | noche
+nombre      si lo dio
+confianza   alta | media | baja
 ```
 
-El modelo **no redacta lo que se le dice al cliente y no pone ningún
-número**: su salida es un JSON de cuatro campos, y un servicio que no esté en
-la tabla se descarta diga lo que diga. Si falla o tarda más de cuatro
-segundos, las reglas siguen solas: una llamada nunca se cae por esto.
+Con eso, `recepcion.py` hace lo mismo que con una frase que las reglas sí
+entienden: el precio sale de la tabla, la fecha la resuelve `fechas.py`, la
+agenda dice si cabe. **El modelo no redacta lo que se dice ni pone ningún
+número**, y por eso su salida es un JSON de seis campos y no una frase. No
+hay ningún `contestar()`, y no es un olvido: el día que redacte, redactará
+precios.
 
-Encenderlo tiene un precio que hay que decir: **el texto de lo que dijo el
-cliente sale de casa** hacia la API. El audio no. Por eso viene apagado.
-`make cerebro FRASE="…"` enseña qué entiende y cuánto tarda.
+Ve tres cosas: la frase, **los últimos turnos de la llamada** (sin ellos «¿y
+el jueves?» no es nada) y **lo que el negocio tiene escrito sobre eso**, que
+le pasa `rag.py`.
+
+Y tiene tres frenos:
+
+| | |
+|---|---|
+| tiempo | 4 s y sin reintentos: una pausa larga al teléfono es una llamada colgada |
+| gasto | `TOPE_CONSULTAS` por llamada; pasado eso, reglas solas |
+| confianza | si el modelo dice que está adivinando, se descarta |
+
+### Dos motores, y no dan lo mismo
+
+```bash
+# .env, una de las dos:
+GJALLARHORN_LLM=anthropic   # + ANTHROPIC_API_KEY=sk-ant-…   Claude, en la nube
+GJALLARHORN_LLM=ollama      # un modelo en esta misma máquina
+
+make cerebro FRASE="¿hacéis lo del alisado ese?"
+```
+
+| | Claude | Ollama |
+|---|---|---|
+| dónde corre | en la nube | en la máquina que atiende el teléfono |
+| qué sale de casa | **el texto** de lo que dijo el cliente (el audio no) | nada |
+| acierta | más | menos |
+| tarda | menos | más, y al teléfono se nota |
+| cuesta | por llamada | la luz |
+
+Con Ollama se le manda el mismo esquema JSON (`format`), así que la garantía
+es la misma: seis campos y el servicio solo de la tabla. Se habla con él por
+HTTP con `urllib`, sin cliente ni dependencia nueva, y si no está levantado la
+llamada sigue con las reglas solas.
+
+**Apagado por defecto**, y no por comodidad: cuál de los dos —o ninguno— es
+una decisión del negocio. Sin nada configurado, las reglas van solas y no se
+cae nada.
 
 ## Los avisos llegan al móvil
 
