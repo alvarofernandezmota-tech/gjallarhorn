@@ -38,12 +38,18 @@ def _midgaror() -> None:
 
 
 def _datos_de_mentira() -> None:
-    """Una raíz de datos desechable, para que ningún olvido llegue al diario."""
-    if os.environ.get("MIDGAROR_DATOS"):
-        return
-    tmp = tempfile.mkdtemp(prefix="gjallarhorn-pruebas-")
-    os.environ["MIDGAROR_DATOS"] = tmp
-    atexit.register(shutil.rmtree, tmp, ignore_errors=True)
+    """Raíces de datos desechables, para que ningún olvido llegue a lo real.
+
+    Las dos: `MIDGAROR_DATOS` para el diario y `GJALLARHORN_DATOS` para los
+    avisos. La segunda no ha hecho daño todavía y por eso se pone ahora: el
+    fallo del diario enseñó que esto no se añade después.
+    """
+    for variable in ("MIDGAROR_DATOS", "GJALLARHORN_DATOS"):
+        if os.environ.get(variable):
+            continue
+        tmp = tempfile.mkdtemp(prefix="gjallarhorn-pruebas-")
+        os.environ[variable] = tmp
+        atexit.register(shutil.rmtree, tmp, ignore_errors=True)
 
 
 _midgaror()
