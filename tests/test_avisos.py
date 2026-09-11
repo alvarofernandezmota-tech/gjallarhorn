@@ -1,7 +1,7 @@
 """Pruebas de avisos.py — el rastro de lo que pasa en las llamadas.
 
-Todo sobre temporales. Y una prueba dedicada a que los avisos **no** acaben en
-los datos de midgaror: son de un negocio, no del diario personal de Álvaro.
+Todo sobre temporales, y una prueba dedicada a que los avisos caigan en la
+raíz de datos de gjallarhorn y en ningún otro sitio.
 """
 
 import sys
@@ -14,10 +14,9 @@ from zoneinfo import ZoneInfo
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-import entorno  # noqa: E402,F401 — fija MIDGAROR_DATOS antes de cualquier import
+import entorno  # noqa: E402,F401 — desvía los datos antes de cualquier import
 
 import avisos  # noqa: E402
-import midgaror  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 AYER = datetime(2026, 9, 10, 17, 30, tzinfo=MADRID)
@@ -40,13 +39,16 @@ class CasoAvisos(unittest.TestCase):
                          datos={"cliente": "Marta"}, ruta=self.ruta, ahora=HOY_TARDE)
 
 
-class TestNoSeMezclaConElDiario(unittest.TestCase):
-    def test_los_avisos_no_van_a_los_datos_de_midgaror(self):
-        # Una reserva de un cliente en el agenda.json personal seria un error
-        # de diseño, no un detalle.
-        self.assertFalse(
-            str(avisos.raiz()).startswith(str(midgaror.MIDGAROR / "diario")),
-            f"los avisos caerían dentro del diario: {avisos.raiz()}")
+class TestDondeCaen(unittest.TestCase):
+    def test_los_avisos_van_a_la_raiz_de_gjallarhorn_y_a_ningun_otro_sitio(self):
+        # Estos son datos de un negocio. Antes había aquí una prueba de que no
+        # cayeran en el diario personal de midgaror; ya no hace falta, porque
+        # gjallarhorn no sabe que midgaror existe.
+        import os
+        self.assertTrue(str(avisos.raiz()).startswith(os.environ["GJALLARHORN_DATOS"]))
+
+    def test_la_variable_manda_sobre_la_carpeta_del_repo(self):
+        self.assertNotEqual(avisos.raiz(), Path(avisos.__file__).parent / "datos")
 
 
 class TestRegistrar(CasoAvisos):

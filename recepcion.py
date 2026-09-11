@@ -36,27 +36,15 @@ from pathlib import Path
 
 import avisos
 import conocimiento
+import fechas
 import negocio as negocios
 import voz
-from midgaror import modulo
-
-fechas = modulo("fechas")
 
 SALUDO = ("Hola, le atiende un asistente automático. "
           "Puedo darle precios y tomarle una cita. ¿En qué puedo ayudarle?")
 
 SIN_CONOCIMIENTO = ("Ahora mismo no tengo las tarifas cargadas. "
                     "Le tomo el recado y le devolvemos la llamada.")
-
-# Una hora suelta del 1 al 11, sin decir si es mañana o tarde. «El jueves a las
-# cinco» en una peluquería son las cinco de la TARDE, pero interpretarlo por mi
-# cuenta es confirmar una cita que nadie ha pedido. Se pregunta.
-HORA_AMBIGUA = re.compile(r"^(?:0?[1-9]|1[01]):")
-# Marcas que quitan la duda.
-DESAMBIGUA = re.compile(r"\b(ma[nñ]ana|tarde|noche|mediodia|am|pm|h)\b")
-# Si no hay ningún número ni hora escrita, lo que dijo fue una franja
-# («por la mañana»), no una hora. Dar una hora exacta ahí es inventarla.
-NUMERO = re.compile(r"\d|\b(una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b")
 
 
 @dataclass(frozen=True)
@@ -122,7 +110,6 @@ def _responder_cita(frase: str, base: Path | None = None) -> Respuesta:
     cliente se presenta y no hay sitio.
     """
     encontrado = fechas.interpretar(frase)
-    comparable = _sin_tildes(frase)
     servicio = conocimiento.mencionado(frase, base)
     que = f" de {servicio['servicio'].lower()}" if servicio else ""
 
@@ -131,20 +118,20 @@ def _responder_cita(frase: str, base: Path | None = None) -> Respuesta:
                          "cita", aviso=f"Pide cita{que}, sin día. Frase: «{frase}»",
                          tipo_aviso="cita")
 
-    fecha, hora, _ = encontrado
+    fecha, hora, acotada, _ = encontrado
 
-    # Una hora que el cliente no ha dicho no se repite como si la hubiera
-    # dicho: «el sábado por la mañana» no son las 09:00, es por la mañana.
-    if hora and not NUMERO.search(comparable):
+    # Sin hora: el parser no se inventa ninguna, así que no hay nada que
+    # deshacer. «El sábado por la mañana» llega aquí sin hora.
+    if not hora:
         return Respuesta(
             f"Tomo nota de la cita{que} para el {fecha}. ¿A qué hora le viene bien?",
             "cita", aviso=f"Pide cita{que} el {fecha}, sin hora concreta. "
                           f"Frase: «{frase}»", tipo_aviso="cita")
 
-    # «A las cinco» en un negocio son las cinco de la tarde, pero eso lo
-    # confirma el cliente, no yo. Confirmar una cita a las 05:00 es mandarle a
-    # la puerta de madrugada.
-    if hora and HORA_AMBIGUA.match(hora) and not DESAMBIGUA.search(comparable):
+    # Hora sin acotar: «a las cinco» en un negocio son las cinco de la tarde,
+    # pero eso lo confirma el cliente, no yo. Confirmar una cita a las 05:00
+    # es mandarle a la puerta de madrugada.
+    if not acotada and int(hora[:2]) < 12:
         return Respuesta(
             f"Tomo nota de la cita{que} para el {fecha}. "
             f"¿Las {int(hora[:2])} de la tarde?",

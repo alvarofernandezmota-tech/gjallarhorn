@@ -36,17 +36,22 @@ decide qué acción toca y la ejecuta contra el diario de midgaror. 43 pruebas,
 cómo entra un webhook sin contradecir el ADR-015 («en el router no se abre
 nada»).
 
-## Reglas que vienen de midgaror y valen aquí
+## Independiente: no importa ningún otro repo
 
-- **Un solo camino de escritura al diario**: `bifrost_bridge.escribir_entrada`
-  (ADR-009). No se abre otro, ni «solo para probar».
+`fechas.py` y `almacen.py` son propios. Hubo unas horas en las que esto tiraba
+de midgaror y **se cortó a propósito**: un recepcionista de peluquería no tiene
+por qué arrastrar el repo del diario personal de nadie para arrancar.
+
+Si alguna vez hace falta algo de otro repo, **cópialo aquí**. Son treinta
+líneas frente a una dependencia entre proyectos.
+
+## Reglas de la casa
+
+- **Un precio sale de la tabla o no sale.** Nunca aproximado.
 - **El audio no sale de casa.** Transcripción local. El audio original no se
   guarda salvo decisión explícita, y el `.gitignore` ya lo excluye.
 - **Procedimiento ↔ script con el mismo nombre base** (ADR-004):
   `docs/procedimientos/transcribir.md` ↔ `scripts/transcribir.py`.
-- **Frontmatter** `tipo/fecha/repo` en todo `.md` de `docs/`, con
-  `repo: gjallarhorn`. El estándar está en midgaror,
-  `docs/estandares/frontmatter.md`.
 - **Commits**: `tipo: descripción breve en presente` (feat, fix, docs, chore,
   refactor, test). Un commit por cambio lógico.
 - **Trabajo no trivial**: rama corta y PR en borrador.

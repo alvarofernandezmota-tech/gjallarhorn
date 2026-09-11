@@ -1,150 +1,42 @@
 # gjallarhorn
 
-Entrada por voz al diario de **midgaror**. El cuerno que se hace sonar.
+Un recepcionista telefónico: atiende la llamada, informa de tarifas y toma la
+cita. **Proyecto independiente, sin dependencias de ningún otro repo.**
 
-> **Estado: el agente funciona de punta a punta.** Le hablas (o le escribes) y
-> hace algo. Falta el modelo de Whisper instalado en la máquina donde corra, y
-> el cerebro sigue siendo de reglas, no un LLM.
-> Las decisiones que lo justifican son el **ADR-017** (proyecto aparte) y el
-> **ADR-018** (agente, no dictáfono) de midgaror, los dos del 2026-09-11.
+> **Estado: funciona de punta a punta por texto y por voz.** Falta la telefonía
+> —que una llamada de verdad entre— y eso es lo único que puede tumbarlo.
 
-## Qué es
+## Qué hace
 
-Un proyecto aparte —no una parte de bifrost— para **hablarle al diario** en vez
-de teclearlo.
+```
+audio → voz.escuchar → recepcion.atender → voz.hablar → audio
+                              ↓
+                        avisos.registrar
+```
 
-Y no es un dictáfono: es un **agente**. Un dictáfono copia lo que oye; un
-agente entiende qué le estás pidiendo y hace algo distinto según lo que sea.
-«Apunta que hoy he ido al gimnasio», «recuérdame llamar al dentista el jueves»
-y «¿qué tengo mañana?» son tres acciones sobre tres modelos distintos, y las
-tres suenan igual por el micrófono.
+Cuatro intenciones: **precio**, **cita**, **horario** y **recado**. Y una regla
+por encima de todas:
 
-Lo que no inventa es el último tramo: escribe por el mismo contrato que usa el
-bot de Telegram, `escribir_entrada` (ADR-009 de midgaror), para que siga
-habiendo **un solo camino de escritura** al diario.
+> **Un precio sale de la tabla o no sale.** Nunca aproximado, nunca una
+> horquilla. Si el servicio no está, dice que no lo sabe y toma el recado.
+> Cantar un precio equivocado por teléfono cuesta dinero y credibilidad.
 
-## Las tres capas
+Eso no depende del modelo que se use: la consulta la resuelve una tabla, no un
+generativo. Un LLM podrá redactar mejor la frase, **el número no lo pone él**.
 
-| Capa | Qué es | Estado |
-|---|---|---|
-| **1. Acciones** | Qué sabe hacer sobre el diario | ✅ hecha |
-| **2. Cerebro** | Qué acción toca, a partir de lo que dijiste | ✅ de reglas; el LLM entra por la misma puerta |
-| **3. Oreja** | Audio → texto, con Whisper en local | ✅ escrita; falta instalar el modelo |
-| **3b. Teléfono** | Llamar y hablar | ❌ bloqueado (ADR-015) |
+## Independiente
 
-Que se puedan separar es lo que hace esto viable: las acciones son las mismas
-tanto si la voz llega por teléfono, por una nota de Telegram o por un fichero.
+Nada de esto importa otro repo. Lo que necesita, lo tiene:
 
-### La capa 1, hoy
-
-`acciones.py` — siete cosas que el agente sabe hacer, cada una envolviendo una
-función de midgaror **que ya existe y ya está probada**:
-
-| Acción | Envuelve |
+| | |
 |---|---|
-| `apuntar_en_diario` | `bifrost_bridge.escribir_entrada` |
-| `crear_tarea` | `tareas.agregar` |
-| `crear_cita` | `agenda.agregar` |
-| `marcar_habito` | `habitos.marcar` |
-| `apuntar_registro` | `registro.apuntar` |
-| `leer_diario` | `bifrost_bridge.leer_entrada` |
-| `que_hay_hoy` | los tres resúmenes juntos |
+| `fechas.py` | cuándo quiere la cita, **siempre hacia delante** |
+| `almacen.py` | JSON con versión de esquema y escritura atómica |
+| `voz.py` | Whisper y Piper, las dos **en local** |
 
-```python
-from acciones import catalogo, ejecutar
-
-catalogo()                       # las herramientas en el formato que usan los LLM
-ejecutar("crear_tarea", texto="llamar al dentista el jueves")
-# → 'Tarea 1 creada para el 2026-09-17: llamar al dentista.'
-```
-
-`ejecutar` devuelve **una frase**, no un objeto: es lo que el agente dirá en
-voz alta. Y solo pasa los argumentos declarados en el esquema, así que un
-modelo que se invente un parámetro se queda sin él —incluido `ruta`, que es el
-que decidiría dónde se escribe—.
-
-## Por qué no vive dentro de bifrost
-
-bifrost es el bot de Telegram y está en producción escribiendo el diario.
-Tres motivos, en orden de peso:
-
-1. **Un fallo en la voz no puede dejar mudo al bot que ya funciona.** Colgarle
-   transcripción —y más adelante un servidor HTTP— amplía su superficie justo
-   donde menos conviene.
-2. **Son dos entradas distintas al mismo sitio**, no una capa de la otra.
-   Compartir destino no las hace el mismo programa.
-3. **El ciclo de vida no coincide.** bifrost se toca poco y con miedo, porque
-   escribe. La voz va a ser prueba y error durante semanas.
-
-## Cómo se elige el cerebro: midiendo
-
-`banco.py` son 54 frases con lo que debería pasar con cada una. `medir.py` pasa
-cualquier cerebro por ahí y da **acierto y latencia**:
-
-```bash
-MIDGAROR_RAIZ=/ruta/a/midgaror python3 medir.py
-```
-
-Hoy, el cerebro de reglas:
-
-```
-Acierto   44/54 (81%)
-Latencia  0.0 ms mediana, 0.1 ms el peor
-```
-
-**Ese 81 % es el listón.** Un LLM tiene que superarlo para merecer la pena — y
-no solo en acierto: un agente de voz que tarda cuatro segundos en contestar no
-se usa, por bien que acierte.
-
-Las diez que falla son todas de la misma forma: órdenes que no empiezan por la
-palabra clave («mañana a las nueve tengo dentista», «he ido al gimnasio», «dime
-qué tengo hoy»). **Ninguna se pierde**: caen al diario, que es la red de
-seguridad. Pero no hacen lo que tocaba, y eso es exactamente lo que compraría
-un LLM.
-
-> El banco empezó dando **100 %**, y eso no era una nota sino un aviso: lo
-> habían escrito el mismo autor que las reglas. Las doce frases adversarias se
-> escribieron después, mirando las reglas y buscando dónde rompen. Una prueba
-> falla si el banco vuelve a aprobar al 100 %, para que nadie lo «arregle»
-> quitando las incómodas.
->
-> Aun así sigue siendo **mi** idea de cómo hablas. El banco de verdad sale de
-> usarlo y apuntar lo que falla.
-
-## Lo que viene
-
-1. **El cerebro.** Convertir «apunta que he ido al gimnasio» en
-   `marcar_habito("gimnasio")` es lo que hace un LLM con llamada a
-   herramientas. Falta decidir cuál, y no es cuestión de gusto: **local**
-   (Ollama, los datos no salen, cuesta CPU que hay que medir) o **API**
-   (funciona mejor hoy, y manda fuera lo que dices de tu vida). Se decide
-   midiendo, con la capa 1 ya hecha.
-2. **La transcripción local.** Audio → texto con Whisper o equivalente, sobre
-   el hardware de casa.
-3. **La telefonía.** Bloqueada, ver abajo.
-
-Antes que la 3 hay una entrada de audio que ya existe y no cuesta nada: la
-**nota de voz de Telegram**. Permite tener el agente funcionando de verdad
-antes de resolver el teléfono.
-
-### Por qué la telefonía está bloqueada
-
-Un proveedor de telefonía trabaja con **webhooks entrantes**: llama a una URL
-pública cuando entra la llamada. Y el ADR-015 de midgaror decidió, con su
-motivo escrito, que **en el router no se abre nada**.
-
-Que gjallarhorn sea un repo aparte **no resuelve eso**: el router es el mismo.
-Hace falta un ADR que diga cómo entra ese webhook —relé en la nube, Tailscale
-Funnel, u otra cosa— antes de escribir una línea de telefonía.
-
-## Dos reglas que no se negocian
-
-- **El audio no sale de casa.** La transcripción es local. Mandar el diario
-  hablado a una API de terceros va en contra de todo lo decidido sobre dónde
-  viven estos datos (ADR-016 de midgaror).
-- **No se abre un segundo camino de escritura.** Todo entra por
-  `escribir_entrada`. Es lo que hace que los arreglos del diario —el reloj
-  único, el JSON legible— valgan aquí sin tocarlos.
+Lo de `fechas.py` no es solo independencia: un parser de diario resuelve hacia
+**atrás** —«el lunes» es el que pasó— y un recepcionista siempre mira hacia
+delante. Nadie reserva cita para el martes pasado.
 
 ## Dar de alta un negocio: copiar una carpeta
 
@@ -202,9 +94,9 @@ gjallarhorn/
 ├─ conocimiento.py         tarifas y FAQ, sin RAG (y por qué)
 ├─ voz.py                  la oreja (Whisper) y la boca (Piper), las dos locales
 ├─ avisos.py               el rastro de las llamadas, ordenado
-├─ banco.py, medir.py      con qué se elige cerebro: acierto y latencia
-├─ acciones.py, cerebro.py, agente.py    el lado del diario personal
-├─ midgaror.py             dónde está midgaror. En un solo sitio
+├─ fechas.py               cuándo quiere la cita, siempre hacia delante
+├─ almacen.py              los JSON, con escritura atómica
+├─ medir_voz.py            cuánto tarda en contestar, sin teléfono ni tarjeta
 ├─ negocios/peluqueria/    ejemplo copiable
 └─ conocimiento/           en blanco a propósito
 ```

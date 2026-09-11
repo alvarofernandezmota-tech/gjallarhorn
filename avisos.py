@@ -23,17 +23,15 @@ En `GJALLARHORN_DATOS` si está puesta; si no, en `datos/` dentro del repo —qu
 está en el `.gitignore`, porque esto son datos, no código—. Es la misma idea
 que `MIDGAROR_DATOS` del ADR-016.
 
-El fichero se escribe con `almacen` de midgaror: da versión de esquema y
-escritura atómica, y no hay razón para reimplementar eso peor.
+El fichero se escribe con `almacen.py`, que es de aquí: versión de esquema y
+escritura atómica. gjallarhorn no depende de ningún otro repo.
 """
 
 import os
 from pathlib import Path
 
-from midgaror import modulo
-
-almacen = modulo("almacen")
-fechas = modulo("fechas")
+import almacen
+import fechas
 
 VARIABLE = "GJALLARHORN_DATOS"
 VERSION = 1
@@ -59,7 +57,7 @@ def _ruta(ruta: Path | None = None) -> Path:
 
 
 def cargar(ruta: Path | None = None) -> list[dict]:
-    return almacen.cargar(_ruta(ruta), VERSION, {}, vacio=[])
+    return almacen.cargar(_ruta(ruta), VERSION, vacio=[])
 
 
 def guardar(avisos: list[dict], ruta: Path | None = None) -> None:
