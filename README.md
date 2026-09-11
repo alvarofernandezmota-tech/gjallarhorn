@@ -76,6 +76,41 @@ Tres motivos, en orden de peso:
 3. **El ciclo de vida no coincide.** bifrost se toca poco y con miedo, porque
    escribe. La voz va a ser prueba y error durante semanas.
 
+## Cómo se elige el cerebro: midiendo
+
+`banco.py` son 54 frases con lo que debería pasar con cada una. `medir.py` pasa
+cualquier cerebro por ahí y da **acierto y latencia**:
+
+```bash
+MIDGAROR_RAIZ=/ruta/a/midgaror python3 medir.py
+```
+
+Hoy, el cerebro de reglas:
+
+```
+Acierto   44/54 (81%)
+Latencia  0.0 ms mediana, 0.1 ms el peor
+```
+
+**Ese 81 % es el listón.** Un LLM tiene que superarlo para merecer la pena — y
+no solo en acierto: un agente de voz que tarda cuatro segundos en contestar no
+se usa, por bien que acierte.
+
+Las diez que falla son todas de la misma forma: órdenes que no empiezan por la
+palabra clave («mañana a las nueve tengo dentista», «he ido al gimnasio», «dime
+qué tengo hoy»). **Ninguna se pierde**: caen al diario, que es la red de
+seguridad. Pero no hacen lo que tocaba, y eso es exactamente lo que compraría
+un LLM.
+
+> El banco empezó dando **100 %**, y eso no era una nota sino un aviso: lo
+> habían escrito el mismo autor que las reglas. Las doce frases adversarias se
+> escribieron después, mirando las reglas y buscando dónde rompen. Una prueba
+> falla si el banco vuelve a aprobar al 100 %, para que nadie lo «arregle»
+> quitando las incómodas.
+>
+> Aun así sigue siendo **mi** idea de cómo hablas. El banco de verdad sale de
+> usarlo y apuntar lo que falla.
+
 ## Lo que viene
 
 1. **El cerebro.** Convertir «apunta que he ido al gimnasio» en
