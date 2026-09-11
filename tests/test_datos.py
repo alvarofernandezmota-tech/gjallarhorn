@@ -165,6 +165,62 @@ class TestLaCarpetaSeMueve(unittest.TestCase):
         guardado = json.loads((Path(tmp.name) / "peluqueria" / "avisos.json").read_text())
         self.assertEqual(guardado["datos"][0]["texto"], "ahí dentro")
 
+class TestCadaBotHablaASuManera(unittest.TestCase):
+    """El mismo código atiende dos negocios que no hablan igual.
+
+    Es lo que quiere decir «cada bot con su personalidad»: la peluquería
+    trata de usted y el taller tutea, y no hay una línea de Python que sepa
+    eso. Está en `negocio.toml` y en `frases.toml`.
+
+    El taller de estas pruebas es **de las pruebas** —igual que la
+    peluquería—, aunque el repo traiga otro igual como ejemplo: así, editar
+    el ejemplo no rompe la suite.
+    """
+
+    def setUp(self):
+        entorno.aislar(self)
+        datos.olvidar()
+        self.addCleanup(datos.olvidar)
+        import frases
+        frases.olvidar()
+        self.addCleanup(frases.olvidar)
+
+    def atender(self, negocio, *frases_):
+        import recepcion
+        datos.usar(negocio)
+        n = negocios.cargar(negocio)
+        llamada = recepcion.conversacion_de(n)
+        return [llamada.atender(f).texto for f in frases_], n
+
+    def test_uno_trata_de_usted_y_el_otro_tutea(self):
+        guion = ("quiero cita de tinte el jueves a las cinco de la tarde", "me llamo Marta")
+        dichos, peluqueria = self.atender("peluqueria", *guion)
+        dicho = " ".join(dichos)
+        self.assertIn("se la apunto", dicho)
+        self.assertNotIn("te la apunto", dicho)
+        self.assertIn("asistente automático", peluqueria.saludo)
+
+        dichos, _ = self.atender("taller", "quiero cita el jueves a las diez", "soy Álvaro")
+        dicho = " ".join(dichos)
+        self.assertIn("te la apunto", dicho)
+        self.assertNotIn("se la apunto", dicho)
+
+    def test_cada_uno_con_su_voz_y_su_saludo(self):
+        self.assertEqual(negocios.cargar("taller").voz, "Polly.Sergio")
+        self.assertIsNone(negocios.cargar("peluqueria").voz)
+        self.assertIn("Taller Ruiz", negocios.cargar("taller").saludo)
+
+    def test_cada_uno_con_sus_servicios_y_sus_sinonimos(self):
+        dichos, _ = self.atender("taller", "¿cuánto cuesta cambiar las ruedas?")
+        self.assertIn("180", dichos[0])
+        # Y lo del taller no existe en la peluquería, ni al revés.
+        dichos, _ = self.atender("peluqueria", "¿cuánto cuesta cambiar las ruedas?")
+        self.assertIn("No tengo ese servicio", dichos[0])
+
+    def test_y_cada_uno_con_su_horario(self):
+        self.assertTrue(negocios.cargar("taller").horario.abre(__import__("datetime").date(2026, 9, 14)))
+        self.assertFalse(negocios.cargar("peluqueria").horario.abre(__import__("datetime").date(2026, 9, 14)))
+
 
 if __name__ == "__main__":
     unittest.main()

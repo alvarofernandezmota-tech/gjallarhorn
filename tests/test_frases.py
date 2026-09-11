@@ -144,3 +144,38 @@ class TestLoQueNoSePuedeCambiar(CasoFrases):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestComoTrataElBot(unittest.TestCase):
+    """Un bot que tutea y suelta un «¿le viene bien?» suena a dos personas.
+
+    Pasa solo: lo que no esté en el `frases.toml` del negocio sale de las de
+    fábrica, que tratan de usted. Esto lo dice antes de que lo oiga nadie.
+    """
+
+    def test_reconoce_como_habla_una_frase(self):
+        self.assertEqual(frases.tratamiento("¿Qué día le viene bien?"), "usted")
+        self.assertEqual(frases.tratamiento("¿Qué día te viene bien?"), "tu")
+        self.assertIsNone(frases.tratamiento("Tinte: 45 €."))
+
+    def test_caza_la_frase_que_se_ha_quedado_del_otro_lado(self):
+        trato, descolgadas = frases.mezcla_de_tratos({
+            "pide_dia": "¿Qué día te viene bien?",
+            "pide_hora": "Vale, ¿a qué hora te va bien?",
+            "pide_nombre": "¿A nombre de quién te la apunto?",
+            "sin_huecos": "No me queda hueco. Le tomo el recado y le llamamos.",
+        })
+        self.assertEqual(trato, "tu")
+        self.assertEqual(descolgadas, ["sin_huecos"])
+
+    def test_un_bot_coherente_no_se_queja(self):
+        trato, descolgadas = frases.mezcla_de_tratos({
+            "pide_dia": "¿Qué día le viene bien?",
+            "pide_nombre": "¿A nombre de quién se la apunto?",
+        })
+        self.assertEqual((trato, descolgadas), ("usted", []))
+
+    def test_las_de_fabrica_tratan_de_usted_y_van_a_una(self):
+        trato, descolgadas = frases.mezcla_de_tratos(frases.DICE)
+        self.assertEqual(trato, "usted")
+        self.assertEqual(descolgadas, [], "las de fábrica no pueden ir cada una por su lado")

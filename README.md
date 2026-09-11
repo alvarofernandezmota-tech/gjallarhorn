@@ -266,7 +266,29 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
-### Cada bot es suyo
+### Cada bot es suyo, y cada uno habla a su manera
+
+El repo trae **dos** ejemplos a propósito: `negocios/peluqueria` trata de
+usted y `negocios/taller` tutea. Es el mismo código:
+
+```
+— Quiero cita el jueves          Peluquería: Perfecto, el jueves 17. ¿A qué hora le viene bien?
+                                 Taller:     Vale, el jueves 17. ¿A qué hora?
+— Me llamo Álvaro                Peluquería: Le apunto la cita… Le esperamos.
+                                 Taller:     Te apunto la cita… Aquí te esperamos.
+```
+
+Para oír todo lo que va a decir el tuyo, y que no se le escape un «usted» en
+mitad de un bot que tutea:
+
+```bash
+make frases NEGOCIO=taller
+```
+
+Lo dice frase por frase, marca cuáles son suyas y cuáles usa de fábrica, y
+avisa si alguna se ha quedado del otro lado. Pasa solo: lo que no escribas en
+tu `frases.toml` sale de las de fábrica, que tratan de usted.
+
 
 Un negocio es un bot, y **todo lo suyo es suyo**:
 

@@ -67,6 +67,9 @@ panel: $(PY)  ## el dia del dueño en la terminal (en el movil: /panel)
 aprender: $(PY)  ## que te preguntan y no supo contestar
 	$(PY) aprender.py --negocio $(NEGOCIO)
 
+frases: $(PY)  ## todo lo que dice tu bot, y si trata de tu o de usted
+	$(PY) frases.py --negocio $(NEGOCIO)
+
 agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
 	$(PY) agentes.py --negocio $(NEGOCIO)
 

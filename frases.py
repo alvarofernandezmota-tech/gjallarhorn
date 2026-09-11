@@ -312,3 +312,91 @@ def cargar(base: Path | None = None) -> Frases:
 def olvidar() -> None:
     """Tira la caché. Para las pruebas y para recargar sin reiniciar."""
     _CACHE.clear()
+
+
+# Cómo trata el bot a quien llama. No es gramática fina: son las marcas que
+# de verdad aparecen en estas frases.
+DE_USTED = re.compile(r"\b(usted|le\s|les\s|se\s+l[ao]|su\s|dígame|digame|perdone|"
+                      r"viene\s+bien\s+alguno|repite\b)", re.IGNORECASE)
+DE_TU = re.compile(r"\b(te\s|tú|tu\s|tus\s|dime|perdona|tienes|quieres|"
+                   r"repites|necesitas)\b", re.IGNORECASE)
+
+
+def tratamiento(texto: str) -> str | None:
+    """«tu», «usted» o None si la frase no se moja. Ver `mezcla_de_tratos`."""
+    usted, tuteo = len(DE_USTED.findall(texto)), len(DE_TU.findall(texto))
+    if usted == tuteo:
+        return None
+    return "usted" if usted > tuteo else "tu"
+
+
+def mezcla_de_tratos(dice: dict) -> tuple[str | None, list[str]]:
+    """(cómo trata este bot, qué frases se le han quedado del otro lado).
+
+    Un bot que tutea y suelta un «¿le viene bien alguno?» suena a dos
+    personas distintas, y pasa solo: las frases que no estén en el
+    `frases.toml` del negocio salen de las de fábrica, que tratan de usted.
+    Esto lo dice **antes** de que lo oiga un cliente.
+    """
+    cuenta: dict[str, int] = {"tu": 0, "usted": 0}
+    tratos = {}
+    for clave, plantilla in dice.items():
+        if (trato := tratamiento(str(plantilla))) is not None:
+            tratos[clave] = trato
+            cuenta[trato] += 1
+    if not tratos or cuenta["tu"] == cuenta["usted"]:
+        return None, []
+    suyo = "tu" if cuenta["tu"] > cuenta["usted"] else "usted"
+    return suyo, sorted(clave for clave, trato in tratos.items() if trato != suyo)
+
+
+def main(argumentos: list[str] | None = None) -> int:
+    """`python3 frases.py`: todo lo que va a decir el bot, y cómo trata."""
+    import argparse
+
+    import negocio as negocios
+
+    parser = argparse.ArgumentParser(description="Lo que dice tu bot, frase por frase")
+    parser.add_argument("--negocio", default="peluqueria")
+    parser.add_argument("--todas", action="store_true",
+                        help="también las que usa tal cual de fábrica")
+    args = parser.parse_args(argumentos)
+
+    try:
+        negocio = negocios.cargar(args.negocio)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"❌ {error}")
+        return 1
+
+    for problema in problemas(negocio.conocimiento):
+        print(f"⚠️  {problema}")
+
+    suyas = cargar(negocio.conocimiento).dice
+    fichero = Path(negocio.conocimiento) / "frases.toml"
+    propias = set(tomllib.loads(fichero.read_text(encoding="utf-8")).get("dice", {})) \
+        if fichero.exists() else set()
+
+    print(f"{negocio.nombre}: así saluda y así habla\n")
+    print(f"  saludo    {negocio.saludo}")
+    print(f"  despedida {negocio.despedida}\n")
+    for clave, plantilla in suyas.items():
+        marca = "·" if clave in propias else " "
+        if clave in propias or args.todas:
+            print(f" {marca} {clave:20} {plantilla}")
+    if not args.todas:
+        print(f"\n  (· son suyas; {len(set(suyas) - propias)} más las usa de fábrica, "
+              "se ven con --todas)")
+
+    trato, descolgadas = mezcla_de_tratos(suyas)
+    if descolgadas:
+        como = "de tú" if trato == "tu" else "de usted"
+        print(f"\n⚠️  este bot trata {como}, pero estas frases no: "
+              f"{', '.join(descolgadas)}")
+        print("   Escríbelas en su frases.toml o sonará a dos personas distintas.")
+    elif trato:
+        print(f"\n✅ trata {'de tú' if trato == 'tu' else 'de usted'} en todo.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
