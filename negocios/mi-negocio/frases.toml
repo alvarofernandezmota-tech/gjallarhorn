@@ -1,0 +1,102 @@
+# Lo que dice el agente y lo que entiende del cliente.
+#
+# TODO ESTE FICHERO ES OPCIONAL. Lo que no pongas aquí usa el valor de fábrica,
+# así que puedes borrarlo entero y sigue funcionando, o dejar solo las dos
+# líneas que quieras cambiar.
+#
+# Después de tocarlo, reinicia el servidor. Si te equivocas en algo, te lo dice
+# al arrancar en vez de esperar a que llame alguien.
+
+
+# ---------------------------------------------------------------------------
+# [dice] — lo que contesta el agente
+# ---------------------------------------------------------------------------
+#
+# Lo que va {entre llaves} son huecos que se rellenan solos. Cada frase admite
+# los suyos y solo los suyos; poner uno que no le toca se avisa al arrancar.
+#
+# OJO con dos cosas que NO se pueden cambiar desde aquí, a propósito:
+#
+#   · El saludo. Va en `negocio.toml`, y al cargarlo se comprueba que avisa de
+#     que se habla con un sistema automático. Si no lo dice, se le añade.
+#   · Los precios. Salen de `tarifas.md`. El agente no se inventa ninguno, y
+#     ninguna frase de aquí puede hacer que se lo invente.
+
+[dice]
+
+# Huecos: {servicio} — « de tinte», o vacío si aún no se sabe de qué es.
+pide_dia = "Muy bien, una cita{servicio}. ¿Qué día le viene bien?"
+
+# Huecos: {fecha} {servicio} — la fecha ya viene dicha: «el jueves 17».
+pide_hora = "Perfecto, {fecha}. ¿A qué hora le viene bien?"
+
+# Huecos: {hora}
+# Esta pregunta existe porque «a las cinco» no dice si es mañana o tarde. No
+# la quites: sin ella se cita a gente a las cinco de la madrugada.
+confirma_franja = "¿{hora}?"
+
+pide_nombre = "¿A nombre de quién se la apunto?"
+
+# Huecos: {servicio} {fecha} {hora} {nombre}
+# Sin [horario] en negocio.toml se dice esta (toma nota); con horario, la de
+# abajo (reserva de verdad).
+cierra_cita = "Perfecto. Le apunto la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Se lo confirmamos enseguida."
+reservada = "Perfecto. Reservada la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Le esperamos."
+
+# Cuando no cabe. Huecos: {fecha} {alternativas} — «el martes 15 a las diez
+# de la mañana, el miércoles 16… » ya viene dicho.
+cerrado = "{fecha} estamos cerrados. Tengo hueco {alternativas}. ¿Le viene bien alguno?"
+fuera_horario = "A esa hora no estamos abiertos. {fecha} tengo {alternativas}. ¿Le viene bien alguno?"
+ocupado = "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?"
+sin_huecos = "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos."
+
+# Huecos: {servicio} {precio} {duracion}
+precio_uno = "{servicio}: {precio}{duracion}."
+
+# Huecos: {opciones}
+precio_varios = "Tengo varias opciones: {opciones}. ¿Cuál le interesa?"
+
+# Lo que se dice cuando preguntan por algo que no está en tarifas.md. Puede
+# cambiar la forma, pero la idea no: no se dice un precio parecido.
+precio_no_esta = "No tengo ese servicio en la lista de precios. Le tomo el recado y se lo confirmamos."
+
+no_le_oigo = "Perdone, no le he oído. ¿Me lo repite?"
+recado = "Tomo nota y le devolvemos la llamada en cuanto podamos."
+despedida = "Gracias a usted. ¡Hasta luego!"
+
+
+# ---------------------------------------------------------------------------
+# [entiende] — lo que puede decir quien llama
+# ---------------------------------------------------------------------------
+#
+# Listas de palabras o trozos de frase. Se buscan enteros, sin tildes y sin
+# distinguir mayúsculas: pon «abris», no «abrís».
+#
+# Cada lista SUSTITUYE a la de fábrica, no se suma. Si escribes una, escríbela
+# entera: lo que no esté, deja de reconocerse.
+#
+# Aquí es donde se mete la forma de hablar de cada sitio. Si a las mechas les
+# llaman «reflejos» o «visos», se añaden a `tarifas.md` como servicio o se
+# cuenta en `faq.md`; esta lista es para cómo se PIDE algo, no para qué es.
+
+[entiende]
+
+precio = ["precio", "precios", "cuanto", "cuesta", "cuestan", "vale", "valen",
+          "tarifa", "tarifas", "cobrais", "cobran", "sale", "me saldria"]
+
+cita = ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
+        "pedir hora", "disponible", "disponibilidad", "libre", "sitio"]
+
+horario = ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
+           "cerrado", "hasta que hora", "a que hora"]
+
+# «si» y «no» solo se miran al principio de la frase: en mitad de una
+# conversación «no» sale en «no sé» y en «no me va bien», y tomarlo por una
+# respuesta es peor que no mirarlo.
+si = ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale", "perfecto",
+      "por la tarde", "de la tarde"]
+
+no = ["no", "nop", "que va", "negativo", "por la manana", "de la manana"]
+
+colgar = ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
+          "eso es todo", "colgar", "chao", "venga"]
