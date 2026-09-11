@@ -116,6 +116,28 @@ def _palabras(texto: str) -> set[str]:
     return {p for p in re.findall(r"\w+", _sin_tildes(texto)) if p not in VACIAS}
 
 
+def mencionado(frase: str, base: Path | None = None) -> dict | None:
+    """El servicio que se nombra DENTRO de una frase larga, o None.
+
+    `buscar` mide la cobertura sobre lo preguntado, que es lo correcto para
+    «¿cuánto vale el tinte?». Pero se rompe con «quiero cita para un tinte el
+    jueves a las cinco»: la frase trae diez palabras y el servicio dos, así que
+    la cobertura sale baja y no lo encuentra.
+
+    Aquí la cobertura se mide **sobre el servicio**: si el nombre del servicio
+    está entero en la frase, es ese. Es la asimetría real —frase larga, nombre
+    corto— y no vale para lo otro, por eso son dos funciones.
+    """
+    dichas = _palabras(frase)
+    mejor, suyas_mejor = None, 0
+    for servicio in tarifas(base):
+        suyas = _palabras(servicio["servicio"])
+        if suyas and suyas <= dichas and len(suyas) > suyas_mejor:
+            # El más específico gana: «corte y tinte» antes que «tinte».
+            mejor, suyas_mejor = servicio, len(suyas)
+    return mejor
+
+
 def buscar(consulta: str, base: Path | None = None, tope: int = 3) -> list[dict]:
     """Los servicios que encajan con lo que han preguntado. **Sin LLM.**
 
