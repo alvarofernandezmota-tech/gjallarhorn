@@ -12,7 +12,7 @@
   Este bloque de ayuda no lo lee nadie: puedes borrarlo.
 -->
 
-| Servicio |
+| Servicio | 100 euros 
 | frances natural |
 | no parejas |
 | pasivo |
