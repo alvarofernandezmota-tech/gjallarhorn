@@ -253,6 +253,14 @@ NOMBRE = re.compile(
     r"(?P<nombre>[^\W\d_]+(?:\s+(?!(?:y|e|o|u|que|para|de|del|la|el|con|por|pero|quiero|"
     r"queria|quería|me|mi|a|un|una)\b)[^\W\d_]+)?)", re.IGNORECASE | re.UNICODE)
 
+# Palabras que en mitad de una frase la descartan como nombre: nadie se
+# llama «Lo Que Sea», y eso es lo que se apuntaba cuando alguien contestaba
+# «lo que sea» a la pregunta del servicio. Se miran TODAS las palabras, no
+# solo la primera, y por eso la lista es corta: «de», «la» y «del» no están,
+# que María del Carmen existe.
+NUNCA_EN_UN_NOMBRE = {"que", "lo", "sea", "igual", "mismo", "cualquiera", "eso",
+                      "nada", "algo", "quien", "cual", "como", "cuando", "donde"}
+
 # Palabras que nunca son un nombre, por mucho que vayan detrás de «soy» o de
 # «la cita de»: «la cita de mañana» no es de nadie que se llame Mañana.
 NO_ES_NOMBRE = {"un", "una", "el", "la", "los", "las", "mi", "su", "para",
@@ -318,6 +326,8 @@ def _nombre_a_secas(frase: str) -> str | None:
     if not palabras or len(palabras) > 3 or any(c.isdigit() for c in limpio):
         return None
     if "?" in frase or palabras[0].lower() in NO_ES_NOMBRE:
+        return None
+    if any(_sin_tildes(palabra) in NUNCA_EN_UN_NOMBRE for palabra in palabras):
         return None
     return " ".join(palabras).title()
 
@@ -588,6 +598,10 @@ class Conversacion:
             # veces lo mismo, y esta era la forma de quedarse en bucle: quien
             # llamó pidiendo «hueco por la mañana» se pasó la llamada oyendo
             # «¿a qué hora?» sin que nadie le dijera qué horas había.
+            if self._ofrecidos and not self._ofreciendo:
+                # Ya están sobre la mesa: se pregunta cuál, no «¿a qué hora?».
+                # Volver a la pregunta pelada era tirar la oferta a la basura.
+                return Respuesta(self.frases.decir("cual_hueco"), "cita")
             if self.agenda is not None and (self._ofreciendo or self._veces_hora >= 1):
                 self._ofreciendo = False
                 self._veces_hora = 0
@@ -1162,6 +1176,15 @@ class Conversacion:
             if entendido is not None and entendido.fiable:
                 if (respuesta := self._segun_el_modelo(entendido, limpia)) is not None:
                     return respuesta
+
+        # Un nombre suelto con la cita a medias: «Pepe» cuando tocaba la
+        # hora. Se coge —el nombre hace falta igual— y se sigue por donde se
+        # estaba. Antes se perdía, y la cita se apuntaba sin nombre.
+        if viva and self.cita.nombre is None and not self._pide_otra_cosa(comparable):
+            if (suelto := _nombre_a_secas(limpia)) is not None \
+                    and _sin_tildes(suelto.split()[0]) not in conocimiento.vocabulario(self.base):
+                self.cita.nombre = self.nombre = suelto
+                return self._seguir_cita()
 
         # Si hay una cita a medias, se insiste con lo que falta en vez de
         # soltar un «tomo nota» que la abandona.

@@ -426,3 +426,38 @@ class TestDecirCuandoEsPedirHora(CasoProfesional):
 
     def test_ni_una_pregunta_de_horario_con_dia(self):
         self.assertIn("martes a viernes", self.texto("¿abrís el sábado?"))
+
+
+class TestElNombreEnMitadDeLaCita(CasoProfesional):
+    """De leer una conversación entera: «Pepe», dicho cuando tocaba la hora,
+    se perdía y la cita se apuntaba sin nombre. Y «lo que sea», contestado a
+    «¿para qué servicio?», se apuntó como nombre del cliente."""
+
+    def test_un_nombre_suelto_se_coge_aunque_tocara_la_hora(self):
+        self.texto("quiero cita de tinte", "el jueves", "Marta")
+        self.assertEqual(self.llamada.cita.nombre, "Marta")
+        self.texto("a las cinco de la tarde")
+        self.assertEqual(self.agenda.citas()[0]["nombre"], "Marta")
+
+    def test_lo_que_sea_no_es_un_nombre(self):
+        for frase in ("lo que sea", "me da igual", "lo mismo", "cuando quieras"):
+            with self.subTest(frase=frase):
+                self.assertIsNone(recepcion._nombre_a_secas(frase))
+
+    def test_pero_los_nombres_de_verdad_siguen_valiendo(self):
+        self.assertEqual(recepcion._nombre_a_secas("María del Carmen"), "María Del Carmen")
+        self.assertEqual(recepcion._nombre_a_secas("José Luis"), "José Luis")
+        self.assertEqual(recepcion._nombre_a_secas("Ana"), "Ana")
+
+    def test_un_servicio_no_se_apunta_como_nombre(self):
+        self.texto("quiero cita", "el jueves")
+        self.texto("mechas")
+        self.assertIsNone(self.llamada.cita.nombre)
+        self.assertEqual(self.llamada.cita.servicio, "Mechas")
+
+    def test_tras_ofrecer_horas_la_oferta_sigue_en_pie(self):
+        self.texto("¿tenéis hueco el jueves por la tarde?", "para un tinte")
+        # Un nombre no es una hora: se coge, pero se sigue preguntando cuál.
+        self.assertIn("¿Cuál de ellos", self.texto("Pepe"))
+        self.texto("el primero")
+        self.assertEqual(self.agenda.citas()[0]["nombre"], "Pepe")
