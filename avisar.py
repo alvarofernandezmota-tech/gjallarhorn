@@ -113,15 +113,22 @@ def avisar_nuevos(mandar=None, config: dict | None = None,
     config = config or configuracion()
     if config is None:
         return 0
+    mandados = 0
     with _LOCK:
-        pendientes = [a for a in avisos.listar(solo_nuevos=True, ruta=ruta)
-                      if a["tipo"] in config["tipos"]]
-        if not pendientes:
-            return 0
-        if not enviar(avisos.formato(pendientes), mandar=mandar, config=config):
-            return 0
-        avisos.marcar_vistos([a["id"] for a in pendientes], ruta=ruta)
-        return len(pendientes)
+        # En tantos mensajes como hagan falta. Solo se marca como visto lo que
+        # ha cabido en el mensaje que Telegram ha confirmado: antes se marcaba
+        # todo lo pendiente aunque `formato` lo hubiera recortado, y lo
+        # recortado no se volvia a ver nunca.
+        while True:
+            pendientes = [a for a in avisos.listar(solo_nuevos=True, ruta=ruta)
+                          if a["tipo"] in config["tipos"]]
+            if not pendientes:
+                return mandados
+            cabe = avisos.encajar(pendientes)
+            if not enviar(avisos.formato(cabe), mandar=mandar, config=config):
+                return mandados
+            avisos.marcar_vistos([a["id"] for a in cabe], ruta=ruta)
+            mandados += len(cabe)
 
 
 def en_segundo_plano() -> None:

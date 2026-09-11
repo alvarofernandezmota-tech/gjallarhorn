@@ -8,7 +8,15 @@ veinte con lo que importa —que Python, si hay venv, que paquetes, que
 modelos hay bajados, si el puerto esta cogido, las ultimas citas y avisos—
 y se pega una vez.
 
-No imprime IPs ni nombres de maquina: el informe se pega en sitios publicos.
+**No imprime datos de nadie.** Ni telefonos, ni nombres de clientes, ni IPs,
+ni el nombre de la maquina, ni rutas con el usuario dentro. De eso va: es un
+informe hecho para pegarse en un chat, y lo que se pega sale de tu control.
+
+Hasta hoy si los imprimia: listaba las ultimas citas **con el nombre de cada
+cliente** y los ultimos avisos con su texto, que lleva el telefono de quien
+llamo. La prueba que lo vigilaba comprobaba que no salieran IPs ni el
+hostname, o sea justo lo que menos importa. Aqui salen cuentas y fechas; el
+contenido se mira en la maquina con `python3 avisos.py`.
 """
 
 import argparse
@@ -58,6 +66,7 @@ def negocio_y_datos(negocio: str) -> list[str]:
     sys.path.insert(0, str(RAIZ))
     import agenda
     import avisos
+    import fechas
     import conocimiento
     import frases
     import negocio as negocios
@@ -77,14 +86,25 @@ def negocio_y_datos(negocio: str) -> list[str]:
         lineas.append(f"  ⚠️ sin rellenar: {', '.join(faltan)}")
 
     if n.horario:
-        citas = sorted(agenda.Agenda(n.ruta.name, n.horario).citas(),
-                       key=lambda c: (c["fecha"], c["hora"]))[-5:]
-        lineas.append(f"citas: {len(citas)} ultimas")
-        lineas += [f"  {c['fecha']} {c['hora']} {c['servicio'] or '—'} · {c['nombre']}"
-                   for c in citas]
-    ultimos = avisos.listar(limite=5)
-    lineas.append(f"avisos: {len(avisos.listar())} en total, ultimos:")
-    lineas += [f"  [{a['tipo']}] {a['fecha']} {a['hora']} {a['texto'][:70]}" for a in ultimos]
+        # Cuantas y cuando, nunca de quien. El nombre del cliente no pinta
+        # nada en un informe que esta hecho para pegarse.
+        citas = agenda.Agenda(n.ruta.name, n.horario).citas()
+        proximas = sorted(c["fecha"] for c in citas if c["fecha"] >= fechas.hoy())
+        lineas.append(f"citas: {len(citas)} en total, {len(proximas)} por venir"
+                      + (f" (la próxima el {proximas[0]})" if proximas else ""))
+
+    todos = avisos.listar()
+    por_tipo = {}
+    for a in todos:
+        por_tipo[a["tipo"]] = por_tipo.get(a["tipo"], 0) + 1
+    sin_ver = sum(1 for a in todos if not a.get("visto"))
+    lineas.append(f"avisos: {len(todos)} en total, {sin_ver} sin ver"
+                  + (f" · {', '.join(f'{k} {v}' for k, v in sorted(por_tipo.items()))}"
+                     if por_tipo else ""))
+    if todos:
+        lineas.append(f"  el último, {todos[0]['fecha']} {todos[0]['hora']} "
+                      f"[{todos[0]['tipo']}] — el texto no se imprime: "
+                      "míralo con `python3 avisos.py`")
     return lineas
 
 
@@ -110,8 +130,10 @@ def informe(negocio: str, puerto: int, corto: bool, puerto_telefono: int = 8081)
     lineas += ["", *negocio_y_datos(negocio)]
     servicio = Path.home() / ".config" / "systemd" / "user" / "gjallarhorn.service"
     lineas += ["", f"servicio systemd: {'instalado' if servicio.exists() else 'no instalado (make arrancar)'}"]
-    datos = os.environ.get("GJALLARHORN_DATOS")
-    lineas.append(f"datos en: {datos or 'datos/ dentro del repo'}")
+    # La ruta entera lleva el usuario y el layout de la maquina dentro.
+    lineas.append("datos en: " + ("la carpeta de GJALLARHORN_DATOS"
+                                  if os.environ.get("GJALLARHORN_DATOS")
+                                  else "datos/ dentro del repo"))
     return "\n".join(lineas)
 
 

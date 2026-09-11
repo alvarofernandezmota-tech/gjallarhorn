@@ -26,6 +26,7 @@ ocupa hasta las 11:30, y un corte a las 11 no cabe.
 
 import os
 import re
+import threading
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -35,6 +36,13 @@ import fechas
 
 ESQUEMA = 1
 VARIABLE = "GJALLARHORN_DATOS"
+
+# El servidor atiende varias llamadas a la vez. Reservar y anular son
+# leer-modificar-escribir sobre el mismo fichero: sin esto, dos llamadas
+# simultaneas pueden pasar las dos la comprobacion de hueco y pisarse la
+# escritura, y una de las dos citas desaparece sin que nadie se entere.
+# `almacen` garantiza que el fichero quede entero, no que no se pise.
+_ESCRIBIENDO = threading.Lock()
 
 DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
 TRAMO = re.compile(r"^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$")
@@ -250,12 +258,13 @@ class Agenda:
         cita anulada que sigue ocupando sitio es peor que no anularla, porque
         nadie lo sabe.
         """
-        citas = self.citas()
-        quitada = next((c for c in citas if c["id"] == id_cita), None)
-        if quitada is None:
-            return None
-        self._guardar([c for c in citas if c["id"] != id_cita])
-        return quitada
+        with _ESCRIBIENDO:
+            citas = self.citas()
+            quitada = next((c for c in citas if c["id"] == id_cita), None)
+            if quitada is None:
+                return None
+            self._guardar([c for c in citas if c["id"] != id_cita])
+            return quitada
 
     # -- reserva -------------------------------------------------------------
 
@@ -266,6 +275,10 @@ class Agenda:
         Se vuelve a comprobar aquí aunque ya se haya preguntado antes: entre
         la pregunta y la reserva puede haber entrado otra llamada.
         """
+        with _ESCRIBIENDO:
+            return self._reservar(fecha, hora, duracion, servicio, nombre, ahora)
+
+    def _reservar(self, fecha, hora, duracion, servicio, nombre, ahora) -> dict:
         if (motivo := self.por_que_no(fecha, hora, duracion)) is not None:
             raise ValueError(motivo)
         citas = self.citas()

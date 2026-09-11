@@ -62,7 +62,7 @@ import json
 import sys
 import tempfile
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import avisar
@@ -100,9 +100,19 @@ TOPE_AUDIO = 10 * 1024 * 1024
 # por ser educado.
 TOPE_VACIADO = 4 * TOPE_AUDIO
 
+# Un formulario del proveedor son unos cientos de bytes, no diez megas.
+TOPE_FORMULARIO = 64 * 1024
+
+# Lo que se espera por una conexion que no acaba de mandar lo suyo.
+TOPE_ESPERA = 20
+
 
 class Comun(BaseHTTPRequestHandler):
     """Lo que comparten los dos puertos. No se sirve por si solo."""
+
+    # Sin esto, una conexion que abre y no manda nada se queda ahi para
+    # siempre. `BaseHTTPRequestHandler` respeta este atributo y cierra.
+    timeout = TOPE_ESPERA
 
     negocio = None
     transcriptor = None
@@ -122,6 +132,53 @@ class Comun(BaseHTTPRequestHandler):
         # El log por defecto ensucia la medición de tiempos con una línea por
         # petición de icono. Solo se dice lo que importa, desde atender().
         pass
+
+    _firmas_malas = 0
+    _lock_firmas = threading.Lock()
+
+    @classmethod
+    def avisar_firma_mala(cls, de_donde: str) -> None:
+        """Deja constancia de un intento sin firma **sin dejar escribir a nadie**.
+
+        Antes cada peticion con firma mala escribia un aviso en disco. Desde
+        un puerto publico eso es dejar que cualquiera engorde `avisos.json`
+        sin limite —y con coste creciente, porque el id sale de recorrer todo
+        el fichero—, mezclado con las citas de verdad.
+
+        Ahora se cuenta en memoria y se anota **una sola vez** por arranque:
+        lo que hace falta es que el dueño se entere de que le estan llamando
+        a la puerta, no una linea por golpe. El resto va al log del servicio.
+        """
+        with cls._lock_firmas:
+            cls._firmas_malas += 1
+            primera = cls._firmas_malas == 1
+        print(f"⚠️  firma no válida en el webhook, desde {de_donde} "
+              f"(van {cls._firmas_malas})", flush=True)
+        if primera:
+            avisos.registrar("fallo", "Alguien ha llamado al webhook del teléfono sin "
+                                      "firma válida. Se registra una vez; el resto van "
+                                      "al log del servicio (make log).")
+
+    def _cuerpo(self, tope: int) -> bytes | None:
+        """El cuerpo de la peticion, acotado. None si el Content-Length miente.
+
+        `int(cabecera or 0)` y `read(min(largo, tope))` parecian bastar y no
+        bastan, y las dos formas de romperlo entran por un puerto publico:
+
+        - `Content-Length: -1` -> `min(-1, tope)` es -1, y `read(-1)` lee
+          **hasta EOF**. En un servidor que atiende de uno en uno, una sola
+          conexion que no cierra deja el telefono del negocio mudo.
+        - `Content-Length: abc` -> `int()` levanta ValueError, el handler
+          muere sin contestar y quien llamaba no recibe nada.
+        """
+        crudo = self.headers.get("Content-Length") or "0"
+        try:
+            largo = int(crudo)
+        except ValueError:
+            return None
+        if largo < 0:
+            return None
+        return self.rfile.read(min(largo, tope))
 
     def _vaciar(self, cuantos: int) -> None:
         """Se traga el cuerpo a trozos para poder contestar antes de cerrar."""
@@ -149,8 +206,12 @@ class Comun(BaseHTTPRequestHandler):
         """El webhook del proveedor de telefonia. Firmado o nada."""
         if self.centralita is None:
             return self._responder(404, b"sin telefonia configurada", "text/plain; charset=utf-8")
-        largo = int(self.headers.get("Content-Length") or 0)
-        cuerpo = self.rfile.read(min(largo, TOPE_AUDIO))
+        # Un formulario de Twilio son unos cientos de bytes. Aceptar 10 MB
+        # aqui era usar el tope del audio para algo que no es audio.
+        cuerpo = self._cuerpo(TOPE_FORMULARIO)
+        if cuerpo is None:
+            return self._responder(400, b"content-length invalido",
+                                   "text/plain; charset=utf-8")
         campos = telefonia.campos_de(cuerpo)
 
         # La URL que firmo el proveedor es la publica, con esquema y host.
@@ -159,7 +220,8 @@ class Comun(BaseHTTPRequestHandler):
         url = f"{esquema}://{host}{self.path}"
         if not telefonia.firma_valida(self.config_telefono["token"], url, campos,
                                       self.headers.get("X-Twilio-Signature")):
-            avisos.registrar("fallo", f"Petición al webhook de teléfono con firma mala desde {self.client_address[0]}")
+            Comun.avisar_firma_mala(self.headers.get("X-Forwarded-For")
+                                    or self.client_address[0])
             return self._responder(403, b"firma no valida", "text/plain; charset=utf-8")
 
         ruta, _, consulta = self.path.partition("?")
@@ -242,13 +304,22 @@ class Recepcion(Comun):
         if self.path != "/hablar":
             return self._responder(404, b"no hay nada aqui", "text/plain; charset=utf-8")
 
-        largo = int(self.headers.get("Content-Length") or 0)
+        try:
+            largo = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            largo = -1
+        if largo < 0:
+            return self._responder(400, b'{"error":"content-length invalido"}',
+                                   "application/json; charset=utf-8")
         if largo > TOPE_AUDIO:
             self._vaciar(min(largo, TOPE_VACIADO))
             self.close_connection = True
             return self._responder(413, b'{"error":"audio demasiado grande"}',
                                    "application/json; charset=utf-8")
-        cuerpo = self.rfile.read(largo)
+        cuerpo = self._cuerpo(TOPE_AUDIO)
+        if cuerpo is None:
+            return self._responder(400, b'{"error":"content-length invalido"}',
+                                   "application/json; charset=utf-8")
 
         try:
             resultado = self._atender(cuerpo)
@@ -300,10 +371,16 @@ class Recepcion(Comun):
         return {"oido": oido, "dicho": respuesta.texto, "audio": audio}
 
 
-def _abrir(puerto: int, handler, que: str, bandera: str) -> "HTTPServer | None":
-    """Un servidor en un puerto, o None diciendo por que no se pudo."""
+def _abrir(puerto: int, handler, que: str, bandera: str, lan: bool = False):
+    """Un servidor en un puerto, o None diciendo por que no se pudo.
+
+    Escucha en `127.0.0.1` salvo que se pida `--lan`. Tailscale hace de
+    proxy **desde localhost**, asi que atarlo a 0.0.0.0 no hacia falta para
+    nada y dejaba la demo —y con ella Whisper y la agenda— al alcance de
+    cualquier equipo de la red de casa.
+    """
     try:
-        return HTTPServer(("0.0.0.0", puerto), handler)
+        return ThreadingHTTPServer(("0.0.0.0" if lan else "127.0.0.1", puerto), handler)
     except OSError as error:
         if error.errno != errno.EADDRINUSE:
             raise
@@ -328,6 +405,9 @@ def main() -> int:
                         help="modo texto: sin Whisper ni Piper, para probar sin instalar nada")
     parser.add_argument("--sin-telefono", action="store_true",
                         help="no levantar el puerto del teléfono aunque haya token")
+    parser.add_argument("--lan", action="store_true",
+                        help="escuchar en toda la red local, no solo en localhost "
+                             "(no hace falta para tailscale: proxya desde localhost)")
     args = parser.parse_args()
 
     try:
@@ -356,12 +436,13 @@ def main() -> int:
     if not args.sin_voz:
         Comun.transcriptor, Comun.locutor = voz.Whisper(), voz.Piper()
 
-    demo = _abrir(args.puerto, Recepcion, "la demo", "--puerto")
+    demo = _abrir(args.puerto, Recepcion, "la demo", "--puerto", args.lan)
     if demo is None:
         return 1
     telefono = None
     if Comun.config_telefono is not None:
-        telefono = _abrir(args.puerto_telefono, Telefono, "el teléfono", "--puerto-telefono")
+        telefono = _abrir(args.puerto_telefono, Telefono, "el teléfono",
+                          "--puerto-telefono", args.lan)
         if telefono is None:
             demo.server_close()
             return 1
