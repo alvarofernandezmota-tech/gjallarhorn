@@ -146,64 +146,68 @@ Funnel, u otra cosa— antes de escribir una línea de telefonía.
   `escribir_entrada`. Es lo que hace que los arreglos del diario —el reloj
   único, el JSON legible— valgan aquí sin tocarlos.
 
+## Dar de alta un negocio: copiar una carpeta
+
+```bash
+cp -r negocios/peluqueria negocios/mi-negocio
+```
+
+Cambias `nombre` en `negocio.toml`, la tabla de `tarifas.md` y el texto de
+`faq.md`. **No se toca código.** Quien lleva el negocio tiene que poder cambiar
+un precio sin llamar a nadie, y eso solo es cierto si no hay que abrir un `.py`.
+
+`negocio.toml` es opcional: una carpeta con los dos Markdown ya es un negocio.
+
+```bash
+python3 recepcion.py --negocio mi-negocio                        # por teclado
+python3 recepcion.py --negocio mi-negocio --audio llamada.ogg --hablar
+```
+
+### El aviso de que es automático no se puede quitar
+
+Puedes poner tu propio saludo. Si **no** dice que se habla con un sistema
+automático, se le añade al cargarlo:
+
+```
+saludo = "Hola, ha llamado a la peluquería."
+   ↓
+"Hola, ha llamado a la peluquería. Le atiende un asistente automático."
+```
+
+No es un descuido que se pueda cometer editando un fichero de texto.
+
+## La voz, de punta a punta
+
+```
+audio → Whisper → recepcion.atender → Piper → audio
+```
+
+Las dos **locales**, y por el mismo motivo: por ahí pasa lo que se le dice a un
+cliente y lo que el cliente cuenta. Las dos detrás de una interfaz de una
+función, para poder probar todo lo de encima sin descargar modelos de cientos
+de megas.
+
+En la máquina donde corra: `pip install faster-whisper piper-tts`.
+
+Si la síntesis revienta, **la llamada sigue registrada**. Perder la
+contestación es malo; perder el rastro de que alguien llamó preguntando un
+precio, peor.
+
 ## Estructura
 
 ```
 gjallarhorn/
-├─ AGENTS.md               # instrucciones para sesiones de IA
-├─ CONTEXT.md              # propósito y decisiones de arquitectura
-├─ README.md               # esto
-├─ agente.py               # el agente entero, y la orden de terminal
-├─ acciones.py             # capa 1: qué sabe hacer
-├─ cerebro.py              # capa 2: qué acción toca, de reglas por ahora
-├─ voz.py                  # capa 3: la oreja, Whisper en local
-├─ midgaror.py             # dónde está midgaror y cómo se importa. En un solo sitio
-├─ ruff.toml               # las mismas reglas de lint que midgaror y bifrost
-├─ tests/                  # 43 pruebas, contra los módulos reales de midgaror
-├─ docs/
-│  └─ procedimientos/      # un .md por procedimiento (ADR-004)
-└─ scripts/                # automatización de procedimientos (todavía vacío)
+├─ recepcion.py            quién atiende: precio, cita, horario, recado
+├─ negocio.py              un negocio = una carpeta
+├─ conocimiento.py         tarifas y FAQ, sin RAG (y por qué)
+├─ voz.py                  la oreja (Whisper) y la boca (Piper), las dos locales
+├─ avisos.py               el rastro de las llamadas, ordenado
+├─ banco.py, medir.py      con qué se elige cerebro: acierto y latencia
+├─ acciones.py, cerebro.py, agente.py    el lado del diario personal
+├─ midgaror.py             dónde está midgaror. En un solo sitio
+├─ negocios/peluqueria/    ejemplo copiable
+└─ conocimiento/           en blanco a propósito
 ```
-
-Los módulos de librería van en la raíz, como en bifrost (`bot.py`, `utils/`).
-`scripts/` es para lo que automatiza un procedimiento, con el mismo nombre base
-que su `.md` (ADR-004).
-
-## Probarlo
-
-Sin grabar nada, para ver el cerebro y las acciones:
-
-```bash
-MIDGAROR_RAIZ=/ruta/a/midgaror MIDGAROR_DATOS=/tmp/pruebas \
-  python3 agente.py --texto "recuérdame llamar al dentista el jueves"
-# → Tarea 1 creada para el 2026-09-17: llamar al dentista.
-```
-
-`MIDGAROR_DATOS` (ADR-016) manda la escritura a un sitio de mentira, así que se
-puede trastear sin tocar el diario de verdad.
-
-Con audio, en la máquina donde esté el modelo:
-
-```bash
-pip install faster-whisper
-python3 agente.py nota.ogg
-```
-
-## Pruebas
-
-```bash
-MIDGAROR_RAIZ=/ruta/a/midgaror python3 -m unittest discover -s tests
-```
-
-Van contra los módulos **reales** de midgaror, no contra dobles: lo que se
-comprueba es justamente que envolverlos sale bien. Lo de mentira son las rutas,
-que van a un temporal — y hay una prueba dedicada a que eso siga siendo cierto,
-porque escribir en el diario de verdad es el error que no se puede cometer ni
-una vez.
-
-Cuando gjallarhorn sea submódulo de midgaror, estas pruebas se encadenan en
-`scripts/verificar.py`. Hasta entonces se corren a mano, y **una comprobación
-saltada no es una comprobación pasada**.
 
 ## Relación con el ecosistema
 
