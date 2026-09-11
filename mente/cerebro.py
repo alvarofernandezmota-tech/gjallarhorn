@@ -77,8 +77,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-import conocimiento
-import rag
+from mente import conocimiento
+from mente import rag
 
 MODELO_POR_DEFECTO = "claude-opus-5"
 # Un modelo pequeño y multilingüe: lo que cabe en la máquina de un negocio y
@@ -119,7 +119,7 @@ def proveedor() -> str:
     Sin `GJALLARHORN_LLM`, lo de siempre: Claude si hay clave y nada si no.
     Así, quien ya lo tenía funcionando no tiene que tocar nada.
     """
-    import avisar
+    from dueno import avisar
     avisar._leer_env()
     elegido = os.environ.get("GJALLARHORN_LLM", "").strip().lower()
     if elegido in ("no", "off", "ninguno", "0"):
@@ -347,7 +347,7 @@ def _no_contesto(error: Exception) -> None:
     aviso = f"El LLM no contestó ({type(error).__name__}: {error}); siguen las reglas solas"
     print(f"⚠️  {aviso}", file=sys.stderr)
     try:
-        import avisos
+        from guardado import avisos
         avisos.registrar("fallo", aviso)
     except Exception:  # noqa: BLE001 — si ni eso se puede, al menos queda el stderr
         pass
@@ -358,7 +358,7 @@ def main() -> int:
     """`python3 cerebro.py "frase"`: qué entiende el modelo, y cuánto tarda."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Qué entiende el LLM de una frase")
     parser.add_argument("frase", nargs="?", default="oye, ¿hacéis lo del alisado ese?")

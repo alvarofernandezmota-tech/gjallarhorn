@@ -15,7 +15,7 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401 — antes que nada
 
-import conocimiento  # noqa: E402
+from mente import conocimiento  # noqa: E402
 
 TABLA = """# Tarifas
 

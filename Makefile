@@ -25,10 +25,15 @@ ayuda:  ## esta lista
 $(PY):
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip >/dev/null
+	@# ruff es el lint del repo: sin el, `make pruebas` moria con un
+	@# "command not found" en un clon recien hecho. Si no hay red, se avisa
+	@# y se sigue: las pruebas no lo necesitan.
+	@$(PIP) install ruff >/dev/null 2>&1 || \
+	  echo "⚠️  no he podido instalar ruff (¿sin red?). Las pruebas van igual."
 
 instalar: $(PY)  ## venv + dependencias + modelos de voz, de una vez
 	$(PIP) install faster-whisper piper-tts anthropic
-	$(PY) voz.py
+	$(PY) -m telefono.voz
 
 nuevo:  ## dar de alta otro negocio: make nuevo NEGOCIO=mi-negocio
 	@test -n "$(NEGOCIO)" -a "$(NEGOCIO)" != peluqueria || { echo "❌ di el nombre: make nuevo NEGOCIO=mi-negocio"; exit 1; }
@@ -38,55 +43,55 @@ nuevo:  ## dar de alta otro negocio: make nuevo NEGOCIO=mi-negocio
 	@echo "  Arrancar con el:  make servidor NEGOCIO=$(NEGOCIO)   o   make arrancar NEGOCIO=$(NEGOCIO)"
 
 voz: $(PY)  ## ¿oye y habla esta maquina? versiones y milisegundos
-	$(PY) voz.py
+	$(PY) -m telefono.voz
 
 MODELO  ?= small
 
 medir: $(PY)  ## cuanto tarda en contestar. Prueba MODELO=base y MODELO=tiny
-	$(PY) medir_voz.py --negocio $(NEGOCIO) --modelo $(MODELO)
+	$(PY) -m dueno.medir_voz --negocio $(NEGOCIO) --modelo $(MODELO)
 
 probar: $(PY)  ## el recepcionista por teclado, con memoria y agenda
-	$(PY) recepcion.py --negocio $(NEGOCIO)
+	$(PY) -m mente.recepcion --negocio $(NEGOCIO)
 
 servidor: $(PY)  ## el MVP en primer plano (Ctrl+C para parar)
-	$(PY) servidor.py --negocio $(NEGOCIO) --puerto $(PUERTO) --puerto-telefono $(PUERTO_TELEFONO)
+	$(PY) -m telefono.servidor --negocio $(NEGOCIO) --puerto $(PUERTO) --puerto-telefono $(PUERTO_TELEFONO)
 
 serve: $(PY)  ## la demo, visible solo en tu tailnet (para el movil)
 	tailscale serve --bg $(PUERTO)
 	@tailscale serve status
 
 cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
-	$(PY) cerebro.py "$(FRASE)" --negocio $(NEGOCIO)
+	$(PY) -m mente.cerebro "$(FRASE)" --negocio $(NEGOCIO)
 
 buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
-	$(PY) rag.py "$(FRASE)" --negocio $(NEGOCIO)
+	$(PY) -m mente.rag "$(FRASE)" --negocio $(NEGOCIO)
 
 panel: $(PY)  ## el dia del dueño en la terminal (en el movil: /panel)
-	$(PY) panel.py --negocio $(NEGOCIO)
+	$(PY) -m dueno.panel --negocio $(NEGOCIO)
 
 aprender: $(PY)  ## que te preguntan y no supo contestar
-	$(PY) aprender.py --negocio $(NEGOCIO)
+	$(PY) -m dueno.aprender --negocio $(NEGOCIO)
 
 frases: $(PY)  ## todo lo que dice tu bot, y si trata de tu o de usted
-	$(PY) frases.py --negocio $(NEGOCIO)
+	$(PY) -m negocio.frases --negocio $(NEGOCIO)
 
 lanzar: $(PY)  ## de aqui a la primera llamada, paso a paso
-	@$(PY) lanzar.py --negocio $(NEGOCIO) --puerto $(PUERTO_TELEFONO)
+	@$(PY) -m dueno.lanzar --negocio $(NEGOCIO) --puerto $(PUERTO_TELEFONO)
 
 revisar: $(PY)  ## ¿esta el bot listo para coger llamadas? (sale 1 si no)
-	$(PY) revisar.py --negocio $(NEGOCIO)
+	$(PY) -m dueno.revisar --negocio $(NEGOCIO)
 
 copia: $(PY)  ## copia de hoy de las citas, los clientes y los avisos
-	$(PY) copias.py --negocio $(NEGOCIO)
+	$(PY) -m guardado.copias --negocio $(NEGOCIO)
 
 copias: $(PY)  ## que copias hay guardadas
-	$(PY) copias.py --negocio $(NEGOCIO) --listar
+	$(PY) -m guardado.copias --negocio $(NEGOCIO) --listar
 
 agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
-	$(PY) agentes.py --negocio $(NEGOCIO)
+	$(PY) -m dueno.agentes --negocio $(NEGOCIO)
 
 agentes-seco: $(PY)  ## lo mismo, pero solo enseñarlo: no registra ningun aviso
-	$(PY) agentes.py --negocio $(NEGOCIO) --seco
+	$(PY) -m dueno.agentes --negocio $(NEGOCIO) --seco
 
 agentes-diarios: $(AGENTES) $(AGENTES_TIMER)  ## que corran solos cada mañana a las 8
 	systemctl --user enable --now gjallarhorn-agentes.timer
@@ -97,11 +102,11 @@ sin-agentes-diarios:  ## dejar de correrlos solos
 	systemctl --user disable --now gjallarhorn-agentes.timer 2>/dev/null || true
 
 clientes: $(PY)  ## las fichas de quien ha llamado (esto SI lleva nombres)
-	$(PY) memoria.py
+	$(PY) -m mente.memoria
 
 olvidar: $(PY)  ## borrar la ficha de un numero: make olvidar TELEFONO=+34600...
 	@test -n "$(TELEFONO)" || { echo "Falta el numero: make olvidar TELEFONO=+34600000000"; exit 1; }
-	$(PY) memoria.py --olvidar "$(TELEFONO)"
+	$(PY) -m mente.memoria --olvidar "$(TELEFONO)"
 
 funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@$(PY) -c "import telefonia, sys; c = telefonia.configuracion(); \
@@ -114,24 +119,30 @@ funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@echo "Se ha publicado el puerto $(PUERTO_TELEFONO), que sirve SOLO /telefono/*."
 	@echo "El $(PUERTO) (la pagina, /hablar, /colgar) sigue sin salir de tu tailnet."
 	@echo
-	@$(PY) urlpublica.py --para-el-proveedor
+	@$(PY) -m telefono.urlpublica --para-el-proveedor
 
 sin-funnel:  ## dejar de publicar: nada sale a internet
 	tailscale funnel --https=443 off
 	@tailscale funnel status 2>/dev/null || true
 
 avisar: $(PY)  ## mandar al movil los avisos pendientes (Telegram)
-	$(PY) avisar.py
+	$(PY) -m dueno.avisar
 
 telefono-prueba: $(PY)  ## una llamada por teclado, como la veria el proveedor
-	$(PY) telefonia.py --simular --negocio $(NEGOCIO) --puerto $(PUERTO_TELEFONO)
+	$(PY) -m telefono.telefonia --simular --negocio $(NEGOCIO) --puerto $(PUERTO_TELEFONO)
 
 telegram-prueba: $(PY)  ## ¿llega un mensaje al movil? comprueba token y chat
-	$(PY) avisar.py --prueba
+	$(PY) -m dueno.avisar --prueba
 
 pruebas: $(PY)  ## las pruebas y el lint
 	$(PY) -m unittest discover -s tests
-	$(VENV)/bin/ruff check . 2>/dev/null || ruff check .
+	@# Una comprobacion saltada NO es una comprobacion pasada: si no hay
+	@# ruff se dice con todas las letras en vez de morir con un
+	@# "command not found" que parece que el codigo esta mal.
+	@if [ -x $(VENV)/bin/ruff ]; then $(VENV)/bin/ruff check .; \
+	 elif command -v ruff >/dev/null 2>&1; then ruff check .; \
+	 else echo "⚠️  SIN RUFF: las pruebas han pasado pero el lint NO se ha corrido."; \
+	      echo "   Para tenerlo:  .venv/bin/pip install ruff"; fi
 
 # ---- como servicio: arranca con la maquina, se reinicia si cae, con log ----
 
@@ -200,9 +211,9 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 	@systemctl --user is-active $(SERVICIO) >/dev/null 2>&1 && echo "servicio: activo" || echo "servicio: parado"
 	@test -f $(UNIDAD) -a gjallarhorn.service.in -nt $(UNIDAD) && \
 	  echo "⚠️  la unidad de systemd se quedo atras: make reiniciar" || true
-	@$(PY) diagnostico.py --corto
+	@$(PY) -m dueno.diagnostico --corto
 
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
-	@$(PY) diagnostico.py
+	@$(PY) -m dueno.diagnostico
 
 .PHONY: ayuda nuevo instalar voz medir probar servidor serve pruebas cerebro telefono-prueba funnel sin-funnel auto sin-auto avisar telegram-prueba arrancar parar reiniciar log estado diagnostico

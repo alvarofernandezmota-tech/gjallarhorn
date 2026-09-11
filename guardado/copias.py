@@ -33,7 +33,7 @@ import shutil
 from datetime import date
 from pathlib import Path
 
-import datos
+from guardado import datos
 
 # Qué se copia. Lo que no está aquí se puede volver a generar; esto no.
 FICHEROS = ("agenda.json", "clientes.json", "avisos.json")
@@ -120,7 +120,7 @@ def main(argumentos: list[str] | None = None) -> int:
     """`python3 copias.py`: hace la copia de hoy y tira las viejas."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Copias de las citas y los clientes")
     parser.add_argument("--negocio", default="peluqueria")

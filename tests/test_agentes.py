@@ -22,11 +22,11 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-import agenda as ag  # noqa: E402
-import agentes  # noqa: E402
-import avisos  # noqa: E402
-import memoria  # noqa: E402
-import negocio as negocios  # noqa: E402
+from negocio import agenda as ag  # noqa: E402
+from dueno import agentes  # noqa: E402
+from guardado import avisos  # noqa: E402
+from mente import memoria  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 VIERNES = datetime(2026, 9, 11, 10, 0, tzinfo=MADRID)

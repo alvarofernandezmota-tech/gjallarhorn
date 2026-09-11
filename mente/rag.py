@@ -54,7 +54,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import conocimiento
+from mente import conocimiento
 
 # Cuánto de lo preguntado tiene que cubrir un párrafo para darlo por bueno.
 # Se mide con los pesos de las palabras, no contándolas: en «¿aceptáis
@@ -148,7 +148,7 @@ def _tokens(texto: str, base: Path | None = None) -> list[str]:
     —le vale— pero BM25 necesita contar, así que aquí se rehace en lista.
 
     """
-    import frases as _frases
+    from negocio import frases as _frases
 
     llano = conocimiento._sin_tildes(texto)
     traducido = llano
@@ -369,7 +369,7 @@ def _habla_de_cuando(frase: str) -> bool:
     sin esto se llevaba el párrafo de la FAQ donde sale. Quien dice cuándo
     está pidiendo hora, y de eso se encargan las reglas de la cita.
     """
-    import fechas
+    from mente import fechas
 
     return fechas.interpretar(frase) is not None or fechas.hora_suelta(frase) is not None
 
@@ -441,7 +441,7 @@ def main() -> int:
     """`python3 rag.py "¿aceptáis tarjeta?"`: qué encuentra y con cuántos puntos."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Qué encuentra el buscador del conocimiento")
     parser.add_argument("frase", nargs="?", default="¿se puede pagar con tarjeta?")

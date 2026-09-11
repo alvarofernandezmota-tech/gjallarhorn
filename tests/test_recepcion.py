@@ -19,8 +19,8 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401 — antes que nada
 
-import conocimiento  # noqa: E402
-import recepcion  # noqa: E402
+from mente import conocimiento  # noqa: E402
+from mente import recepcion  # noqa: E402
 
 PELUQUERIA = entorno.NEGOCIOS / "peluqueria"
 
@@ -135,7 +135,7 @@ class TestElAvisoLegal(unittest.TestCase):
     """
 
     def test_el_saludo_que_se_oye_dice_que_es_automatico(self):
-        import negocio as negocios
+        from negocio import negocio as negocios
 
         saludo = negocios.cargar("peluqueria").saludo.lower()
         self.assertTrue("automático" in saludo or "automatico" in saludo,
@@ -145,7 +145,7 @@ class TestElAvisoLegal(unittest.TestCase):
         # `frases.toml` deja cambiar lo que contesta el agente, pero el saludo
         # NO está entre esas frases: si lo estuviera, se podría quitar el aviso
         # editando un fichero de texto.
-        import frases
+        from negocio import frases
 
         self.assertNotIn("saludo", frases.DICE)
         self.assertTrue(frases.revisar({"saludo": "Hola y ya está"}),

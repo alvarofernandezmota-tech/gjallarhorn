@@ -38,15 +38,15 @@ tarde un agente no puede hacerle esperar a quien está al teléfono.
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 
-import agenda as _agenda
-import aprender
-import avisos
-import datos
-import conocimiento
-import copias
-import fechas
-import frases as _frases
-import memoria
+from negocio import agenda as _agenda
+from dueno import aprender
+from guardado import avisos
+from guardado import datos
+from mente import conocimiento
+from guardado import copias
+from mente import fechas
+from negocio import frases as _frases
+from mente import memoria
 
 # A partir de cuántos días sin aparecer se considera que un cliente se ha
 # perdido. Seis meses en una peluquería es de sobra: quien se corta cada mes
@@ -354,7 +354,7 @@ def main() -> int:
     """`python3 agentes.py`: los corre y deja los avisos. `--seco` para mirar."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Lo que trabaja cuando no suena el teléfono")
     parser.add_argument("--negocio", default="peluqueria")

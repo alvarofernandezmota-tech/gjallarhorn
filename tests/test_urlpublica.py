@@ -18,7 +18,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-import urlpublica  # noqa: E402
+from telefono import urlpublica  # noqa: E402
 
 
 class CasoURL(unittest.TestCase):

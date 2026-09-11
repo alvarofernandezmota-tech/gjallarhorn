@@ -21,15 +21,15 @@ import sys
 import time
 from pathlib import Path
 
-import avisar
-import avisos
-import datos
-import negocio as negocios
-import revisar as _revisar
-import telefonia
-import urlpublica
+from dueno import avisar
+from guardado import avisos
+from guardado import datos
+from negocio import negocio as negocios
+from dueno import revisar as _revisar
+from telefono import telefonia
+from telefono import urlpublica
 
-RAIZ = Path(__file__).resolve().parent
+RAIZ = Path(__file__).resolve().parent.parent
 CLAVE_TELNYX = "GJALLARHORN_TELEFONO_CLAVE_PUBLICA"
 TOKEN_TWILIO = "GJALLARHORN_TELEFONO_TOKEN"
 
@@ -60,7 +60,7 @@ def _que_clave_es(dicho: str) -> tuple[str, str] | None:
     dicho = dicho.strip()
     if not dicho or telefonia.token_de_mentira(dicho):
         return None
-    import firmas
+    from telefono import firmas
     if len(firmas.de_base64(dicho)) == 32:
         return CLAVE_TELNYX, "la clave publica de Telnyx"
     if dicho.upper().startswith("KEY"):

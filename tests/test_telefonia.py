@@ -19,10 +19,10 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-import avisos  # noqa: E402
-import negocio as negocios  # noqa: E402
-import servidor  # noqa: E402
-import telefonia  # noqa: E402
+from guardado import avisos  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from telefono import servidor  # noqa: E402
+from telefono import telefonia  # noqa: E402
 
 TURNO = "https://maquina.tailnet.ts.net/telefono/turno"
 

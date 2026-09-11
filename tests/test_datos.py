@@ -21,12 +21,12 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-import agenda as _agenda  # noqa: E402
-import almacen  # noqa: E402
-import avisos  # noqa: E402
-import datos  # noqa: E402
-import memoria  # noqa: E402
-import negocio as negocios  # noqa: E402
+from negocio import agenda as _agenda  # noqa: E402
+from guardado import almacen  # noqa: E402
+from guardado import avisos  # noqa: E402
+from guardado import datos  # noqa: E402
+from mente import memoria  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
 
 
 class CasoDatos(unittest.TestCase):
@@ -181,12 +181,12 @@ class TestCadaBotHablaASuManera(unittest.TestCase):
         entorno.aislar(self)
         datos.olvidar()
         self.addCleanup(datos.olvidar)
-        import frases
+        from negocio import frases
         frases.olvidar()
         self.addCleanup(frases.olvidar)
 
     def atender(self, negocio, *frases_):
-        import recepcion
+        from mente import recepcion
         datos.usar(negocio)
         n = negocios.cargar(negocio)
         llamada = recepcion.conversacion_de(n)

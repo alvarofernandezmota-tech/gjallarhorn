@@ -16,9 +16,9 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import avisos  # noqa: E402
-import frases  # noqa: E402
-import recepcion  # noqa: E402
+from guardado import avisos  # noqa: E402
+from negocio import frases  # noqa: E402
+from mente import recepcion  # noqa: E402
 
 
 class CasoFrases(unittest.TestCase):
@@ -120,7 +120,7 @@ class TestLosErroresSeVenAlArrancar(CasoFrases):
         self.assertEqual(frases.problemas(self.base), [])
 
     def test_el_de_la_peluqueria_esta_bien(self):
-        import negocio as negocios
+        from negocio import negocio as negocios
         self.assertEqual(frases.problemas(negocios.cargar("peluqueria").conocimiento), [])
 
 
@@ -208,12 +208,12 @@ class TestUnFicheroRotoNoTumbaLaLlamada(unittest.TestCase):
         self.assertEqual(cargadas.sinonimos, {})
 
     def test_la_llamada_sigue_atendiendose(self):
-        import recepcion
+        from mente import recepcion
         llamada = recepcion.Conversacion(self.base)
         self.assertIn("10 €", llamada.atender("¿cuánto vale un corte?").texto)
 
     def test_queda_aviso_de_que_sus_frases_no_se_estan_diciendo(self):
-        import avisos
+        from guardado import avisos
         entorno.aislar(self)
         frases.olvidar()
         frases.cargar(self.base)

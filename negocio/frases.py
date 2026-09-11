@@ -154,6 +154,15 @@ ENTIENDE = {
              # Quien dice esto quiere que le metan cuanto antes: es una cita,
              # aunque no diga la palabra.
              "lo mas pronto", "lo antes posible", "cuanto antes"],
+    # Querer algo, a secas. Por si solo no dice nada —«quiero saber el
+    # horario» tambien lo lleva—, asi que solo cuenta cuando ADEMAS se
+    # nombra un servicio de la tabla: «quiero un tinte» es pedir cita,
+    # aunque no aparezca la palabra «cita» por ningun lado. Antes eso
+    # acababa en recado, y por telefono se pide asi la mitad de las veces.
+    "quiere": ["quiero", "queria", "querria", "necesito", "me gustaria",
+               "me haria", "hazme", "hazmelo", "ponme", "dame", "vengo a",
+               "venia a", "me hago", "me haces", "me puedes hacer",
+               "me corto", "me tino", "me arreglo", "para hacerme"],
     # «¿Tenéis hueco el jueves?» pregunta qué hay, no pide una hora: se le
     # dicen los huecos del día en vez de preguntarle «¿a qué hora?».
     "disponibilidad": ["hueco", "huecos", "disponible", "disponibilidad", "libre",
@@ -267,14 +276,14 @@ class Frases:
 
     @staticmethod
     def _quejarse(clave, plantilla, error) -> None:
-        import avisos
+        from guardado import avisos
         avisos.registrar("fallo", f"La frase {clave!r} de frases.toml no se pudo "
                                   f"usar ({error}); se ha dicho la de por defecto. "
                                   f"Estaba escrita así: {plantilla!r}")
 
 
 def _quejarse_del_fichero(fichero: Path, error) -> None:
-    import avisos
+    from guardado import avisos
 
     aviso = (f"{fichero} no es un TOML válido ({error}). Se está hablando con "
              "las frases de fábrica: lo que hayas escrito ahí NO se está "
@@ -439,7 +448,7 @@ def main(argumentos: list[str] | None = None) -> int:
     """`python3 frases.py`: todo lo que va a decir el bot, y cómo trata."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Lo que dice tu bot, frase por frase")
     parser.add_argument("--negocio", default="peluqueria")

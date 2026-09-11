@@ -21,8 +21,8 @@ import entorno  # noqa: E402
 
 import ed25519_de_mentira as telnyx  # noqa: E402
 
-import avisar  # noqa: E402
-import lanzar  # noqa: E402
+from dueno import avisar  # noqa: E402
+from dueno import lanzar  # noqa: E402
 
 
 def clave_de_telnyx(semilla=b"la peluqueria"):

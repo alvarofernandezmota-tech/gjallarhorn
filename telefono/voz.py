@@ -9,7 +9,7 @@ No es ceremonia: permite probar todo lo de encima —el recepcionista, el
 servidor— sin descargar modelos de varios cientos de megas, y permite cambiar
 de motor sin tocar nada más.
 
-    from voz import Whisper, escuchar
+    from telefono.voz import Whisper, escuchar
     escuchar(Path("llamada.ogg"), Whisper())
 
 En las pruebas se les pasa un `TranscriptorFalso` y un `LocutorFalso`, que

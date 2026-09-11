@@ -54,16 +54,16 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from pathlib import Path
 
-import agenda as _agenda
-import avisos
-import datos
-import cerebro
-import conocimiento
-import fechas
-import frases as _frases
-import negocio as negocios
-import rag
-import voz
+from negocio import agenda as _agenda
+from guardado import avisos
+from guardado import datos
+from mente import cerebro
+from mente import conocimiento
+from mente import fechas
+from negocio import frases as _frases
+from negocio import negocio as negocios
+from mente import rag
+from telefono import voz
 
 @dataclass(frozen=True)
 class Respuesta:
@@ -247,8 +247,15 @@ def atender(frase: str, base: Path | None = None) -> Respuesta:
 # nombre de Lucía»): lo primero dice quién llama; lo segundo, solo quién viene.
 # La segunda palabra del nombre no puede ser una conjunción: «Marta y quería»
 # no es «Marta Y».
+# «Se llama Carmen» es de otra persona, no de quien llama: va fuera del
+# grupo `yo`. Y hay que reconocerlo aqui o se cuela por el camino de «la
+# frase entera es el nombre», que apuntaba **«Se Llama Carmen»** y lo
+# guardaba en la ficha del numero para siempre: a partir de ahi el bot
+# saludaba «Hola, Se Llama Carmen» en cada llamada.
 NOMBRE = re.compile(
     r"\b(?:(?P<yo>me\s+llamo|mi\s+nombre\s+es|soy)|a\s+nombre\s+de|de\s+parte\s+de|"
+    r"se\s+llama|para\s+(?:mi\s+)?(?:madre|padre|hija|hijo|mujer|marido|"
+    r"hermana|hermano|novia|novio)\s*,?\s*(?:que\s+se\s+llama)?|"
     r"para\s+(?:el\s+se[nñ]or|la\s+se[nñ]ora)\s+de|(?:la\s+)?cita\s+de)\s+"
     r"(?P<nombre>[^\W\d_]+(?:\s+(?!(?:y|e|o|u|que|para|de|del|la|el|con|por|pero|quiero|"
     r"queria|quería|me|mi|a|un|una)\b)[^\W\d_]+)?)", re.IGNORECASE | re.UNICODE)
@@ -320,7 +327,7 @@ def _nombre_a_secas(frase: str) -> str | None:
     es peor que volver a preguntar.
     """
     limpio = frase.strip().strip(".,;:¿?¡!")
-    limpio = re.sub(r"^(?:soy|me\s+llamo|mi\s+nombre\s+es|es|de)\s+", "",
+    limpio = re.sub(r"^(?:soy|me\s+llamo|se\s+llama|mi\s+nombre\s+es|es|de)\s+", "",
                     limpio, flags=re.IGNORECASE)
     palabras = limpio.split()
     if not palabras or len(palabras) > 3 or any(c.isdigit() for c in limpio):
@@ -450,6 +457,15 @@ class Conversacion:
         puede hacer nunca.
         """
         servicio = conocimiento.mencionado(frase, self.base)
+        if servicio is None:
+            # `mencionado` pide el nombre entero dentro de la frase, y eso
+            # deja fuera al que dice «cambiar las ruedas» cuando el servicio
+            # se llama «Cambio de neumáticos». Si el flexible encuentra UNO
+            # —uno solo: con varios no se adivina, se pregunta— es ese.
+            # Adivinar entre varios es como se acaba cantando el precio del
+            # caro cuando han pedido el barato.
+            encontrados = conocimiento.buscar(frase, self.base)
+            servicio = encontrados[0] if len(encontrados) == 1 else None
         if servicio is not None:
             self.servicio = servicio
             if self.cita and not self.cita.cerrada:
@@ -1163,6 +1179,28 @@ class Conversacion:
                     and self.agenda is not None and self.agenda.horario is not None:
                 return self._con_lo_pendiente(self._abierto_ahora(limpia))
             return self._con_lo_pendiente(_responder_horario(limpia, self.base))
+
+        # «Quiero un tinte», «me corto el pelo»: nombra un servicio de la
+        # tabla y quiere algo, pero no dice «cita» por ningun lado. Por
+        # telefono se pide asi la mitad de las veces, y acababa en recado:
+        # quien llamaba a pedir hora se llevaba un «tomo nota y le
+        # devolvemos la llamada». Va DESPUES del precio y del horario
+        # —«quiero saber cuanto vale un tinte» es un precio, no una cita— y
+        # ANTES de la FAQ, que a «quiero unas mechas» le contestaba si hace
+        # falta cita para las mechas, que es contestar a otra cosa.
+        # `mencionado` exige el nombre entero del servicio dentro de la
+        # frase, y eso deja fuera al taller: dicen «cambiar las ruedas» y el
+        # servicio se llama «Cambio de neumáticos». `buscar` es el flexible,
+        # y no se dispara de mas: con «quiero un café» devuelve vacio. Si
+        # encuentra varios —«quiero un corte», y hay cuatro cortes— tambien
+        # se abre la cita: entonces pregunta cual, que es lo que haria
+        # cualquiera, en vez de tomar un recado.
+        if self.frases.reconoce("quiere", comparable) \
+                and (conocimiento.mencionado(limpia, self.base) is not None
+                     or conocimiento.buscar(limpia, self.base)):
+            self._abrir_cita()
+            self._rellenar_con(limpia)
+            return self._seguir_cita()
 
         # «¿Eres un robot?», «¿me pasas con alguien?»: se dice lo que es y se
         # toma el recado. Va **antes** que la FAQ: «¿me puedes pasar con

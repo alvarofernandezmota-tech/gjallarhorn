@@ -30,9 +30,9 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-import almacen
-import datos
-import fechas
+from guardado import almacen
+from guardado import datos
+from mente import fechas
 
 ESQUEMA = 1
 VARIABLE = "GJALLARHORN_DATOS"
@@ -357,7 +357,7 @@ def main() -> int:
     """`python3 agenda.py --negocio peluqueria [--dia 2026-09-17]`: las citas."""
     import argparse
 
-    import negocio as negocios
+    from negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="Las citas de un negocio")
     parser.add_argument("--negocio", default="peluqueria")

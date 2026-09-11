@@ -61,7 +61,7 @@ SOLO_TITULO = re.compile(r"^\s*#+ .*$", re.M)
 
 def carpeta() -> Path:
     valor = os.environ.get(VARIABLE, "").strip()
-    return Path(valor).expanduser().resolve() if valor else Path(__file__).resolve().parent / "conocimiento"
+    return Path(valor).expanduser().resolve() if valor else Path(__file__).resolve().parent.parent / "conocimiento"
 
 
 def _sin_tildes(texto: str) -> str:
@@ -145,7 +145,7 @@ def palabras_dichas(frase: str, base: Path | None = None) -> set[str]:
     así «corte de pelo» se convierte en «corte» y no deja «pelo» colgando
     bajándole la cobertura a la búsqueda.
     """
-    import frases as _frases
+    from negocio import frases as _frases
     texto = _sin_tildes(frase)
     sinonimos = _frases.cargar(base).sinonimos
     for dicho in sorted(sinonimos, key=len, reverse=True):

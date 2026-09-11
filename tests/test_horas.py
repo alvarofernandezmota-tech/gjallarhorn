@@ -21,10 +21,10 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
 
-import agenda as ag  # noqa: E402
-import fechas  # noqa: E402
-import negocio as negocios  # noqa: E402
-import recepcion  # noqa: E402
+from negocio import agenda as ag  # noqa: E402
+from mente import fechas  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from mente import recepcion  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 VIERNES = datetime(2026, 9, 11, 10, 0, tzinfo=MADRID)
@@ -310,6 +310,6 @@ class TestElHorarioSabeLaHora(unittest.TestCase):
                          (date(2026, 9, 15), 10 * 60))
 
     def test_un_negocio_que_no_abre_nunca_no_promete_nada(self):
-        import agenda
+        from negocio import agenda
         cerrado = agenda.Horario.desde({"lunes": [], "martes": []})
         self.assertIsNone(cerrado.proxima_apertura(date(2026, 9, 15), 0))

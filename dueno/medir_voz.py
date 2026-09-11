@@ -40,9 +40,9 @@ import tempfile
 import time
 from pathlib import Path
 
-import negocio as negocios
-import recepcion
-import voz
+from negocio import negocio as negocios
+from mente import recepcion
+from telefono import voz
 
 # Un silencio mayor que esto al teléfono es cuando el cliente dice «¿hola?».
 PRESUPUESTO_MS = 2000

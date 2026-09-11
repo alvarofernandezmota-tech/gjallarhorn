@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import firmas  # noqa: E402
+from telefono import firmas  # noqa: E402
 
 L, P = firmas.L, firmas.P
 

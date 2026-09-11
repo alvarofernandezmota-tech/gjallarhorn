@@ -18,12 +18,12 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-import agenda as ag  # noqa: E402
-import almacen  # noqa: E402
-import memoria  # noqa: E402
-import negocio as negocios  # noqa: E402
-import recepcion  # noqa: E402
-import telefonia  # noqa: E402
+from negocio import agenda as ag  # noqa: E402
+from guardado import almacen  # noqa: E402
+from mente import memoria  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from mente import recepcion  # noqa: E402
+from telefono import telefonia  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 VIERNES = datetime(2026, 9, 11, 10, 0, tzinfo=MADRID)
@@ -139,7 +139,7 @@ class TestElInformeNoLlevaNombres(CasoMemoria):
         self.assertNotIn(UN_NUMERO, str(cuentas))
 
     def test_el_diagnostico_no_imprime_ni_un_nombre(self):
-        import diagnostico
+        from dueno import diagnostico
         memoria.apuntar_llamada(UN_NUMERO, "Marta")
         informe = "\n".join(diagnostico.negocio_y_datos("peluqueria"))
         self.assertIn("clientes:", informe)
@@ -274,7 +274,7 @@ class TestLaLlamadaAlimentaLaFicha(unittest.TestCase):
 
     def cuando(self, cual=0):
         """Ese hueco, dicho como lo diría quien llama."""
-        import fechas
+        from mente import fechas
         hueco = self.hueco(cual)
         ahora = ag.Agenda("peluqueria", self.negocio.horario).ahora()
         return (f"{fechas.en_palabras(hueco.fecha, ahora.date())} "

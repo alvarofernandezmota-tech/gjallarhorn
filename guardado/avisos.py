@@ -30,9 +30,9 @@ escritura atómica. gjallarhorn no depende de ningún otro repo.
 import threading
 from pathlib import Path
 
-import almacen
-import datos
-import fechas
+from guardado import almacen
+from guardado import datos
+from mente import fechas
 
 VARIABLE = "GJALLARHORN_DATOS"
 VERSION = 1

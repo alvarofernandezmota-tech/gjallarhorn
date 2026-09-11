@@ -20,10 +20,10 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401 — antes que nada
 
-import avisos  # noqa: E402
-import negocio as negocios  # noqa: E402
-import recepcion  # noqa: E402
-import voz  # noqa: E402
+from guardado import avisos  # noqa: E402
+from negocio import negocio as negocios  # noqa: E402
+from mente import recepcion  # noqa: E402
+from telefono import voz  # noqa: E402
 
 
 class TestDarDeAltaUnNegocio(unittest.TestCase):
