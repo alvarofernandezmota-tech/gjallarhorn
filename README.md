@@ -110,11 +110,17 @@ cabe, ofrece los huecos que sí hay, cerca de lo que pidió:
 Y resuelve solo el «¿a las cinco de la mañana o de la tarde?» cuando solo una
 de las dos cae en horario. Las citas se ven con `python3 agenda.py`.
 
+**De qué es la cita se pregunta una vez**, y no es por curiosidad: un tinte
+dura hora y media y un corte media hora, así que sin saberlo los huecos que
+se ofrecen son los que no son y la tarde se descuadra. Si no lo dice, se
+sigue igual y se apunta sin él.
+
 Quien pregunta qué hay, lo oye; y a «¿a qué hora?» se puede contestar como se
 contesta por teléfono:
 
 ```
-— ¿Tenéis hueco el jueves por la tarde?   El jueves 17 tengo las cuatro y media, las cinco o
+— ¿Tenéis hueco el jueves por la tarde?   Muy bien. ¿Para qué servicio se la apunto?
+— Un tinte                                El jueves 17 tengo las cuatro y media, las cinco o
                                           las cinco y media de la tarde. ¿Cuál le viene bien?
 — El primero                              ¿A nombre de quién se la apunto?
 — Cuando podáis                           Lo más pronto que tengo es hoy a las doce, mañana a
@@ -462,11 +468,14 @@ gjallarhorn/
 ├─ agenda.py               los huecos: reserva de verdad contra el horario
 ├─ avisar.py               los avisos, al móvil por Telegram
 ├─ cerebro.py              el LLM, opcional: entiende, no habla ni pone precios
+├─ rag.py                  busca en los .md del negocio, en local y sin embeddings
+├─ memoria.py              la ficha de quien llama, y su derecho a que se borre
+├─ agentes.py              la colmena: lo que trabaja cuando no suena el teléfono
 ├─ telefonia.py            el webhook del número de verdad, una conversación por llamada
 ├─ diagnostico.py          qué le pasa a esta máquina, en veinte líneas
 ├─ Makefile                instalar, arrancar, medir, estado: un comando cada uno
 ├─ negocio.py              un negocio = una carpeta
-├─ conocimiento.py         tarifas y FAQ, sin RAG (y por qué)
+├─ conocimiento.py         tarifas y FAQ: la tabla manda, el precio es consulta
 ├─ voz.py                  la oreja (Whisper) y la boca (Piper), las dos locales
 ├─ avisos.py               el rastro de las llamadas, ordenado
 ├─ fechas.py               cuándo quiere la cita, siempre hacia delante

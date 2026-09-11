@@ -119,10 +119,12 @@ def recordatorios(mundo: Mundo) -> Resultado | None:
     lineas = []
     for cita in citas:
         hora = fechas.hora_en_palabras(cita["hora"])
-        servicio = (cita.get("servicio") or "cita").lower()
-        lineas.append(f"{cita['hora']} {cita.get('nombre') or '(sin nombre)'} — {servicio}")
+        servicio = (cita.get("servicio") or "").lower()
+        de_que = f" de {servicio}" if servicio else ""
+        lineas.append(f"{cita['hora']} {cita.get('nombre') or '(sin nombre)'} — "
+                      f"{servicio or 'sin servicio apuntado'}")
         lineas.append(f'    para mandarle: "Hola, {cita.get("nombre") or ""}. Le recordamos '
-                      f'su cita de {servicio} {dicha} a {hora}. {mundo.negocio.nombre}."')
+                      f'su cita{de_que} {dicha} a {hora}. {mundo.negocio.nombre}."')
     return Resultado("recordatorios",
                      f"{len(citas)} cita(s) {dicha}. Recuérdaselas hoy:", lineas)
 

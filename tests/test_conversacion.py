@@ -61,12 +61,14 @@ class TestRecuerdaElServicio(CasoLlamada):
 
 class TestLaCitaSeConstruyeATrozos(CasoLlamada):
     def test_dia_y_hora_llegan_en_turnos_distintos(self):
-        guion = self.guion("quiero cita", "el jueves", "a las cinco", "sí", "Álvaro")
-        self.assertIn("qué día", guion[0].lower())
-        self.assertIn("hora", guion[1].lower())
-        self.assertIn("de la tarde", guion[2])       # repregunta la franja
-        self.assertIn("nombre", guion[3].lower())
-        self.assertIn("Álvaro", guion[4])
+        guion = self.guion("quiero cita", "un tinte", "el jueves", "a las cinco",
+                           "sí", "Álvaro")
+        self.assertIn("qué servicio", guion[0].lower())   # sin saberlo, la duración falla
+        self.assertIn("qué día", guion[1].lower())
+        self.assertIn("hora", guion[2].lower())
+        self.assertIn("de la tarde", guion[3])            # repregunta la franja
+        self.assertIn("nombre", guion[4].lower())
+        self.assertIn("Álvaro", guion[5])
 
     def test_una_hora_suelta_sin_dia_previo_no_es_una_cita(self):
         # Sin nadie que recuerde el día, «a las cinco» sigue sin serlo.
@@ -77,7 +79,7 @@ class TestLaCitaSeConstruyeATrozos(CasoLlamada):
         self.assertIn("nombre", dicho.lower())       # solo le falta eso
 
     def test_el_nombre_se_coge_aunque_llegue_antes_de_tiempo(self):
-        guion = self.guion("me llamo Álvaro", "quiero cita el viernes a las 17:00")
+        guion = self.guion("me llamo Álvaro", "quiero cita de tinte el viernes a las 17:00")
         self.assertIn("Álvaro", guion[1])
 
 

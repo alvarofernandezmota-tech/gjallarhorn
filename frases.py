@@ -74,6 +74,9 @@ DICE = {
     "renombrada": "Anotado: la cita queda a nombre de {nombre}.",
     # «¿Cuánto vale?» sin decir el qué, y sin que se haya hablado de nada.
     "cual_servicio": "¿De qué servicio? Así le digo el precio y lo que se tarda.",
+    # Una cita sin servicio se reserva con la duración por defecto, y un tinte
+    # de hora y media metido en media hora descuadra la tarde entera.
+    "pide_servicio": "Muy bien. ¿Para qué servicio se la apunto?",
     # A quien viene siempre a lo mismo se le ofrece, no se le interroga.
     "lo_de_siempre": "Muy bien, {servicio} como siempre. ¿Qué día le viene bien?",
     "no_se_lo_de_siempre": ("Todavía no sé qué suele pedir. ¿Qué servicio quiere?"),
