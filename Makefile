@@ -23,7 +23,7 @@ $(PY):
 	$(PIP) install --upgrade pip >/dev/null
 
 instalar: $(PY)  ## venv + dependencias + modelos de voz, de una vez
-	$(PIP) install faster-whisper piper-tts
+	$(PIP) install faster-whisper piper-tts anthropic
 	$(PY) voz.py
 
 voz: $(PY)  ## ¿oye y habla esta maquina? versiones y milisegundos
@@ -39,6 +39,9 @@ probar: $(PY)  ## el recepcionista por teclado, con memoria y agenda
 
 servidor: $(PY)  ## el MVP en primer plano (Ctrl+C para parar)
 	$(PY) servidor.py --negocio $(NEGOCIO) --puerto $(PUERTO)
+
+cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
+	$(PY) cerebro.py "$(FRASE)" --negocio $(NEGOCIO)
 
 avisar: $(PY)  ## mandar al movil los avisos pendientes (Telegram)
 	$(PY) avisar.py
@@ -80,4 +83,4 @@ estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 diagnostico: $(PY)  ## el informe entero, para pegarlo de una vez
 	@$(PY) diagnostico.py
 
-.PHONY: ayuda instalar voz medir probar servidor pruebas avisar telegram-prueba arrancar parar reiniciar log estado diagnostico
+.PHONY: ayuda instalar voz medir probar servidor pruebas cerebro avisar telegram-prueba arrancar parar reiniciar log estado diagnostico

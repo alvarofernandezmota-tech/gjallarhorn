@@ -150,6 +150,28 @@ saludo = "Hola, ha llamado a la peluquería."
 
 No es un descuido que se pueda cometer editando un fichero de texto.
 
+## Un LLM, opcional, y solo donde las reglas no llegan
+
+Las reglas cubren precio, cita, horario y despedida; lo demás es «tomo nota».
+Con `ANTHROPIC_API_KEY` en `.env`, cuando las reglas **no** entienden una
+frase se le pregunta a Claude qué quería decir, y contesta con **datos de
+forma fija** —intención, servicio de la tabla, cuándo, nombre— que se
+atienden por el mismo camino que una frase entendida por reglas.
+
+```
+— Oye, ¿hacéis lo del color ese?     → Tinte: 45 €, unos 90 min.   ← el precio, de la tabla
+— ¿Hacéis alisado?                    → No tengo ese servicio…       ← no está: no se inventa
+```
+
+El modelo **no redacta lo que se le dice al cliente y no pone ningún
+número**: su salida es un JSON de cuatro campos, y un servicio que no esté en
+la tabla se descarta diga lo que diga. Si falla o tarda más de cuatro
+segundos, las reglas siguen solas: una llamada nunca se cae por esto.
+
+Encenderlo tiene un precio que hay que decir: **el texto de lo que dijo el
+cliente sale de casa** hacia la API. El audio no. Por eso viene apagado.
+`make cerebro FRASE="…"` enseña qué entiende y cuánto tarda.
+
 ## Los avisos llegan al móvil
 
 Cada cita reservada, cada recado y cada fallo se apunta en `avisos.json` y,
@@ -208,6 +230,7 @@ gjallarhorn/
 ├─ frases.py               lo que dice y lo que entiende, editable por negocio
 ├─ agenda.py               los huecos: reserva de verdad contra el horario
 ├─ avisar.py               los avisos, al móvil por Telegram
+├─ cerebro.py              el LLM, opcional: entiende, no habla ni pone precios
 ├─ diagnostico.py          qué le pasa a esta máquina, en veinte líneas
 ├─ Makefile                instalar, arrancar, medir, estado: un comando cada uno
 ├─ negocio.py              un negocio = una carpeta
