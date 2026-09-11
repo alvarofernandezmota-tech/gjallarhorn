@@ -248,7 +248,9 @@ make funnel        publicar SOLO el webhook del teléfono
 make sin-funnel    dejar de publicar: nada sale a internet
 ```
 
-`make` a secas lista todo. Tras un `git pull` o editar el negocio: `make reiniciar`.
+`make` a secas lista todo. Tras un `git pull` o editar el negocio: `make
+reiniciar`, que regenera la unidad de systemd si la plantilla ha cambiado —si
+no, el servicio seguiría arrancando con los argumentos viejos sin decirlo.
 
 ## La voz, de punta a punta
 
