@@ -45,7 +45,21 @@ DICE = {
     "cerrado": "{fecha} estamos cerrados. Tengo hueco {alternativas}. ¿Le viene bien alguno?",
     "fuera_horario": "A esa hora no estamos abiertos. {fecha} tengo {alternativas}. ¿Le viene bien alguno?",
     "ocupado": "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?",
+    "pasado": "Esa hora ya ha pasado. Me queda {alternativas}. ¿Le viene bien alguno?",
     "sin_huecos": "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos.",
+    # Anular. Quien llama para anular NO puede acabar con una cita nueva.
+    "anular_nombre": "Claro. ¿A nombre de quién está la cita?",
+    "anular_cual": "A ese nombre tengo {citas}. ¿Cuál le anulo?",
+    "anular_no_hay": ("No encuentro ninguna cita a nombre de {nombre}. "
+                      "Le tomo el recado y lo miramos."),
+    "anulada": "Hecho, le anulo la cita{servicio} {fecha} a {hora}.",
+    "anulada_y_otra": ("Hecho, le anulo la cita{servicio} {fecha} a {hora}. "
+                       "¿Qué día le viene bien la nueva?"),
+    "sin_agenda_anular": ("Tomo nota de que quiere anular la cita y se lo "
+                          "confirmamos enseguida."),
+    # Tercera vez sin entender: se deja de repetir y se toma el recado.
+    "recado_insistente": ("Perdone, no acabo de entenderle. Le tomo el recado "
+                          "y le devolvemos la llamada en cuanto podamos."),
     "precio_uno": "{servicio}: {precio}{duracion}.",
     "precio_varios": "Tengo varias opciones: {opciones}. ¿Cuál le interesa?",
     "precio_no_esta": ("No tengo ese servicio en la lista de precios. "
@@ -68,6 +82,11 @@ HUECOS = {
     "cerrado": {"fecha", "alternativas"},
     "fuera_horario": {"fecha", "alternativas"},
     "ocupado": {"fecha", "alternativas"},
+    "pasado": {"fecha", "alternativas"},   # {fecha} se admite; la de fábrica no la usa
+    "anular_cual": {"citas"},
+    "anular_no_hay": {"nombre"},
+    "anulada": {"servicio", "fecha", "hora"},
+    "anulada_y_otra": {"servicio", "fecha", "hora"},
     "precio_uno": {"servicio", "precio", "duracion"},
     "precio_varios": {"opciones"},
 }
@@ -86,6 +105,14 @@ ENTIENDE = {
     "no": ["no", "nop", "que va", "negativo", "por la manana", "de la manana"],
     "colgar": ["adios", "hasta luego", "gracias", "nada mas", "ya esta",
                "eso es todo", "colgar", "chao"],
+    # Anular va ANTES que cita al decidir: «anular mi cita» lleva las dos
+    # palabras, y lo que quiere es anular. Al reves se le reserva otra.
+    "anular": ["anular", "anula", "cancelar", "cancela", "quitar la cita",
+               "quitar mi cita", "no voy a poder ir", "no puedo ir",
+               "no podre ir", "me es imposible ir", "dar de baja"],
+    "cambiar": ["cambiar la cita", "cambiar mi cita", "cambiar la hora",
+                "mover la cita", "cambiarla", "pasarla a otro dia",
+                "para otro dia"],
 }
 
 # «si» y «no» solo valen al principio de la frase: en mitad de una conversacion

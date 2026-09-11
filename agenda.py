@@ -120,10 +120,15 @@ class Hueco:
 class Agenda:
     """Las citas de un negocio. Lee y escribe con `almacen`, nunca a pelo."""
 
-    def __init__(self, negocio: str, horario: Horario | None, ruta: Path | None = None):
+    def __init__(self, negocio: str, horario: Horario | None, ruta: Path | None = None,
+                 ahora=None):
         self.negocio = negocio
         self.horario = horario
         self.ruta = ruta or _ruta(negocio)
+        self._ahora = ahora        # para las pruebas; si no, el reloj de Madrid
+
+    def ahora(self) -> datetime:
+        return self._ahora or fechas.ahora()
 
     # -- almacenamiento ------------------------------------------------------
 
@@ -146,10 +151,29 @@ class Agenda:
                 return cita
         return None
 
+    def _ya_paso(self, fecha: str, hora: str) -> bool:
+        """¿Esa fecha y hora quedan por detras del reloj?
+
+        Sin esto, quien llama a las once y dice «a las diez» se va con una
+        cita a una hora que ya paso: nadie la atiende y el hueco queda
+        ocupado. Se descubrio probando el cambio de cita.
+        """
+        ahora = self.ahora()
+        dia = date.fromisoformat(fecha)
+        if dia < ahora.date():
+            return True
+        return dia == ahora.date() and _minutos(hora) <= ahora.hour * 60 + ahora.minute
+
     def por_que_no(self, fecha: str, hora: str, duracion: int) -> str | None:
-        """None si cabe; si no, el motivo en una palabra: cerrado | fuera | ocupado."""
+        """None si cabe; si no, el motivo en una palabra.
+
+        pasado | cerrado | fuera | ocupado. El orden importa: «ya ha pasado»
+        explica mejor que «esta ocupado» una hora de esta manana.
+        """
         if self.horario is None:
             return None
+        if self._ya_paso(fecha, hora):
+            return "pasado"
         dia = date.fromisoformat(fecha)
         if not self.horario.abre(dia):
             return "cerrado"
@@ -166,6 +190,14 @@ class Agenda:
         if self.horario is None:
             return []
         dia = date.fromisoformat(fecha)
+        # Un hueco que ya paso no es un hueco. Hoy se empieza a contar desde
+        # el reloj, no desde que abre el negocio.
+        ahora = self.ahora()
+        if dia < ahora.date():
+            return []
+        if dia == ahora.date():
+            minimo = ahora.hour * 60 + ahora.minute
+            desde = max(desde, minimo) if desde is not None else minimo
         encontrados = []
         for ini, fin in self.horario.tramos.get(dia.weekday(), []):
             inicio = ini
@@ -194,6 +226,36 @@ class Agenda:
                 break
             dia += timedelta(days=1)
         return encontrados[:tope]
+
+    def citas_de(self, nombre: str, desde: str | None = None) -> list[dict]:
+        """Las citas de alguien de hoy en adelante, la mas proxima primero.
+
+        Se busca por nombre sin tildes ni mayusculas: quien llama dice «Alvaro»
+        y Whisper escribe «Álvaro» o al reves, y eso no puede hacer que una
+        cita no aparezca.
+        """
+        buscado = fechas.sin_tildes(nombre or "").strip()
+        if not buscado:
+            return []
+        desde = desde or self.ahora().strftime("%Y-%m-%d")
+        suyas = [c for c in self.citas()
+                 if fechas.sin_tildes(c.get("nombre") or "") == buscado
+                 and c["fecha"] >= desde]
+        return sorted(suyas, key=lambda c: (c["fecha"], c["hora"]))
+
+    def anular(self, id_cita: int) -> dict | None:
+        """Quita la cita y la devuelve. None si ya no estaba.
+
+        Libera el hueco de verdad: lo que se anula se borra, no se marca. Una
+        cita anulada que sigue ocupando sitio es peor que no anularla, porque
+        nadie lo sabe.
+        """
+        citas = self.citas()
+        quitada = next((c for c in citas if c["id"] == id_cita), None)
+        if quitada is None:
+            return None
+        self._guardar([c for c in citas if c["id"] != id_cita])
+        return quitada
 
     # -- reserva -------------------------------------------------------------
 
