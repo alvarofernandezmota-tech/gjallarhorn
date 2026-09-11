@@ -17,7 +17,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-import entorno  # noqa: E402,F401
+import entorno  # noqa: E402
 
 import avisos  # noqa: E402
 import negocio as negocios  # noqa: E402
@@ -34,6 +34,7 @@ def firmar(token, url, campos):
 
 class CasoCentralita(unittest.TestCase):
     def setUp(self):
+        entorno.aislar(self)
         self.negocio = negocios.cargar("peluqueria")
         self.centralita = telefonia.Centralita(self.negocio)
 

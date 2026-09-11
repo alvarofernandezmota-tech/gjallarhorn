@@ -15,7 +15,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-import entorno  # noqa: E402,F401
+import entorno  # noqa: E402
 
 import agenda as ag  # noqa: E402
 import avisar  # noqa: E402
@@ -91,6 +91,7 @@ class TestElInformeNoLlevaDatosDeNadie(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
+        entorno.aislar(self)
         self.negocio = negocios.cargar("peluqueria")
         agenda = ag.Agenda("peluqueria", self.negocio.horario,
                            ruta=Path(self._tmp.name) / "agenda.json")
@@ -204,6 +205,10 @@ class TestLlamadasQueNuncaCierran(unittest.TestCase):
     """`/telefono/fin` lo llama el proveedor, y nada garantiza que lo llame."""
 
     def setUp(self):
+        # Esta clase abre llamadas de verdad: escriben en la agenda y en el
+        # registro de clientes. Sin aislarlas, le dejan citas puestas a las
+        # pruebas del servidor y llamadas contadas a las de telefonía.
+        entorno.aislar(self)
         self.reloj = [1000.0]
         self.centralita = telefonia.Centralita(negocios.cargar("peluqueria"),
                                                ahora=lambda: self.reloj[0])
