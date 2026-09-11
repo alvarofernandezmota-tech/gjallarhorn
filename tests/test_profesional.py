@@ -25,7 +25,6 @@ sys.path.insert(0, str(RAIZ))
 import entorno  # noqa: E402
 
 import agenda as ag  # noqa: E402
-import conocimiento  # noqa: E402
 import fechas  # noqa: E402
 import negocio as negocios  # noqa: E402
 import recepcion  # noqa: E402
@@ -142,7 +141,11 @@ class TestLaFaqContesta(CasoProfesional):
         self.assertIn("¿A qué hora", dicho)
 
     def test_lo_que_no_esta_en_la_faq_sigue_siendo_recado(self):
-        self.assertIn("Tomo nota", self.texto("¿tenéis aparcamiento?"))
+        self.assertIn("Tomo nota", self.texto("¿vendéis pelucas?"))
+
+    def test_cualquier_md_del_negocio_contesta(self):
+        # servicios.md no es la FAQ: es otro fichero que dejó el dueño.
+        self.assertIn("parking", self.texto("¿tenéis aparcamiento?"))
 
 
 class TestLaFranjaSeRecuerda(CasoProfesional):
@@ -256,31 +259,6 @@ class TestAgendaRenombrar(unittest.TestCase):
         self.assertEqual(agenda.renombrar(cita["id"], "Lucía")["nombre"], "Lucía")
         self.assertEqual(agenda.citas()[0]["nombre"], "Lucía")
         self.assertIsNone(agenda.renombrar(99, "Nadie"))
-
-
-class TestConocimientoFaq(unittest.TestCase):
-    def setUp(self):
-        self.base = negocios.cargar("peluqueria").conocimiento
-
-    def test_encuentra_por_palabras_de_la_pregunta(self):
-        pregunta, respuesta = conocimiento.faq("se puede pagar con tarjeta", self.base)
-        self.assertIn("tarjeta", pregunta.lower())
-        self.assertIn("efectivo", respuesta)
-
-    def test_sin_palabras_con_contenido_no_hay_respuesta(self):
-        self.assertIsNone(conocimiento.faq("pues nada, gracias", self.base))
-        self.assertIsNone(conocimiento.faq("", self.base))
-
-    def test_un_empate_no_se_contesta(self):
-        tmp = tempfile.TemporaryDirectory()
-        self.addCleanup(tmp.cleanup)
-        (Path(tmp.name) / "faq.md").write_text(
-            "**¿Aceptáis tarjeta?**\nSí.\n\n**¿Tarjeta de regalo?**\nTambién.\n", encoding="utf-8")
-        self.assertIsNone(conocimiento.faq("tarjeta", Path(tmp.name)))
-
-    def test_vocabulario(self):
-        self.assertIn("tinte", conocimiento.vocabulario(self.base))
-        self.assertNotIn("de", conocimiento.vocabulario(self.base))
 
 
 class TestTelefoniaProfesional(unittest.TestCase):

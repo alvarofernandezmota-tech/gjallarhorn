@@ -9,7 +9,7 @@
   servicio: una fila más. Sin tocar código.
 
   La columna Duración es opcional; si está, el agente la dice («unos 90 min»).
-  Este bloque entre <!-- --> no lo lee nadie: puedes borrarlo.
+  Este bloque de ayuda no lo lee nadie: puedes borrarlo.
 -->
 
 | Servicio | Precio | Duración |

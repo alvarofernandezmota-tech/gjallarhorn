@@ -183,6 +183,36 @@ python3 recepcion.py --negocio mi-negocio                        # por teclado
 python3 recepcion.py --negocio mi-negocio --audio llamada.ogg --hablar
 ```
 
+### Añadir conocimiento es añadir un `.md`
+
+`tarifas.md` y `faq.md` son los dos que pide la plantilla, pero **cualquier
+`.md` de la carpeta del negocio es conocimiento**. Un `servicios.md` con el
+aparcamiento, los productos o las bodas se contesta igual, sin tocar código:
+
+```
+— ¿Tenéis aparcamiento?     Hay parking público a cincuenta metros. Los sábados
+                            por la mañana suele estar lleno…
+— ¿Usáis amoniaco?          Trabajamos con tintes sin amoniaco. Si tienes alergia…
+```
+
+Lo busca `rag.py`: parte cada fichero en párrafos con su título, y encuentra
+el que contesta. **En local, sin embeddings y sin base vectorial** —el porqué
+está escrito en la cabecera del fichero— y se lo dice tal cual lo escribió el
+dueño, sin parafrasear.
+
+Y se calla cuando no está claro, que es la mitad del trabajo: si dos párrafos
+empatan o ninguno cubre la pregunta, toma el recado. Los umbrales no están
+puestos a ojo: salen de un banco de frases etiquetadas (`TestElBanco`) contra
+el que se probaron todas las combinaciones.
+
+```bash
+python3 rag.py "¿se puede pagar con tarjeta?"   # qué encuentra y con cuántos puntos
+python3 rag.py --todo                           # los párrafos indexados
+```
+
+Los precios **no** salen de ahí: las filas de la tabla se quitan antes de
+indexar, para que ningún camino pueda acabar leyendo un precio «por parecido».
+
 ### El aviso de que es automático no se puede quitar
 
 Puedes poner tu propio saludo. Si **no** dice que se habla con un sistema

@@ -9,7 +9,8 @@
   quien llama («¿se puede pagar con tarjeta?» → la de la tarjeta). Si una
   cosa se pregunta de varias formas, ponlas todas en la misma línea en
   negrita: «**¿Dónde estáis? ¿Cuál es la dirección?**». Ante un empate no
-  contesta y toma el recado. Este bloque no lo lee nadie: puedes borrarlo.
+  contesta y toma el recado. Este bloque de ayuda no lo lee nadie:
+  puedes borrarlo.
 -->
 
 **¿Qué horario tenéis?**
