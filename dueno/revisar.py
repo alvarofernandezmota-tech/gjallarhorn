@@ -36,6 +36,7 @@ from hugin.mente import conocimiento
 from hugin.guardado import copias
 from hugin.guardado import datos
 from hugin.guardado import ajustes
+from hugin.negocio import agenda as _agenda
 from hugin.negocio import frases as _frases
 from hugin.negocio import negocio as negocios
 from telefono import telefonia
@@ -97,6 +98,7 @@ def _agenda_y_datos(negocio, hoy: date) -> list[Punto]:
     else:
         abiertos = sum(1 for tramos in negocio.horario.tramos.values() if tramos)
         puntos.append(Punto(BIEN, f"horario: abre {abiertos} día(s) por semana"))
+        puntos.extend(_duraciones_que_no_caben(negocio))
 
     fechas_copias = copias.listar()
     if hoy.isoformat() in fechas_copias:
@@ -107,6 +109,45 @@ def _agenda_y_datos(negocio, hoy: date) -> list[Punto]:
     else:
         puntos.append(Punto(AVISO, "copias: ninguna todavía", "«make copia»"))
     return puntos
+
+
+def _duraciones_que_no_caben(negocio) -> list[Punto]:
+    """Un servicio que no cabe en ningún tramo no se puede reservar nunca.
+
+    La columna `Duración` de `tarifas.md` es **lo que el servicio ocupa en la
+    agenda**, y es fácil leerla como «lo que se tarda en tenerlo listo». Una
+    pastelería que pone «48 h» pensando en el plazo de entrega hace que el
+    bot intente reservar una cita de cuarenta y ocho horas: no cabe en un
+    horario de cuatro, así que **todas las reservas acaban en «no me queda
+    ningún hueco»** y nada dice por qué.
+
+    Pasó el 2026-09-12 montando una pastelería de prueba, y costó tres
+    conversaciones enteras verlo: el bot contestaba bien a todo y solo fallaba
+    al cerrar, con un mensaje que suena a agenda llena.
+    """
+    tramos = [fin - ini for lista in negocio.horario.tramos.values()
+              for ini, fin in lista]
+    if not tramos:
+        return []
+    mayor = max(tramos)
+    malos = []
+    for servicio in conocimiento.tarifas(negocio.conocimiento):
+        escrita = servicio.get("duracion")
+        if not escrita:
+            continue
+        minutos = _agenda.duracion_en_minutos(escrita)
+        if minutos > mayor:
+            malos.append(f"{servicio['servicio']} ({escrita})")
+    if not malos:
+        return []
+    horas = mayor / 60
+    return [Punto(
+        FALLO,
+        f"tarifas: {len(malos)} servicio(s) no caben en ningún horario",
+        f"{', '.join(malos[:3])}{'…' if len(malos) > 3 else ''}. El tramo más "
+        f"largo que abres es de {horas:.1f} h. La columna «Duración» es lo que "
+        f"OCUPA EN LA AGENDA, no el plazo de entrega: así, ninguna reserva de "
+        f"esos servicios va a caber y el bot dirá que no hay huecos")]
 
 
 def _el_telefono() -> list[Punto]:

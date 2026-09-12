@@ -8,7 +8,16 @@
   Para cambiar un precio: edita la fila y reinicia el servidor. Para añadir un
   servicio: una fila más. Sin tocar código.
 
-  La columna Duración es opcional; si está, el agente la dice («unos 90 min»).
+  LA COLUMNA DURACIÓN ES LO QUE OCUPA EN LA AGENDA, no el plazo de entrega.
+  El agente la dice («unos 90 min») y, sobre todo, la usa para reservar: con
+  ella comprueba que el hueco existe. Es opcional.
+
+  Poner ahí un plazo —«48 h», pensando en cuánto se tarda en tener listo un
+  encargo— hace que el bot intente reservar una cita de cuarenta y ocho
+  horas. No cabe en ningún horario, y **todas las reservas acaban en "no me
+  queda ningún hueco"** sin que nada apunte a la tabla. Pasó el 2026-09-12 y
+  costó tres conversaciones enteras verlo. Desde entonces «make revisar» lo
+  caza y lo dice. Los plazos de entrega van en faq.md.
 
   NOMBRES CORTOS, Y NO ES COSMÉTICO. El agente cuenta cuántas palabras
   comparte lo que dice el cliente con el nombre del servicio, y pide pasar de

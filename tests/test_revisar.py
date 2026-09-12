@@ -227,3 +227,45 @@ class TestLaOrden(CasoRevisar):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnaDuracionQueNoCabe(CasoRevisar):
+    """El fallo que costó tres conversaciones enteras ver.
+
+    La columna «Duración» de tarifas.md es lo que el servicio OCUPA EN LA
+    AGENDA, y se lee fácil como «lo que se tarda en tenerlo listo». Una
+    pastelería que pone «48 h» pensando en el plazo de entrega hace que el bot
+    intente reservar una cita de cuarenta y ocho horas: no cabe en un horario
+    de cuatro, y **todas las reservas acaban en «no me queda ningún hueco»**.
+
+    Lo peor es cómo se presenta: el bot contesta bien a todo y solo falla al
+    cerrar, con un mensaje que suena a agenda llena. Nada apunta a la tabla.
+    """
+
+    def negocio_con(self, duracion):
+        return self.negocio_a_medias(
+            negocio_toml='nombre = "Prueba"\n\n[horario]\n'
+                         'martes = ["10:00-14:00"]\n',
+            tarifas_md="| Servicio | Precio | Duración |\n|---|---|---|\n"
+                       f"| Tarta | 38 € | {duracion} |\n",
+            faq_md="**¿Qué horario tenéis?**\nMartes de 10 a 14.\n")
+
+    def test_una_duracion_mas_larga_que_el_horario_es_un_fallo(self):
+        puntos = self.puntos(self.negocio_con("48 h"))
+        roto = [p for p in puntos if p.marca == _revisar.FALLO
+                and "no caben" in p.titulo]
+        self.assertEqual(len(roto), 1, "no ha avisado de que no cabe")
+        self.assertIn("48 h", roto[0].detalle)
+        self.assertIn("OCUPA EN LA AGENDA", roto[0].detalle)
+
+    def test_una_duracion_que_cabe_no_dice_nada(self):
+        titulos = [p.titulo for p in self.puntos(self.negocio_con("15 min"))]
+        self.assertFalse([t for t in titulos if "no caben" in t])
+
+    def test_sin_duracion_escrita_tampoco(self):
+        # La columna es opcional: no ponerla no puede ser un fallo.
+        negocio = self.negocio_a_medias(
+            negocio_toml='nombre = "Prueba"\n\n[horario]\nmartes = ["10:00-14:00"]\n',
+            tarifas_md="| Servicio | Precio |\n|---|---|\n| Tarta | 38 € |\n",
+            faq_md="**¿Horario?**\nMartes de 10 a 14.\n")
+        self.assertFalse([p for p in self.puntos(negocio) if "no caben" in p.titulo])
