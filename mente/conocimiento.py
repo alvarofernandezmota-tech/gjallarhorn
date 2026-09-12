@@ -115,6 +115,13 @@ VACIAS = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
           "que", "y", "si", "no", "se", "puedo", "puede", "hay", "teneis", "tienen",
           "hace", "falta", "para", "por", "con", "en", "es", "esta", "estais",
           "vale", "precio", "a", "me", "mi", "quiero", "queria", "quisiera",
+          # Verbos de encargar. `buscar()` INTERSECTA: exige que cada palabra
+          # significativa este en el nombre del servicio, asi que una que no
+          # este en ninguno vacia el resultado entero. «una tarta» encontraba
+          # las cuatro tartas y «encargar una tarta» ninguna, que es la frase
+          # con la que empieza casi cualquier llamada de encargo.
+          "encargar", "encargarme", "encargarle", "encargaros", "encargarte",
+          "encargo", "encargaria", "pedirte", "pedirle", "pediros",
           "pues", "bueno", "nada", "gracias", "mire", "mira", "oye", "oiga",
           "hola", "buenas", "perdone", "perdon", "entonces", "tambien", "ya",
           "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame", "como",
