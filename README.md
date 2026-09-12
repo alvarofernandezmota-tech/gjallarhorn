@@ -1,7 +1,8 @@
 # gjallarhorn
 
-Un recepcionista telefónico: atiende la llamada, informa de tarifas y toma la
-cita. **Proyecto independiente, sin dependencias de ningún otro repo.**
+Un bot de voz para citas: atiende la llamada, informa de tarifas y toma la
+cita. El cerebro vive en [hugin](https://github.com/alvarofernandezmota-tech/hugin),
+montado aquí como submódulo; **fuera de eso no depende de ningún otro repo.**
 
 > **Estado: funciona de punta a punta por voz, desde un móvil.** Conversa con
 > memoria, reserva contra el horario y avisa por Telegram. Falta la telefonía

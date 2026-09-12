@@ -119,7 +119,7 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
                               f"«make» llama a {orden} y ese módulo no arranca nada")
 
     def test_ningun_servicio_llama_a_un_fichero_suelto(self):
-        for unidad in RAIZ.glob("*.service.in"):
+        for unidad in (RAIZ / "systemd").glob("*.service.in"):
             texto = unidad.read_text(encoding="utf-8")
             sueltos = re.findall(r"python\S* ([a-z_]+)\.py", texto)
             with self.subTest(unidad=unidad.name):
@@ -128,7 +128,7 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
     def test_los_servicios_se_paran_en_la_raiz_del_repo(self):
         # `python -m` necesita que el directorio de trabajo sea la raíz. Sin
         # WorkingDirectory el servicio arrancaría y no encontraría nada.
-        for unidad in RAIZ.glob("*.service.in"):
+        for unidad in (RAIZ / "systemd").glob("*.service.in"):
             with self.subTest(unidad=unidad.name):
                 self.assertIn("WorkingDirectory=",
                               unidad.read_text(encoding="utf-8"))
@@ -241,7 +241,7 @@ class TestElCerebroEstaFuera(unittest.TestCase):
         # Un `git pull --ff-only` trae el commit con el enlace a hugin y NO
         # descarga hugin. En Madre eso es la carpeta vacía, el reinicio y el
         # teléfono mudo, sin que nada lo diga hasta que entra una llamada.
-        unidad = (RAIZ / "gjallarhorn-actualizar.service.in").read_text(encoding="utf-8")
+        unidad = (RAIZ / "systemd" / "gjallarhorn-actualizar.service.in").read_text(encoding="utf-8")
         arranque = unidad.split("ExecStart=", 1)[1]
         self.assertIn("git submodule update --init", arranque)
         self.assertLess(arranque.index("git submodule update"),

@@ -154,11 +154,11 @@ pruebas: $(PY)  ## las pruebas (las de aqui y las de hugin) y el lint
 
 # ---- como servicio: arranca con la maquina, se reinicia si cae, con log ----
 
-$(UNIDAD): gjallarhorn.service.in
+$(UNIDAD): systemd/gjallarhorn.service.in
 	mkdir -p $(dir $(UNIDAD))
 	sed -e 's|@RAIZ@|$(CURDIR)|g' -e 's|@NEGOCIO@|$(NEGOCIO)|g' -e 's|@PUERTO@|$(PUERTO)|g' \
 	    -e 's|@PUERTO_TELEFONO@|$(PUERTO_TELEFONO)|g' \
-	    gjallarhorn.service.in > $(UNIDAD)
+	    systemd/gjallarhorn.service.in > $(UNIDAD)
 	systemctl --user daemon-reload
 
 arrancar: $(PY) $(UNIDAD)  ## servicio systemd: siempre encendido, se reinicia si cae
@@ -173,25 +173,25 @@ ACTUALIZAR := $(HOME)/.config/systemd/user/gjallarhorn-actualizar.service
 AGENTES       := $(HOME)/.config/systemd/user/gjallarhorn-agentes.service
 AGENTES_TIMER := $(HOME)/.config/systemd/user/gjallarhorn-agentes.timer
 
-$(AGENTES): gjallarhorn-agentes.service.in
+$(AGENTES): systemd/gjallarhorn-agentes.service.in
 	mkdir -p $(dir $(AGENTES))
 	sed -e 's|@RAIZ@|$(CURDIR)|g' -e 's|@PYTHON@|$(PY)|g' -e 's|@NEGOCIO@|$(NEGOCIO)|g' \
-		gjallarhorn-agentes.service.in > $(AGENTES)
+		systemd/gjallarhorn-agentes.service.in > $(AGENTES)
 	systemctl --user daemon-reload
 
-$(AGENTES_TIMER): gjallarhorn-agentes.timer.in
+$(AGENTES_TIMER): systemd/gjallarhorn-agentes.timer.in
 	mkdir -p $(dir $(AGENTES_TIMER))
-	cp gjallarhorn-agentes.timer.in $(AGENTES_TIMER)
+	cp systemd/gjallarhorn-agentes.timer.in $(AGENTES_TIMER)
 	systemctl --user daemon-reload
 
-$(ACTUALIZAR): gjallarhorn-actualizar.service.in
+$(ACTUALIZAR): systemd/gjallarhorn-actualizar.service.in
 	mkdir -p $(dir $(ACTUALIZAR))
-	sed -e 's|@RAIZ@|$(CURDIR)|g' gjallarhorn-actualizar.service.in > $(ACTUALIZAR)
+	sed -e 's|@RAIZ@|$(CURDIR)|g' systemd/gjallarhorn-actualizar.service.in > $(ACTUALIZAR)
 	systemctl --user daemon-reload
 
-$(TIMER): gjallarhorn-actualizar.timer.in
+$(TIMER): systemd/gjallarhorn-actualizar.timer.in
 	mkdir -p $(dir $(TIMER))
-	cp gjallarhorn-actualizar.timer.in $(TIMER)
+	cp systemd/gjallarhorn-actualizar.timer.in $(TIMER)
 	systemctl --user daemon-reload
 
 auto: $(ACTUALIZAR) $(TIMER)  ## que Madre se actualice sola: git pull cada 5 min y reinicia si cambio
@@ -217,7 +217,7 @@ log:  ## el log del servicio, en vivo
 
 estado: $(PY)  ## ¿vivo? ¿que modelo? ultimas citas y avisos
 	@systemctl --user is-active $(SERVICIO) >/dev/null 2>&1 && echo "servicio: activo" || echo "servicio: parado"
-	@test -f $(UNIDAD) -a gjallarhorn.service.in -nt $(UNIDAD) && \
+	@test -f $(UNIDAD) -a systemd/gjallarhorn.service.in -nt $(UNIDAD) && \
 	  echo "⚠️  la unidad de systemd se quedo atras: make reiniciar" || true
 	@$(PY) -m dueno.diagnostico --corto
 
