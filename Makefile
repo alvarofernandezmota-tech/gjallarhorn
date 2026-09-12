@@ -51,7 +51,7 @@ medir: $(PY)  ## cuanto tarda en contestar. Prueba MODELO=base y MODELO=tiny
 	$(PY) -m dueno.medir_voz --negocio $(NEGOCIO) --modelo $(MODELO)
 
 probar: $(PY)  ## el recepcionista por teclado, con memoria y agenda
-	$(PY) -m mente.recepcion --negocio $(NEGOCIO)
+	$(PY) -m telefono.demo --negocio $(NEGOCIO)
 
 servidor: $(PY)  ## el MVP en primer plano (Ctrl+C para parar)
 	$(PY) -m telefono.servidor --negocio $(NEGOCIO) --puerto $(PUERTO) --puerto-telefono $(PUERTO_TELEFONO)

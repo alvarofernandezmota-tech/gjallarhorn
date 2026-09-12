@@ -22,7 +22,7 @@ import entorno  # noqa: E402,F401 — antes que nada
 
 from guardado import avisos  # noqa: E402
 from negocio import negocio as negocios  # noqa: E402
-from mente import recepcion  # noqa: E402
+from telefono import demo  # noqa: E402
 from telefono import voz  # noqa: E402
 
 
@@ -89,7 +89,7 @@ class TestLaLlamadaEntera(unittest.TestCase):
     def llamar(self, *frases, locutor=None):
         audio = self.base / "entrada.ogg"
         audio.write_bytes(b"")
-        return recepcion.llamada(audio, self.negocio,
+        return demo.llamada(audio, self.negocio,
                                  voz.TranscriptorFalso(*frases), locutor,
                                  carpeta_audio=self.base)
 
