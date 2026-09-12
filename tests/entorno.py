@@ -64,7 +64,7 @@ def _sin_credenciales_de_verdad() -> None:
     """
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from guardado import ajustes
+    from hugin.guardado import ajustes
 
     for variable in CREDENCIALES:
         os.environ.pop(variable, None)

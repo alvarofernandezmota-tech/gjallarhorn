@@ -21,7 +21,7 @@ import entorno  # noqa: E402
 
 import ed25519_de_mentira as telnyx  # noqa: E402
 
-from guardado import ajustes  # noqa: E402
+from hugin.guardado import ajustes  # noqa: E402
 from dueno import lanzar  # noqa: E402
 
 

@@ -14,8 +14,8 @@ sys.path.insert(0, str(RAIZ))
 import entorno  # noqa: E402,F401
 
 from dueno import avisar  # noqa: E402
-from guardado import ajustes  # noqa: E402
-from guardado import avisos  # noqa: E402
+from hugin.guardado import ajustes  # noqa: E402
+from hugin.guardado import avisos  # noqa: E402
 
 CONFIG = {"token": "t", "chat": "c", "tipos": ("cita", "fallo")}
 

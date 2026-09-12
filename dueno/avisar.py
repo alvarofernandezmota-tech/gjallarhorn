@@ -33,9 +33,9 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from guardado import avisos
-from guardado import ajustes
-from guardado import datos
+from hugin.guardado import avisos
+from hugin.guardado import ajustes
+from hugin.guardado import datos
 
 RAIZ = Path(__file__).resolve().parent.parent
 TIPOS_POR_DEFECTO = ("cita", "llamada", "fallo")

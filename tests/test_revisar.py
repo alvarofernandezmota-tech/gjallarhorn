@@ -18,12 +18,12 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-from guardado import avisos  # noqa: E402
-from guardado import copias  # noqa: E402
-from guardado import datos  # noqa: E402
-from negocio import frases as _frases  # noqa: E402
-from negocio import negocio as negocios  # noqa: E402
-from guardado import ajustes  # noqa: E402
+from hugin.guardado import avisos  # noqa: E402
+from hugin.guardado import copias  # noqa: E402
+from hugin.guardado import datos  # noqa: E402
+from hugin.negocio import frases as _frases  # noqa: E402
+from hugin.negocio import negocio as negocios  # noqa: E402
+from hugin.guardado import ajustes  # noqa: E402
 from dueno import revisar as _revisar  # noqa: E402
 from telefono import telefonia  # noqa: E402
 

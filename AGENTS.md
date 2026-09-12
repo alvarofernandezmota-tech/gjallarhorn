@@ -25,12 +25,22 @@ audio → voz.escuchar → recepcion.atender → voz.hablar → audio
 Las decisiones y sus porqués: [`CONTEXT.md`](CONTEXT.md). Cómo se usa:
 [`README.md`](README.md).
 
-## Independiente: no importa ningún otro repo
+## Dos repos, y la dependencia va en un solo sentido
 
-`mente/fechas.py`, `guardado/almacen.py` y `telefono/voz.py` son propios. Hubo unas horas en las que
-esto tiraba de otro repo y **se cortó a propósito**: un recepcionista de
-peluquería no tiene por qué arrastrar el repo del diario personal de nadie
-para arrancar.
+El cerebro —`mente/`, `negocio/`, `guardado/`— vive en el submódulo `hugin/`.
+**Esta aplicación usa el cerebro; el cerebro no sabe que existe un teléfono.**
+Si escribes aquí un `from mente import ...`, es `from hugin.mente import ...`;
+si te ves metiendo un `from telefono import ...` dentro de `hugin/`, para: lo
+que hay que mover es la decisión, no el import. Las dos cosas tienen prueba.
+
+Tocar `hugin/` es tocar **otro repositorio**: se commitea allí y luego aquí se
+graba el enlace. `make pruebas` corre las dos suites y falla si el submódulo
+está vacío.
+
+`hugin/mente/fechas.py`, `hugin/guardado/almacen.py` y `telefono/voz.py` son
+propios. Hubo unas horas en las que esto tiraba de otro repo y **se cortó a
+propósito**: un recepcionista de peluquería no tiene por qué arrastrar el repo
+del diario personal de nadie para arrancar.
 
 Si alguna vez hace falta algo de otro repo, **cópialo aquí**. Son treinta
 líneas frente a una dependencia entre proyectos. Y ojo con copiar de un

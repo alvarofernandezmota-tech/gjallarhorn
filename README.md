@@ -58,11 +58,11 @@ Nada de esto importa otro repo. Lo que necesita, lo tiene:
 
 | | |
 |---|---|
-| `mente/fechas.py` | cuándo quiere la cita, **siempre hacia delante** |
-| `guardado/almacen.py` | JSON con versión de esquema y escritura atómica |
+| `hugin/mente/fechas.py` | cuándo quiere la cita, **siempre hacia delante** |
+| `hugin/guardado/almacen.py` | JSON con versión de esquema y escritura atómica |
 | `telefono/voz.py` | Whisper y Piper, las dos **en local** |
 
-Lo de `mente/fechas.py` no es solo independencia: un parser de diario resuelve hacia
+Lo de `hugin/mente/fechas.py` no es solo independencia: un parser de diario resuelve hacia
 **atrás** —«el lunes» es el que pasó— y un recepcionista siempre mira hacia
 delante. Nadie reserva cita para el martes pasado.
 
@@ -108,7 +108,7 @@ cabe, ofrece los huecos que sí hay, cerca de lo que pidió:
 ```
 
 Y resuelve solo el «¿a las cinco de la mañana o de la tarde?» cuando solo una
-de las dos cae en horario. Las citas se ven con `python3 negocio/agenda.py`.
+de las dos cae en horario. Las citas se ven con `python3 -m hugin.negocio.agenda`.
 
 **De qué es la cita se pregunta una vez**, y no es por curiosidad: un tinte
 dura hora y media y un corte media hora, así que sin saberlo los huecos que
@@ -185,8 +185,8 @@ Dos cosas no se pueden cambiar desde ahí, **a propósito**: el saludo —va en
 que salen de la tabla y de ningún otro sitio.
 
 ```bash
-python3 mente/recepcion.py --negocio mi-negocio                        # por teclado
-python3 mente/recepcion.py --negocio mi-negocio --audio llamada.ogg --hablar
+python3 -m telefono.demo --negocio mi-negocio                        # por teclado
+python3 -m telefono.demo --negocio mi-negocio --audio llamada.ogg --hablar
 ```
 
 ### Añadir conocimiento es añadir un `.md`
@@ -201,7 +201,7 @@ aparcamiento, los productos o las bodas se contesta igual, sin tocar código:
 — ¿Usáis amoniaco?          Trabajamos con tintes sin amoniaco. Si tienes alergia…
 ```
 
-Lo busca `mente/rag.py`: parte cada fichero en párrafos con su título, y encuentra
+Lo busca `hugin/mente/rag.py`: parte cada fichero en párrafos con su título, y encuentra
 el que contesta. **En local, sin embeddings y sin base vectorial** —el porqué
 está escrito en la cabecera del fichero— y se lo dice tal cual lo escribió el
 dueño, sin parafrasear.
@@ -212,8 +212,8 @@ puestos a ojo: salen de un banco de frases etiquetadas (`TestElBanco`) contra
 el que se probaron todas las combinaciones.
 
 ```bash
-python3 mente/rag.py "¿se puede pagar con tarjeta?"   # qué encuentra y con cuántos puntos
-python3 mente/rag.py --todo                           # los párrafos indexados
+python3 -m hugin.mente.rag "¿se puede pagar con tarjeta?"   # qué encuentra y con cuántos puntos
+python3 -m hugin.mente.rag --todo                           # los párrafos indexados
 ```
 
 Los precios **no** salen de ahí: las filas de la tabla se quitan antes de
@@ -236,7 +236,7 @@ de cero:
 tiñera una vez no lo convierte en su costumbre. Y la tabla manda sobre la
 ficha: si el servicio ya no está en `tarifas.md`, no se le ofrece.
 
-Esto son datos personales, así que `mente/memoria.py` tiene tres reglas escritas en
+Esto son datos personales, así que `hugin/mente/memoria.py` tiene tres reglas escritas en
 el código:
 
 | | |
@@ -378,7 +378,7 @@ de una herramienta para abrir tu agenda—:
 ```bash
 make copia            # la de hoy, y tira las viejas (se guardan 14)
 make copias           # qué copias hay
-python3 guardado/copias.py --restaurar 2026-09-11
+python3 -m hugin.guardado.copias --restaurar 2026-09-11
 ```
 
 Restaurar **no borra lo que hay**: antes guarda el estado actual en
@@ -519,8 +519,8 @@ nombre      si lo dio
 confianza   alta | media | baja
 ```
 
-Con eso, `mente/recepcion.py` hace lo mismo que con una frase que las reglas sí
-entienden: el precio sale de la tabla, la fecha la resuelve `mente/fechas.py`, la
+Con eso, `hugin/mente/recepcion.py` hace lo mismo que con una frase que las reglas sí
+entienden: el precio sale de la tabla, la fecha la resuelve `hugin/mente/fechas.py`, la
 agenda dice si cabe. **El modelo no redacta lo que se dice ni pone ningún
 número**, y por eso su salida es un JSON de seis campos y no una frase. No
 hay ningún `contestar()`, y no es un olvido: el día que redacte, redactará
@@ -528,7 +528,7 @@ precios.
 
 Ve tres cosas: la frase, **los últimos turnos de la llamada** (sin ellos «¿y
 el jueves?» no es nada) y **lo que el negocio tiene escrito sobre eso**, que
-le pasa `mente/rag.py`.
+le pasa `hugin/mente/rag.py`.
 
 Y tiene tres frenos:
 
@@ -609,7 +609,7 @@ make telegram-prueba      # ¿llega?
 Un aviso no se da por visto hasta que Telegram confirma que lo tiene: si la
 red falla, sale en el siguiente envío. Y las tarifas no se mandan por defecto:
 veinte «preguntó el precio del corte» al día son ruido, y el ruido es lo que
-hace que se deje de mirar. `python3 guardado/avisos.py` los lista todos.
+hace que se deje de mirar. `python3 -m hugin.guardado.avisos` los lista todos.
 
 ## Operarlo: `make`
 
@@ -655,6 +655,9 @@ precio, peor.
 
 ## Estructura
 
+Dos repositorios, y la frontera es de verdad: **por dónde entra la
+conversación** está aquí, **qué se contesta** está en `hugin/`.
+
 ```
 gjallarhorn/
 ├─ telefono/     coger la llamada: entra y sale, aquí no se decide nada
@@ -662,26 +665,8 @@ gjallarhorn/
 │   ├─ servidor.py      dos puertos: el privado (panel, demo) y el público (solo /telefono/*)
 │   ├─ firmas.py        Ed25519 para Telnyx; el HMAC de Twilio va en telefonia
 │   ├─ voz.py           la oreja (Whisper) y la boca (Piper), para la demo local
+│   ├─ demo.py          hablar con el bot por teclado, sin teléfono
 │   └─ urlpublica.py    cómo se llama esta máquina, para no imprimir huecos
-│
-├─ mente/        entender lo que dicen y decidir qué contestar
-│   ├─ recepcion.py     quién atiende, y Conversacion: la llamada con memoria
-│   ├─ rag.py           busca en los .md del negocio, en local y sin embeddings
-│   ├─ cerebro.py       el LLM, opcional: entiende, no habla ni pone precios
-│   ├─ conocimiento.py  tarifas y FAQ: la tabla manda, el precio es consulta
-│   ├─ memoria.py       la ficha de quien llama, y su derecho a que se borre
-│   └─ fechas.py        cuándo quiere la cita, siempre hacia delante
-│
-├─ negocio/      qué negocio es este (su personalidad vive en negocios/, no aquí)
-│   ├─ negocio.py       un negocio = una carpeta
-│   ├─ frases.py        lo que dice y lo que entiende, editable por negocio
-│   └─ agenda.py        los huecos: reserva de verdad contra el horario
-│
-├─ guardado/     dónde se escribe y cómo, para que no se pierda nada
-│   ├─ datos.py         la carpeta de cada bot; nadie más sabe del reparto
-│   ├─ almacen.py       los JSON, con escritura atómica
-│   ├─ copias.py        la copia de hoy, y restaurar sin perder lo de ahora
-│   └─ avisos.py        el rastro de las llamadas, ordenado
 │
 ├─ dueno/        lo que usa quien lleva el negocio, no quien llama
 │   ├─ lanzar.py        de aquí a la primera llamada, paso a paso
@@ -693,6 +678,25 @@ gjallarhorn/
 │   ├─ diagnostico.py   qué le pasa a esta máquina, en veinte líneas
 │   └─ medir_voz.py     cuánto tarda en contestar, sin teléfono ni tarjeta
 │
+├─ hugin/        ← SUBMÓDULO: el cerebro, y no sabe que existe un teléfono
+│   ├─ mente/          entender lo que dicen y decidir qué contestar
+│   │   ├─ recepcion.py     quién atiende, y Conversacion: la llamada con memoria
+│   │   ├─ rag.py           busca en los .md del negocio, en local y sin embeddings
+│   │   ├─ cerebro.py       el LLM, opcional: entiende, no habla ni pone precios
+│   │   ├─ conocimiento.py  tarifas y FAQ: la tabla manda, el precio es consulta
+│   │   ├─ memoria.py       la ficha de quien llama, y su derecho a que se borre
+│   │   └─ fechas.py        cuándo quiere la cita, siempre hacia delante
+│   ├─ negocio/        qué negocio es este (su personalidad vive en negocios/)
+│   │   ├─ negocio.py       un negocio = una carpeta
+│   │   ├─ frases.py        lo que dice y lo que entiende, editable por negocio
+│   │   └─ agenda.py        los huecos: reserva de verdad contra el horario
+│   └─ guardado/       dónde se escribe y cómo, para que no se pierda nada
+│       ├─ ajustes.py       el .env de quien despliega
+│       ├─ datos.py         la carpeta de cada bot; nadie más sabe del reparto
+│       ├─ almacen.py       los JSON, con escritura atómica
+│       ├─ copias.py        la copia de hoy, y restaurar sin perder lo de ahora
+│       └─ avisos.py        el rastro de las llamadas, ordenado
+│
 ├─ negocios/     un bot por carpeta: tarifas.md, faq.md, negocio.toml, frases.toml
 │   ├─ peluqueria/      trata de usted
 │   └─ taller/          tutea, otra voz, otros servicios
@@ -701,9 +705,38 @@ gjallarhorn/
 └─ Makefile      instalar, lanzar, revisar, estado: un comando cada uno
 ```
 
+### Por qué el cerebro está en otro repositorio
+
+Una llamada de teléfono, un chat y una ventana web son la misma
+conversación vista por sitios distintos. Lo que decide qué contestar no
+tiene por qué enterarse de cuál es: recibe texto y devuelve texto.
+
+Mientras estuvo todo junto eso era una buena intención. Ahora es una
+frontera: [hugin](https://github.com/alvarofernandezmota-tech/hugin) no
+importa nada de `telefono/` ni de `dueno/`, y tiene una prueba que lee el
+árbol de sintaxis de cada módulo y se cae si aparece uno. La dirección va en
+un solo sentido —esta aplicación usa el cerebro, el cerebro no sabe de esta
+aplicación—, y se comprueba desde los dos lados.
+
+Lo que se gana no es teoría: el día que haya un bot de WhatsApp o de
+Telegram, no se copia nada. Y las 350 pruebas del cerebro corren solas, sin
+levantar un servidor ni fingir una llamada.
+
+Al clonar hace falta traerlo:
+
+```bash
+git clone https://github.com/alvarofernandezmota-tech/gjallarhorn.git
+cd gjallarhorn
+git submodule update --init        # sin esto, hugin/ está vacío
+```
+
+`make pruebas` corre las de aquí **y** las de `hugin/`, y falla si el
+submódulo no está: una comprobación saltada no es una comprobación pasada.
+
 Las carpetas son por **para qué sirve cada cosa**, no por capas técnicas. El
 corte sigue las fronteras que ya había: `telefono/` no sabe qué se contesta,
-`mente/` no sabe por dónde entró la llamada, y `negocios/` no tiene código.
+`hugin/mente/` no sabe por dónde entró la llamada, y `negocios/` no tiene
+código.
 
 Hay una que no se llama como parecería: `guardado/` y no `datos/`, porque
 `datos/` es la carpeta de los datos de verdad y está en el `.gitignore`. Un

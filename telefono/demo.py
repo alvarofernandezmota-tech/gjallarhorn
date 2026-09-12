@@ -14,12 +14,12 @@ un altavoz, por el teclado o por telefono.
 from pathlib import Path
 
 from dueno import avisar  # noqa: F401  (lo usa avisos al arrancar)
-from guardado import avisos
-from guardado import datos
-from mente import conocimiento
-from mente.recepcion import Respuesta, atender, conversacion_de
-from negocio import frases as _frases
-from negocio import negocio as negocios
+from hugin.guardado import avisos
+from hugin.guardado import datos
+from hugin.mente import conocimiento
+from hugin.mente.recepcion import Respuesta, atender, conversacion_de
+from hugin.negocio import frases as _frases
+from hugin.negocio import negocio as negocios
 from telefono import voz
 
 

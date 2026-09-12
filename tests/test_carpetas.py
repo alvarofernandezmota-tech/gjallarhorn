@@ -19,7 +19,12 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-PAQUETES = {"telefono", "mente", "negocio", "guardado", "dueno"}
+# Lo que es de **esta** aplicacion. `mente`, `negocio` y `guardado` se
+# fueron al submodulo hugin, que tiene sus propias pruebas de estructura.
+PAQUETES = {"telefono", "dueno"}
+
+# El cerebro, montado como submodulo en la raiz.
+HUGIN = RAIZ / "hugin"
 
 
 class TestLaEstructura(unittest.TestCase):
@@ -72,9 +77,9 @@ class TestLoQueSeRompeAlMover(unittest.TestCase):
         # La prueba de verdad: que los sitios que leen ficheros los vean.
         import os
         from dueno import avisar
-        from guardado import datos
-        from mente import conocimiento
-        from negocio import negocio as negocios
+        from hugin.guardado import datos
+        from hugin.mente import conocimiento
+        from hugin.negocio import negocio as negocios
         self.assertEqual(avisar.RAIZ, RAIZ)
         self.assertTrue(negocios.carpeta_negocios().is_dir(),
                         negocios.carpeta_negocios())
@@ -95,14 +100,23 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
 
     def ordenes_del_makefile(self):
         texto = (RAIZ / "Makefile").read_text(encoding="utf-8")
-        return set(re.findall(r"\$\(PY\) -m ([a-z_]+\.[a-z_]+)", texto))
+        return set(re.findall(r"\$\(PY\) -m ([a-z_]+(?:\.[a-z_]+)+)", texto))
 
     def test_cada_orden_del_makefile_apunta_a_un_modulo_que_existe(self):
         for orden in self.ordenes_del_makefile():
-            paquete, modulo = orden.split(".")
+            # `hugin.mente.cerebro` tiene tres tramos y `telefono.voz` dos:
+            # el ultimo es el modulo y los de delante son carpetas.
+            *carpetas, modulo = orden.split(".")
             with self.subTest(orden=orden):
-                self.assertTrue((RAIZ / paquete / f"{modulo}.py").exists(),
+                fichero = RAIZ.joinpath(*carpetas) / f"{modulo}.py"
+                self.assertTrue(fichero.exists(),
                                 f"«make» llama a {orden} y no está")
+                # Que exista no basta: `python -m` sobre un modulo sin
+                # `__main__` no hace nada y sale con 0, o sea que el Makefile
+                # «funciona» y no ha pasado nada. Le paso a `recepcion.py`
+                # cuando su main() se mudo a telefono/demo.py.
+                self.assertIn("__main__", fichero.read_text(encoding="utf-8"),
+                              f"«make» llama a {orden} y ese módulo no arranca nada")
 
     def test_ningun_servicio_llama_a_un_fichero_suelto(self):
         for unidad in RAIZ.glob("*.service.in"):
@@ -145,7 +159,7 @@ class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
                 self.assertIsNone(os.environ.get(variable))
 
     def test_no_se_mira_el_env_del_repo(self):
-        from guardado import ajustes
+        from hugin.guardado import ajustes
         self.assertNotEqual(ajustes.fichero(), RAIZ / ".env")
         self.assertFalse(ajustes.fichero().exists())
 
@@ -155,7 +169,7 @@ class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
         # usa. El `.env` es de quien despliega, no de quien programa.
         import os
 
-        from guardado import ajustes
+        from hugin.guardado import ajustes
         antes = os.environ.pop(ajustes.VARIABLE, None)
         self.addCleanup(lambda: os.environ.__setitem__(ajustes.VARIABLE, antes)
                         if antes else None)
@@ -165,7 +179,7 @@ class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
         # La causa raíz de la primera versión de esto: la ruta estaba en un
         # argumento por defecto, y Python los evalúa UNA VEZ al definir la
         # función. Cambiar la variable después no cambiaba nada.
-        from guardado import ajustes
+        from hugin.guardado import ajustes
         for funcion in (ajustes.leer, ajustes.poner,
                         ajustes.quitar, ajustes.repetidas):
             with self.subTest(funcion=funcion.__name__):
@@ -175,3 +189,61 @@ class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
         # La consecuencia que importa: da igual lo que tengas en tu .env.
         from telefono import telefonia
         self.assertIsNone(telefonia.configuracion())
+
+
+class TestElCerebroEstaFuera(unittest.TestCase):
+    """El corte con hugin, comprobado desde este lado.
+
+    Partir un repo es fácil; que siga partido, no. Lo que se deshace solo es
+    la dirección: alguien copia un fichero «temporalmente» para no tener que
+    tocar el submódulo, y a la semana hay dos cerebros que no dicen lo mismo.
+    """
+
+    def test_hugin_esta_montado_y_declarado_como_submodulo(self):
+        self.assertTrue((HUGIN / "__init__.py").exists(),
+                        "hugin/ está vacío: «git submodule update --init»")
+        modulos = (RAIZ / ".gitmodules").read_text(encoding="utf-8")
+        self.assertIn("path = hugin", modulos)
+
+    def test_el_cerebro_no_ha_vuelto_a_casa(self):
+        # Un `mente/` aquí otra vez significa que hay dos, y el que gana es el
+        # que esté antes en el sys.path, que no es una forma de decidir nada.
+        for paquete in ("mente", "negocio", "guardado"):
+            self.assertFalse((RAIZ / paquete).exists(),
+                             f"{paquete}/ está en dos sitios: aquí y en hugin/")
+
+    def test_al_cerebro_se_le_habla_por_su_nombre(self):
+        # `from mente import fechas` funciona si alguien mete hugin/ en el
+        # sys.path, y se cae en cuanto no lo mete. Se dice `hugin.mente`.
+        mal = []
+        for carpeta in tuple(PAQUETES) + ("tests",):
+            for fichero in (RAIZ / carpeta).glob("*.py"):
+                for numero, linea in enumerate(
+                        fichero.read_text(encoding="utf-8").splitlines(), 1):
+                    pelada = linea.strip()
+                    for paquete in ("mente", "negocio", "guardado"):
+                        if pelada.startswith(f"from {paquete}") \
+                                or pelada == f"import {paquete}":
+                            mal.append(f"{carpeta}/{fichero.name}:{numero}")
+        self.assertEqual(mal, [], "eso es hugin.<paquete>")
+
+    def test_make_pruebas_corre_tambien_las_de_hugin(self):
+        # Aquí ya no queda ni una prueba de fechas, de agenda ni de reglas: si
+        # «make pruebas» deja de correr las de hugin, el cerebro se queda sin
+        # red y esto sigue saliendo en verde, que es lo peor que puede pasar.
+        receta = (RAIZ / "Makefile").read_text(encoding="utf-8")
+        trozo = receta.split("\npruebas:", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("hugin", trozo, "«make pruebas» no entra en hugin/")
+        self.assertIn("exit 1", trozo,
+                      "si el submódulo no está, tiene que fallar, no avisar")
+
+    def test_la_actualizacion_sola_se_trae_tambien_el_submodulo(self):
+        # Un `git pull --ff-only` trae el commit con el enlace a hugin y NO
+        # descarga hugin. En Madre eso es la carpeta vacía, el reinicio y el
+        # teléfono mudo, sin que nada lo diga hasta que entra una llamada.
+        unidad = (RAIZ / "gjallarhorn-actualizar.service.in").read_text(encoding="utf-8")
+        arranque = unidad.split("ExecStart=", 1)[1]
+        self.assertIn("git submodule update --init", arranque)
+        self.assertLess(arranque.index("git submodule update"),
+                        arranque.index("make -s reiniciar"),
+                        "el submódulo se trae ANTES de reiniciar, no después")

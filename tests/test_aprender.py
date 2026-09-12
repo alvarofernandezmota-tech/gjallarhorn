@@ -22,10 +22,10 @@ import entorno  # noqa: E402
 
 from dueno import agentes  # noqa: E402
 from dueno import aprender  # noqa: E402
-from guardado import avisos  # noqa: E402
-from negocio import negocio as negocios  # noqa: E402
+from hugin.guardado import avisos  # noqa: E402
+from hugin.negocio import negocio as negocios  # noqa: E402
 from dueno import panel  # noqa: E402
-from mente import recepcion  # noqa: E402
+from hugin.mente import recepcion  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
 VIERNES = datetime(2026, 9, 11, 10, 0, tzinfo=MADRID)

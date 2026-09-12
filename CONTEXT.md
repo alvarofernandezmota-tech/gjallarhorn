@@ -7,10 +7,10 @@ tarifas y toma la cita. Por voz, y en local.
 
 ## Decisiones
 
-### 1. Proyecto independiente, sin dependencias de ningún otro repo
+### 1. No depende de ningún repo ajeno
 
-**Decisión**: repo propio, con sus propios `mente/fechas.py`, `guardado/almacen.py` y
-`telefono/voz.py`. No importa nada de fuera.
+**Decisión**: nada de aquí importa el repo del diario ni ningún otro proyecto
+de la casa. El parser de fechas, el almacén y la voz son propios.
 
 **Razón**: hubo unas horas en las que esto tiraba de otro repo y **se cortó a
 propósito**. Un recepcionista de peluquería no tiene por qué arrastrar el repo
@@ -18,7 +18,12 @@ del diario personal de nadie para arrancar, y un fallo en un lado no puede
 dejar mudo el otro. Si alguna vez hace falta algo de fuera, **se copia**: son
 treinta líneas frente a una dependencia entre proyectos.
 
-### 2. `mente/fechas.py` mira hacia delante
+**Al día 2026-09-12**: esto decía «sin dependencias de ningún otro repo», y ya
+no es verdad literalmente: el cerebro vive en `hugin/`, que es un submódulo
+(decisión 9). La razón de fondo no ha cambiado —sigue sin depender de nada
+ajeno— pero conviene no leer aquí una promesa que el repo ya no hace.
+
+### 2. `hugin/mente/fechas.py` mira hacia delante
 
 **Decisión**: el parser de fechas es propio y resuelve **siempre hacia
 delante**.
@@ -219,3 +224,36 @@ Pendiente, por orden:
 2. Decidir la telefonía a la vista de ese número: si lo local no baja de dos
    segundos, hay que irse a una API de voz en tiempo real, que funciona mejor
    y manda el audio a un tercero.
+
+
+### 9. El cerebro es otro repositorio, y la dependencia va en un solo sentido
+
+**Decisión**: lo que entiende y decide —`mente/`, `negocio/`, `guardado/`—
+sale de aquí y vive en [hugin](https://github.com/alvarofernandezmota-tech/hugin),
+montado como submódulo en `hugin/`. Esta aplicación usa el cerebro; el
+cerebro no sabe que esta aplicación existe.
+
+**Razón**: una llamada de teléfono, un chat y una ventana web son la misma
+conversación vista por sitios distintos, y lo que decide qué contestar no
+tiene por qué enterarse de cuál es. Mientras estuvo todo junto, eso era una
+buena intención escrita en el README; ahora es una frontera que se comprueba
+desde los dos lados: hugin tiene una prueba que lee el árbol de sintaxis de
+cada módulo y se cae si aparece un import de un canal, y aquí hay otra que se
+cae si el cerebro vuelve a casa en forma de copia.
+
+Lo que se gana no es teoría. El día que haya un bot de WhatsApp o de Telegram
+no se copia nada, y las pruebas del cerebro —350— corren sin levantar un
+servidor ni fingir una llamada.
+
+**Lo que cuesta**: `git clone` ya no basta, hace falta
+`git submodule update --init`, y `make pruebas` falla a propósito si el
+submódulo no está en vez de pasar en verde sin haber probado el cerebro.
+
+**El fallo que casi se cuela**: tres funciones resolvían carpetas de datos
+con `Path(__file__).parent.parent`. Eso apuntaba a la raíz del repo mientras
+vivían aquí dentro, y sacadas a librería apuntan a `hugin/`: la agenda, el
+conocimiento y los negocios se habrían escrito **dentro del submódulo**, con
+el bot diciendo tan tranquilo que no hay citas. Se resuelven desde el
+directorio de trabajo, como ya hacía el `.env`, y hay una prueba que lo
+sujeta.
+

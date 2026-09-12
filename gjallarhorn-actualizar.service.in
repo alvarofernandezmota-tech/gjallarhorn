@@ -5,4 +5,15 @@ Description=gjallarhorn: git pull --ff-only y make reiniciar si cambio algo
 [Service]
 Type=oneshot
 WorkingDirectory=@RAIZ@
-ExecStart=/bin/sh -c 'antes=$(git rev-parse HEAD); git pull -q --ff-only || exit 0; test "$antes" != "$(git rev-parse HEAD)" && make -s reiniciar || true'
+# El `git submodule update` no es de adorno: el cerebro vive en hugin/, y un
+# `git pull` a secas trae el commit nuevo con el enlace apuntando a una
+# version del submodulo que nunca se descarga. La carpeta se queda vacia y el
+# servicio reinicia contra un import que no existe.
+#
+# Si el submodulo no se puede traer se sale con error y NO se reinicia: el
+# proceso que esta atendiendo el telefono sigue con el codigo que ya tiene
+# cargado, que es mucho mejor que morir en el arranque.
+ExecStart=/bin/sh -c 'antes=$(git rev-parse HEAD); \
+  git pull -q --ff-only || exit 0; \
+  git submodule update --init --recursive -q || exit 1; \
+  test "$antes" != "$(git rev-parse HEAD)" && make -s reiniciar || true'

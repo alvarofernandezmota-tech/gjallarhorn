@@ -18,11 +18,11 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-from negocio import agenda as ag  # noqa: E402
-from guardado import almacen  # noqa: E402
-from mente import memoria  # noqa: E402
-from negocio import negocio as negocios  # noqa: E402
-from mente import recepcion  # noqa: E402
+from hugin.negocio import agenda as ag  # noqa: E402
+from hugin.guardado import almacen  # noqa: E402
+from hugin.mente import memoria  # noqa: E402
+from hugin.negocio import negocio as negocios  # noqa: E402
+from hugin.mente import recepcion  # noqa: E402
 from telefono import telefonia  # noqa: E402
 
 MADRID = ZoneInfo("Europe/Madrid")
@@ -274,7 +274,7 @@ class TestLaLlamadaAlimentaLaFicha(unittest.TestCase):
 
     def cuando(self, cual=0):
         """Ese hueco, dicho como lo diría quien llama."""
-        from mente import fechas
+        from hugin.mente import fechas
         hueco = self.hueco(cual)
         ahora = ag.Agenda("peluqueria", self.negocio.horario).ahora()
         return (f"{fechas.en_palabras(hueco.fecha, ahora.date())} "
