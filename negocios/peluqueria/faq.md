@@ -9,8 +9,15 @@
   quien llama («¿se puede pagar con tarjeta?» → la de la tarjeta). Si una
   cosa se pregunta de varias formas, ponlas todas en la misma línea en
   negrita: «**¿Dónde estáis? ¿Cuál es la dirección?**». Ante un empate no
-  contesta y toma el recado. Este bloque de ayuda no lo lee nadie:
-  puedes borrarlo.
+  contesta y toma el recado.
+
+  POR ESO: que dos preguntas no compartan su palabra distintiva. Si tienes
+  «¿Con cuánta antelación...?» y «¿Cuántas raciones...?», las dos empiezan
+  igual y el agente ve un empate donde tú ves dos preguntas distintas: se
+  calla y toma recado. Cambia una de las dos —«¿Para cuánta gente da cada
+  tarta?»— y las dos vuelven a contestarse. Pasó de verdad el 2026-09-12.
+
+  Este bloque de ayuda no lo lee nadie: puedes borrarlo.
 -->
 
 **¿Qué horario tenéis?**
