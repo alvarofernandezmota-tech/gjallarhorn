@@ -94,6 +94,12 @@ PESO_DESCONOCIDA = 0.5
 # esto, el peso del título tumbaba justo las preguntas más concretas.
 ESPECIFICA = 0.8          # a partir de qué parte del idf máximo se llama rara
 PESO_ESPECIFICA = 0.5     # y cuánto vale cubrirlo entero solo con el cuerpo
+# Y cuánto vale que un trozo de la pregunta salga TAL CUAL, palabra tras
+# palabra. Alto a propósito: dos palabras seguidas son mucha más prueba que
+# las mismas sueltas, y es lo único que distingue «se puede ir SIN CITA» de
+# «¿y si no puedo IR? ¿cómo anulo la CITA?», que comparten las dos palabras
+# que más pesan y significan lo contrario.
+PESO_SEGUIDAS = 0.9
 
 # Las filas de tabla se quitan: los precios son consulta exacta, no búsqueda.
 FILA_TABLA = re.compile(r"^\s*\|.*$", re.M)
@@ -285,6 +291,30 @@ class Indice:
         return {palabra: math.log(1 + (total - cuantos + 0.5) / (cuantos + 0.5))
                 for palabra, cuantos in en_cuantos.items()}
 
+    def _seguidas(self, consulta: list[str], pesos: list[float],
+                  techo: float) -> list[float]:
+        """Cuánto de la pregunta sale en el pasaje **tal cual**, seguida.
+
+        Una bolsa de palabras no distingue «sin cita» de «cita» más un «sin»
+        que andaba por ahí, y en español esa diferencia es la pregunta entera.
+        Se miran los pares consecutivos de la consulta y se busca el mismo
+        par consecutivo en el título o en el cuerpo.
+        """
+        pares = [(consulta[i], consulta[i + 1], pesos[i] + pesos[i + 1])
+                 for i in range(len(consulta) - 1)]
+        if not pares or techo <= 0:
+            return [0.0] * len(self.pasajes)
+        fuera = []
+        for titulo, cuerpo in zip(self.titulos, self.cuerpos):
+            mejor = 0.0
+            for campo in (titulo, cuerpo):
+                for i in range(len(campo) - 1):
+                    for antes, despues, peso in pares:
+                        if campo[i] == antes and campo[i + 1] == despues:
+                            mejor = max(mejor, peso)
+            fuera.append(min(mejor / techo, 1.0))
+        return fuera
+
     def puntuar(self, consulta: list[str], propias_de: set[str] | None = None) -> list[float]:
         """Cuánto encaja cada pasaje con la consulta, de 0 a 1.
 
@@ -316,8 +346,12 @@ class Indice:
         else:
             especificos = [0.0] * len(self.pasajes)
 
-        return [max(PESO_TITULO * t + (1 - PESO_TITULO) * c, PESO_ESPECIFICA * e)
-                for t, c, e in zip(titulos, cuerpos, especificos)]
+        seguidas = self._seguidas(consulta, pesos, techo)
+
+        return [max(PESO_TITULO * t + (1 - PESO_TITULO) * c,
+                    PESO_ESPECIFICA * e,
+                    PESO_SEGUIDAS * s)
+                for t, c, e, s in zip(titulos, cuerpos, especificos, seguidas)]
 
     def _solo_un_servicio(self, frase: str) -> bool:
         """¿Lo único que dice es el nombre de un servicio de la tabla?

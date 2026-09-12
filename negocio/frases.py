@@ -145,7 +145,15 @@ ENTIENDE = {
                "cobrais", "cobran", "cobra", "sale"],
     # «¿cuanto tarda?» se contesta con el servicio y su duracion, que van juntos.
     "duracion": ["cuanto tarda", "cuanto dura", "cuanto tiempo", "cuanto se tarda",
-                 "tardais", "tarda mucho"],
+                 "tardais", "tarda mucho",
+                 # En un negocio de encargos esta ES la pregunta, y no estaba.
+                 # NO se ponen aqui «para cuando» ni «con cuanta antelacion»:
+                 # son demasiado anchas y secuestran preguntas que la FAQ
+                 # contesta mejor —este intento se cortocircuita al catalogo,
+                 # y sin servicio nombrado acaba diciendo «no tengo ese
+                 # servicio» a algo que esta escrito en el faq.md.
+                 "cuando lo tengo", "cuando la tengo", "cuando estaria listo",
+                 "cuando estara listo", "cuando lo recojo"],
     # Un saludo a secas no es un recado: se le invita a hablar.
     "saludo": ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
                "oiga", "diga", "digame", "perdone"],

@@ -120,6 +120,12 @@ VACIAS = {"de", "la", "el", "los", "las", "un", "una", "cuanto", "cuesta",
           "muy", "bien", "ok", "saber", "decir", "decirme", "dime", "digame", "como",
           # Verbos de «¿hacéis…?», «¿tenéis…?»: salen en media FAQ y en casi
           # toda pregunta, así que no distinguen nada y sí despistaban.
+          # Verbos de «¿cuanto tarda?». Sin esto, `buscar()` exigia encontrar
+          # «tarda» en el nombre del servicio y devolvia vacio: «¿cuanto
+          # cuesta un corte?» daba los cuatro cortes y «¿cuanto tarda un
+          # corte?» contestaba «no tengo ese servicio», teniendo cuatro.
+          "tarda", "tardan", "tardais", "tardaria", "tardarian", "tardando",
+          "dura", "duran", "duracion", "tiempo", "listo", "lista", "antelacion",
           "haceis", "hacen", "hacemos", "haces", "podeis", "podemos", "dais",
           "usais", "usan", "atendeis", "atienden", "trabajais", "sois", "soy",
           "lo", "del", "al", "le", "les", "nos", "os", "su", "sus", "tu", "tus",
