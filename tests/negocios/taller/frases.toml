@@ -1,0 +1,59 @@
+# La personalidad del bot: cómo habla y qué entiende.
+#
+# Este tutea y la peluquería trata de usted. Es el mismo código: cambia este
+# fichero y cambia el bot.
+
+[dice]
+
+pide_dia = "Muy bien, una cita{servicio}. ¿Qué día te viene bien?"
+pide_hora = "Vale, {fecha}. ¿A qué hora?"
+pide_nombre = "¿A nombre de quién te la apunto?"
+reservada = "Hecho. Te apunto la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Aquí te esperamos."
+cierra_cita = "Hecho. Te apunto la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Te lo confirmamos."
+cerrado = "{fecha} no abrimos. Tengo hueco {alternativas}. ¿Te viene bien alguno?"
+ocupado = "A esa hora ya tengo otro coche. {fecha} me queda {alternativas}. ¿Te viene bien alguno?"
+ofrece_huecos = "{fecha} tengo {alternativas}. ¿Cuál te viene mejor?"
+anulada = "Hecho, te quito la cita{servicio} {fecha} a {hora}."
+algo_mas = "¿Algo más?"
+digame = "Dime, ¿qué necesitas?"
+recado = "Tomo nota y te devolvemos la llamada en cuanto podamos."
+despedida = "A ti. ¡Hasta luego!"
+humano = "Soy un asistente automático. Puedo darte precios, horario y citas. Si prefieres hablar con alguien del taller, tomo nota y te llaman."
+no_le_oigo = "Perdona, no te he oído. ¿Me lo repites?"
+fuera_horario = "A esa hora no estamos. {fecha} tengo {alternativas}. ¿Te viene bien alguno?"
+pasado = "Esa hora ya ha pasado. Me queda {alternativas}. ¿Te viene bien alguno?"
+sin_huecos = "No me queda ningún hueco estos días. Tomo nota y te llamamos."
+sin_huecos_dia = "{fecha} lo tengo lleno. Tengo {alternativas}. ¿Te viene bien alguno?"
+primeros_huecos = "Lo más pronto que tengo es {alternativas}. ¿Te viene bien alguno?"
+cual_hueco = "¿Cuál te viene mejor?"
+anular_nombre = "Claro. ¿A nombre de quién está la cita?"
+anular_cual = "A ese nombre tengo {citas}. ¿Cuál te quito?"
+anular_no_hay = "No encuentro ninguna cita a nombre de {nombre}. Tomo nota y lo miramos."
+anulada_y_otra = "Hecho, te quito la cita{servicio} {fecha} a {hora}. ¿Qué día te viene bien la nueva?"
+sin_agenda_anular = "Tomo nota de que quieres anularla y te lo confirmamos."
+recado_insistente = "Perdona, no acabo de entenderte. Tomo nota y te devolvemos la llamada."
+pide_hora_franja = "Vale, {fecha} {franja}. ¿A qué hora?"
+renombrada = "Anotado: la cita queda a nombre de {nombre}."
+cual_servicio = "¿De qué servicio? Así te digo el precio y lo que se tarda."
+pide_servicio = "Muy bien. ¿Para qué te la apunto?"
+lo_de_siempre = "Muy bien, {servicio} como siempre. ¿Qué día te viene bien?"
+no_se_lo_de_siempre = "Todavía no sé qué sueles pedir. ¿Qué necesitas?"
+precio_varios = "Tengo varias cosas: {opciones}. ¿Cuál te interesa?"
+precio_no_esta = "Eso no lo tengo en la lista de precios. Tomo nota y te lo confirmamos."
+sin_tarifas = "Ahora mismo no tengo las tarifas a mano. Tomo nota y te devolvemos la llamada."
+sin_horario = "No tengo el horario a mano. Tomo nota y te llamamos."
+
+[sinonimos]
+
+aceite = ["cambiarme el aceite", "cambio de aceite", "el aceite"]
+neumaticos = ["ruedas", "rueda", "gomas", "cubiertas", "cambiar las ruedas"]
+freno = ["frenos", "pastillas", "me chirrían los frenos", "frenada"]
+"revision pre-itv" = ["itv", "la itv", "pasar la itv", "pre itv", "revisión de la itv"]
+diagnosis = ["me sale una luz", "luz del motor", "testigo", "avería", "hace un ruido raro"]
+bateria = ["no me arranca", "se ha quedado sin batería", "la batería"]
+
+[entiende]
+
+cita = ["cita", "hueco", "reservar", "reserva", "coger", "apuntar", "pedir hora",
+        "disponible", "disponibilidad", "libre", "meter el coche", "llevar el coche",
+        "pasarme con el coche", "dejar el coche"]

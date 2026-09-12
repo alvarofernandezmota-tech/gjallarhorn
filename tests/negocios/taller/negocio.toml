@@ -1,0 +1,24 @@
+# El segundo ejemplo, y está aquí para enseñar una cosa: el mismo código
+# atiende dos negocios que no se parecen en nada y que **no hablan igual**.
+#
+# La peluquería trata de usted y dice «le apunto la cita». Este taller tutea,
+# dice «te la apunto» y llama «revisión» a lo que en otro sitio sería otra
+# cosa. Nada de eso es código: está en este fichero y en frases.toml.
+
+nombre = "Taller"
+
+saludo = "Taller Ruiz, ¿qué tal? Te atiende un asistente automático."
+
+despedida = "¡Hasta luego!"
+
+# La voz también es del bot. Si el proveedor tiene varias, aquí se elige.
+voz = "Polly.Sergio"
+
+[horario]
+lunes = ["08:30-13:30", "15:30-19:00"]
+martes = ["08:30-13:30", "15:30-19:00"]
+miercoles = ["08:30-13:30", "15:30-19:00"]
+jueves = ["08:30-13:30", "15:30-19:00"]
+viernes = ["08:30-14:00"]
+sabado = []
+domingo = []

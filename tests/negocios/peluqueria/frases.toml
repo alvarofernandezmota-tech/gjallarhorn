@@ -1,0 +1,94 @@
+# Lo que dice el agente y lo que entiende del cliente.
+#
+# TODO ESTE FICHERO ES OPCIONAL. Lo que no pongas aquí usa el valor de fábrica,
+# así que puedes borrarlo entero y sigue funcionando, o dejar solo las dos
+# líneas que quieras cambiar.
+#
+# Después de tocarlo, reinicia el servidor. Si te equivocas en algo, te lo dice
+# al arrancar en vez de esperar a que llame alguien.
+
+[dice]
+
+pide_dia = "Muy bien, una cita{servicio}. ¿Qué día le viene bien?"
+pide_hora = "Perfecto, {fecha}. ¿A qué hora le viene bien?"
+confirma_franja = "¿{hora}?"
+pide_nombre = "¿A nombre de quién se la apunto?"
+cierra_cita = "Perfecto. Le apunto la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Se lo confirmamos enseguida."
+reservada = "Perfecto. Reservada la cita{servicio} {fecha} a {hora}, a nombre de {nombre}. Le esperamos."
+cerrado = "{fecha} estamos cerrados. Tengo hueco {alternativas}. ¿Le viene bien alguno?"
+fuera_horario = "A esa hora no estamos abiertos. {fecha} tengo {alternativas}. ¿Le viene bien alguno?"
+ocupado = "A esa hora ya tengo a alguien. {fecha} me queda {alternativas}. ¿Le viene bien alguno?"
+sin_huecos = "No me queda ningún hueco en los próximos días. Le tomo el recado y le llamamos."
+precio_uno = "{servicio}: {precio}{duracion}."
+precio_varios = "Tengo varias opciones: {opciones}. ¿Cuál le interesa?"
+precio_no_esta = "No tengo ese servicio en la lista de precios. Le tomo el recado y se lo confirmamos."
+no_le_oigo = "Perdone, no le he oído. ¿Me lo repite?"
+recado = "Tomo nota y le devolvemos la llamada en cuanto podamos."
+digame = "Dígame, ¿en qué puedo ayudarle?"
+humano = "Soy un asistente automático. Puedo darle precios, horario y citas. Si prefiere hablar con una persona, le tomo el recado y le devuelven la llamada en cuanto puedan."
+algo_mas = "¿Le puedo ayudar en algo más?"
+cual_servicio = "¿De qué servicio? Así le digo el precio y lo que se tarda."
+lo_de_siempre = "Muy bien, {servicio} como siempre. ¿Qué día le viene bien?"
+despedida = "Gracias a usted. ¡Hasta luego!"
+
+# Cómo llama la gente a lo que hay en tarifas.md. Lo de la izquierda tiene que
+# estar en el nombre del servicio; lo de la derecha es lo que dice quien llama.
+# Valen trozos de frase a los dos lados: «corte de pelo» → «corte», y «para mi
+# hija» → «corte infantil» (con comillas si lleva espacios o eñes).
+[sinonimos]
+corte = ["cortar", "cortarme", "cortarse", "cortarle", "corte de pelo",
+         "cortar el pelo", "cortarme el pelo", "cortarle el pelo", "pelarme"]
+tinte = ["teñir", "teñirme", "teñirse", "tintar", "color", "tinte de pelo"]
+mechas = ["reflejos", "balayage", "babylights", "californianas"]
+caballero = ["hombre", "chico", "señor", "de hombre", "masculino"]
+"señora" = ["mujer", "chica", "de mujer", "femenino"]
+"corte infantil" = ["niño", "niña", "niños", "mi hijo", "mi hija", "el peque",
+                    "la peque", "para el niño", "para la niña", "infantil"]
+lavar = ["lavado", "lavarme"]
+peinar = ["peinado", "peinarme"]
+keratina = ["queratina", "alisado", "alisarme", "alisado de keratina"]
+recogido = ["recogerme el pelo", "un moño", "peinado de boda", "de novia"]
+
+[entiende]
+
+# «vale» a secas NO va aquí: es la muletilla de «vale, pues nada, gracias» y
+# se tomaba por «¿cuánto vale?». Con «cuanto» o «que» delante sí es un precio.
+precio = ["precio", "precios", "cuanto", "cuesta", "cuestan", "cuanto vale",
+          "cuanto valen", "que vale", "lo que vale", "tarifa", "tarifas",
+          "cobrais", "cobran", "cobra", "sale", "me saldria",
+          "cuanto me costaria", "que precio tiene", "es caro", "es barato",
+          "me podeis decir el precio"]
+
+# «¿Cuánto tarda?» se contesta con el servicio, su precio y lo que dura.
+duracion = ["cuanto tarda", "cuanto dura", "cuanto tiempo", "cuanto se tarda",
+            "tardais", "tarda mucho", "cuanto lleva"]
+
+# «Lo de siempre», de quien viene cada mes a lo mismo.
+siempre = ["lo de siempre", "lo mismo de siempre", "como siempre",
+           "lo mismo que la ultima vez", "lo de la ultima vez", "lo habitual"]
+
+# Un saludo a secas: se le invita a hablar en vez de tomar nota.
+saludo = ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches",
+          "oiga", "diga", "digame", "perdone"]
+
+cita = ["cita", "hueco", "reservar", "reserva", "coger", "apuntar",
+        "pedir hora", "disponible", "disponibilidad", "libre", "sitio",
+        "podeis meterme", "teneis hueco", "quiero pasar", "quiero ir",
+        "necesito hora", "me gustaria ir"]
+
+horario = ["horario", "abris", "abren", "cerrais", "cierran", "abierto",
+           "abierta", "abiertos", "abiertas", "cerrado", "cerrada", "cerrados",
+           "hasta que hora", "a que hora", "que dias abris",
+           "trabajais los", "los findes", "el sabado abris", "hoy abris"]
+
+si = ["si", "sip", "claro", "eso es", "correcto", "exacto", "vale", "perfecto",
+      "por la tarde", "de la tarde", "asi es", "efectivamente", "afirmativo",
+      "por supuesto", "genial"]
+
+no = ["no", "nop", "que va", "negativo", "por la manana", "de la manana",
+      "para nada", "en absoluto", "mejor no", "nada", "nada mas", "eso es todo",
+      "ya esta"]
+
+colgar = ["adios", "hasta luego", "gracias", "nada", "nada mas", "ya esta",
+          "eso es todo", "era eso", "colgar", "chao", "venga", "vale gracias",
+          "muchas gracias adios", "nos vemos"]
