@@ -61,7 +61,10 @@ SOLO_TITULO = re.compile(r"^\s*#+ .*$", re.M)
 
 def carpeta() -> Path:
     valor = os.environ.get(VARIABLE, "").strip()
-    return Path(valor).expanduser().resolve() if valor else Path(__file__).resolve().parent.parent / "conocimiento"
+    # Desde el directorio de trabajo, NUNCA desde `__file__`: esta
+    # libreria vive dentro de la aplicacion que la usa, y esta carpeta
+    # es de la aplicacion. Con `__file__` acabaria dentro de hugin/.
+    return Path(valor).expanduser().resolve() if valor else Path.cwd() / "conocimiento"
 
 
 def _sin_tildes(texto: str) -> str:

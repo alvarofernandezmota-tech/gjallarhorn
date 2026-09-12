@@ -46,7 +46,10 @@ _NEGOCIO: str | None = None
 def raiz() -> Path:
     """La carpeta de datos. `GJALLARHORN_DATOS` manda; si no, `datos/` aquí."""
     valor = os.environ.get(VARIABLE, "").strip()
-    return Path(valor).expanduser() if valor else Path(__file__).resolve().parent.parent / "datos"
+    # Desde el directorio de trabajo, NUNCA desde `__file__`: esta
+    # libreria vive dentro de la aplicacion que la usa, y esta carpeta
+    # es de la aplicacion. Con `__file__` acabaria dentro de hugin/.
+    return Path(valor).expanduser() if valor else Path.cwd() / "datos"
 
 
 def usar(negocio, migrar_lo_viejo: bool = True) -> list[str]:

@@ -61,6 +61,30 @@ class TestNoSabeDeNingunCanal(unittest.TestCase):
                         f"{fich.name}:{i} → «{pelada}»; tiene que ser hugin.{paquete}")
 
 
+    def test_ninguna_carpeta_de_la_aplicacion_sale_de_file(self):
+        """El fallo que casi se cuela al partir el repo.
+
+        `Path(__file__).parent.parent / "datos"` apuntaba a la raiz del repo
+        mientras esto vivia dentro de la aplicacion. Sacado a libreria apunta
+        a `hugin/`, que no es de nadie: la agenda, el conocimiento y los
+        negocios se habrian escrito dentro del submodulo y el bot habria
+        seguido diciendo que todo va bien.
+
+        Se resuelven desde el directorio de trabajo, que las unidades de
+        systemd fijan en la raiz de la aplicacion.
+        """
+        # Se mira el arbol, no el texto: los comentarios y los docstrings de
+        # aqui **explican** por que no se usa `__file__`, y buscando la
+        # cadena a pelo saltaria justo la documentacion de la regla.
+        for fich in modulos():
+            arbol = ast.parse(fich.read_text(encoding="utf-8"))
+            for nodo in ast.walk(arbol):
+                if isinstance(nodo, ast.Name) and nodo.id == "__file__":
+                    self.fail(f"{fich.name}:{nodo.lineno} → una ruta desde "
+                              f"__file__ cae dentro de hugin/, y esa carpeta "
+                              f"es de la aplicacion")
+
+
 class TestSeUsaComoSeDice(unittest.TestCase):
     def test_la_carpeta_del_repo_es_el_paquete(self):
         # Si el repo se clona con otro nombre, `import hugin` no encuentra

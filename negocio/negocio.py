@@ -57,7 +57,10 @@ def carpeta_negocios() -> Path:
     valor = os.environ.get(VARIABLE, "").strip()
     if valor:
         return Path(valor).expanduser().resolve()
-    return Path(__file__).resolve().parent.parent / "negocios"
+    # Desde el directorio de trabajo, NUNCA desde `__file__`: esta
+    # libreria vive dentro de la aplicacion que la usa, y esta carpeta
+    # es de la aplicacion. Con `__file__` acabaria dentro de hugin/.
+    return Path.cwd() / "negocios"
 
 
 @dataclass(frozen=True)
