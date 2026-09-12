@@ -81,8 +81,11 @@ casa el 2026-09-11: una llamada por voz desde un iPhone, oída y contestada.
   fuera de ahí a propósito.
 - **Una errata en un fichero editable no tumba una llamada.** Se avisa al
   arrancar; si se cuela, frase de fábrica y aviso.
-- **Procedimiento ↔ script con el mismo nombre base** — la regla de la casa:
-  `docs/procedimientos/algo.md` ↔ `scripts/algo.py`.
+- **Procedimiento ↔ script con el mismo nombre base** — la regla de la casa,
+  para cuando haga falta: `docs/procedimientos/algo.md` ↔ `scripts/algo.py`.
+  Las dos carpetas se crean el día que exista el primero. Estuvieron ahí
+  vacías, con un índice que decía «vacío», y la de `scripts/` además
+  describía una estructura que ya no era cierta.
 - **Commits**: `tipo: descripción breve en presente` (feat, fix, docs, chore,
   refactor, test). Un commit por cambio lógico.
 - **Trabajo no trivial**: rama corta y PR en borrador.
