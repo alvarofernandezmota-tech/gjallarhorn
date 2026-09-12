@@ -37,6 +37,12 @@ from guardado import avisos
 from guardado import datos
 
 RAIZ = Path(__file__).resolve().parent.parent
+# El `.env` en su propia variable, y las funciones lo resuelven al llamarse.
+# Estaba metido en los argumentos por defecto, que Python evalúa UNA VEZ al
+# definir la función: cambiar RAIZ después no cambiaba nada, y eso hacía
+# imposible que las pruebas se apartaran del .env de verdad. Un valor por
+# defecto que es una ruta calculada es siempre una trampa esperando.
+FICHERO_ENV = RAIZ / ".env"
 TIPOS_POR_DEFECTO = ("cita", "llamada", "fallo")
 _LOCK = threading.Lock()
 
@@ -55,7 +61,7 @@ def _pares_del_env(fichero: Path) -> list[tuple[str, str]]:
     return pares
 
 
-def _leer_env(fichero: Path = RAIZ / ".env") -> None:
+def _leer_env(fichero: Path | None = None) -> None:
     """Carga KEY=VALOR de un .env al entorno, sin pisar lo que ya este puesto.
 
     Si una clave sale dos veces en el fichero, vale **la ultima**. No es un
@@ -65,12 +71,13 @@ def _leer_env(fichero: Path = RAIZ / ".env") -> None:
     de abajo, y no hay forma de dar con eso mirando: las llamadas se caen
     con un 403 y aqui todo sale en verde.
     """
+    fichero = FICHERO_ENV if fichero is None else fichero
     ultimo = dict(_pares_del_env(fichero))         # la ultima gana, como systemd
     for clave, valor in ultimo.items():
         os.environ.setdefault(clave, valor)        # el entorno de verdad manda
 
 
-def poner_en_env(clave: str, valor: str, fichero: Path = RAIZ / ".env") -> str:
+def poner_en_env(clave: str, valor: str, fichero: Path | None = None) -> str:
     """Deja `clave=valor` en el .env. Devuelve «puesta», «cambiada» o «igual».
 
     **Sustituye** las que hubiera en vez de añadir otra linea. Anadir es lo
@@ -82,6 +89,7 @@ def poner_en_env(clave: str, valor: str, fichero: Path = RAIZ / ".env") -> str:
     No se toca lo que este comentado: un `# CLAVE=` del ejemplo es
     documentacion, no una clave puesta.
     """
+    fichero = FICHERO_ENV if fichero is None else fichero
     linea = f"{clave}={valor}"
     lineas = (fichero.read_text(encoding="utf-8").splitlines()
               if fichero.exists() else [])
@@ -102,11 +110,12 @@ def poner_en_env(clave: str, valor: str, fichero: Path = RAIZ / ".env") -> str:
     return que
 
 
-def quitar_del_env(clave: str, fichero: Path = RAIZ / ".env") -> int:
+def quitar_del_env(clave: str, fichero: Path | None = None) -> int:
     """Quita esa clave del .env. Devuelve cuantas lineas se han ido.
 
     Lo comentado no se toca: un `# CLAVE=` del ejemplo es documentacion.
     """
+    fichero = FICHERO_ENV if fichero is None else fichero
     if not fichero.exists():
         return 0
     lineas = fichero.read_text(encoding="utf-8").splitlines()
@@ -117,8 +126,9 @@ def quitar_del_env(clave: str, fichero: Path = RAIZ / ".env") -> int:
     return len(lineas) - len(quedan)
 
 
-def repetidas_en_env(fichero: Path = RAIZ / ".env") -> list[str]:
+def repetidas_en_env(fichero: Path | None = None) -> list[str]:
     """Claves puestas mas de una vez. Vale la ultima, pero conviene saberlo."""
+    fichero = FICHERO_ENV if fichero is None else fichero
     visto, repetidas = set(), []
     for clave, _ in _pares_del_env(fichero):
         if clave in visto and clave not in repetidas:

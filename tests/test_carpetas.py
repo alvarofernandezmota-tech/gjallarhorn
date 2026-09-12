@@ -122,3 +122,49 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
+    """Las pruebas no pueden depender de lo que tengas configurado.
+
+    Pasó de verdad: con el bot ya funcionando y un Auth Token bueno en el
+    `.env`, cuatro pruebas se ponían en rojo en esa máquina y seguían verdes
+    en una recién clonada. Eran justo las que comprueban «sin teléfono no
+    está listo»: veían el token de verdad.
+
+    Una suite que se comporta distinto según tu configuración no dice nada.
+    Y correr las pruebas no tiene por qué cargar tus credenciales.
+    """
+
+    def test_las_credenciales_no_estan_en_el_entorno(self):
+        import os
+        import entorno
+        for variable in entorno.CREDENCIALES:
+            with self.subTest(variable=variable):
+                self.assertIsNone(os.environ.get(variable))
+
+    def test_no_se_mira_el_env_del_repo(self):
+        from dueno import avisar
+        self.assertNotEqual(avisar.FICHERO_ENV, RAIZ / ".env")
+        self.assertFalse(avisar.FICHERO_ENV.exists())
+
+    def test_pero_la_raiz_sigue_siendo_la_de_verdad(self):
+        # Apartar el .env no puede mover la raíz: de ella cuelgan negocios/,
+        # datos/ y la plantilla del servicio.
+        from dueno import avisar
+        self.assertEqual(avisar.RAIZ, RAIZ)
+
+    def test_la_ruta_del_env_se_resuelve_al_llamar_no_al_definir(self):
+        # La causa raíz. Estaba en un argumento por defecto, y Python los
+        # evalúa UNA VEZ al definir la función: cambiar la variable después
+        # no cambiaba nada, y las pruebas no podían apartarse.
+        from dueno import avisar
+        for funcion in (avisar._leer_env, avisar.poner_en_env,
+                        avisar.quitar_del_env, avisar.repetidas_en_env):
+            with self.subTest(funcion=funcion.__name__):
+                self.assertNotIn(RAIZ / ".env", funcion.__defaults__ or ())
+
+    def test_sin_telefono_configurado_para_la_suite(self):
+        # La consecuencia que importa: da igual lo que tengas en tu .env.
+        from telefono import telefonia
+        self.assertIsNone(telefonia.configuracion())
