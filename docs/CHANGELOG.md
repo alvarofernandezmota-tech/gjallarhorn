@@ -88,13 +88,39 @@ palabras vacías nunca va a estar completa.
 
 ## Lo que se sabe que falta
 
-### `buscar()` intersecta, y esa es la deuda de verdad
+### El umbral del 50 % de `buscar()`, y por qué no se toca
 
-Dos fallos del mismo día tuvieron la misma causa y los dos se arreglaron
-añadiendo palabras a una lista. **La tercera vez toca cambiar la función**:
-que ordene por cuántas palabras encajan en vez de exigirlas todas. Mientras
-tanto, cualquier verbo que a alguien se le ocurra y no esté en la lista deja
-al bot diciendo «no tengo ese servicio» de algo que sí tiene.
+> **Corrección del 2026-09-12.** Antes aquí ponía que `buscar()` «intersecta»
+> y «exige que cada palabra esté en el nombre del servicio». **Es falso**, y
+> se escribió sin haber leído la función. Lo que hace es medir cobertura por
+> los dos lados —lo preguntado cubierto por el servicio, o al revés— y pedir
+> que alguno pase del 50 %.
+
+El problema real es más fino: los casos que fallan caen **exactamente en
+0.50**, rechazados por un pelo.
+
+```
+«quiero encargar unos cupcakes»
+    {unos, cupcakes} vs {cupcakes, decorados, docena}
+    max(1/2, 1/3) = 0.50  → fuera
+
+«¿cuántas raciones tiene la mediana?»
+    2 de 4 por los dos lados = 0.50  → fuera
+```
+
+Y **el umbral no se puede bajar**: el caso que justifica la regla —«cambio de
+parabrisas» contra «Cambio de aceite», que le cantaba a un cliente el precio
+de un servicio que no existe— da 0.50 también, y tiene que seguir fuera.
+
+Se probó quitar de en medio las palabras que inflan la cuenta («unos»,
+«cuántas», «tiene»). **Arregló dos casos y rompió uno que funcionaba**: «¿con
+cuánta antelación hay que encargar?» se quedaba sin palabras suficientes y
+pasaba a recado. Se revirtió.
+
+Lo que queda claro y sirve para la próxima vez: **nombres de servicio cortos
+funcionan mucho mejor con esta regla**. «Cupcakes decorados, docena» son tres
+palabras y hace falta acertar dos para pasar del 50 %; «Cupcakes» sola
+bastaría con una. Antes de tocar el umbral, mirar los nombres de la tabla.
 
 ### La FAQ que nombra el catálogo entero gana a la tabla
 
