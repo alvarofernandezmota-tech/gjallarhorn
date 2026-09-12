@@ -119,9 +119,10 @@ def _el_telefono() -> list[Punto]:
     puesto = telefonia.configuracion()
     if not puesto:
         return [Punto(FALLO, "teléfono: sin nada con que comprobar la firma",
-                      "en .env: GJALLARHORN_TELEFONO_TOKEN (Auth Token de Twilio) "
-                      "o GJALLARHORN_TELEFONO_CLAVE_PUBLICA (clave pública de "
-                      "Telnyx). Sin una de las dos no hay webhook")]
+                      "en .env: GJALLARHORN_TELEFONO_TOKEN (Auth Token de Twilio, "
+                      "o la Signing Key de SignalWire), o "
+                      "GJALLARHORN_TELEFONO_CLAVE_PUBLICA (clave pública de "
+                      "Telnyx). Sin una de ellas no hay webhook")]
     sirven = telefonia.proveedores(puesto)
     if sirven:
         return [Punto(BIEN, f"teléfono: {' y '.join(sirven)}, el webhook arranca")]

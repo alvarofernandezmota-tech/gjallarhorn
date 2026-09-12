@@ -428,12 +428,19 @@ oye «Hola, Marta» y no se le vuelve a preguntar.
 Esto es lo que más tiempo hace perder, porque falla en silencio: el webhook
 arranca, y luego **todas** las llamadas se caen con un 403.
 
-| | Twilio | Telnyx |
-|---|---|---|
-| Qué firma | HMAC-SHA1 de la URL + los campos | Ed25519 sobre `marca\|cuerpo` |
-| Con qué | el Auth Token (secreto compartido) | su clave privada |
-| Qué pones tú | ese mismo Auth Token | la **clave pública** del portal |
-| En el `.env` | `GJALLARHORN_TELEFONO_TOKEN` | `GJALLARHORN_TELEFONO_CLAVE_PUBLICA` |
+| | Twilio | SignalWire | Telnyx |
+|---|---|---|---|
+| Qué firma | HMAC-SHA1 de la URL + los campos | **el mismo HMAC** | Ed25519 sobre `marca\|cuerpo` |
+| Con qué | el Auth Token | su Signing Key | su clave privada |
+| Qué pones tú | ese Auth Token | esa Signing Key | la **clave pública** del portal |
+| Cabecera | `X-Twilio-Signature` | `X-SignalWire-Signature` | `telnyx-signature-ed25519` |
+| En el `.env` | `GJALLARHORN_TELEFONO_TOKEN` | el mismo, o `…_CLAVE_SIGNALWIRE` | `…_CLAVE_PUBLICA` |
+
+SignalWire es compatible con TwiML a propósito —su LaML es un clon— y firma
+con el mismo algoritmo, hasta el punto de que su propia librería usa el
+validador de Twilio por dentro. Aquí eso se traduce en una cabecera más y
+cero criptografía nueva. Si es tu único proveedor, su Signing Key va en
+`GJALLARHORN_TELEFONO_TOKEN` y no hace falta nada más.
 
 En Telnyx la clave pública está en Keys & Credentials > Public Key. **No es
 la API Key**: la API Key (`KEY0197…`) ahí no vale para nada. `make revisar`

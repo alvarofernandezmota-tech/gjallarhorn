@@ -377,3 +377,81 @@ class TestElWebhookConTelnyx(CasoHandler):
         fin = {"CallSid": "CA1"}
         self.assertEqual(
             self.webhook(fin, self.firmado(fin), ruta="/telefono/fin")["codigo"], 200)
+
+
+class TestElWebhookConSignalWire(CasoHandler):
+    """El tercer proveedor, por el servidor entero.
+
+    SignalWire firma igual que Twilio y solo cambia la cabecera. Estas
+    pruebas van por `do_POST` y no por la función de la firma porque lo que
+    puede romperse está en medio: que el despachador elija el validador
+    bueno, y que la clave que use sea la de SignalWire y no otra.
+    """
+
+    CLAVE_SW = "5w5w5w5w5w5w5w5w5w5w5w5w5w5w5w5w"
+    CLAVE_TW = "7w7w7w7w7w7w7w7w7w7w7w7w7w7w7w7w"
+
+    def setUp(self):
+        super().setUp()
+        servidor.Comun.config_telefono = {"token": self.CLAVE_TW,
+                                          "clave_signalwire": self.CLAVE_SW,
+                                          "voz": "Polly.Lucia"}
+        servidor.Comun.centralita = telefonia.Centralita(servidor.Comun.negocio)
+
+    def firma(self, clave, campos, ruta="/telefono/entrada"):
+        import base64
+        import hashlib
+        import hmac
+        url = f"https://maquina.tailnet.ts.net{ruta}"
+        base = url + "".join(k + campos[k] for k in sorted(campos))
+        return base64.b64encode(
+            hmac.new(clave.encode(), base.encode(), hashlib.sha1).digest()).decode()
+
+    def webhook(self, campos=None, clave=None, cabecera=None):
+        campos = campos or {"CallSid": "CA1", "From": "+34600111222"}
+        cabecera = cabecera or telefonia.CABECERA_SIGNALWIRE
+        firmadas = {cabecera: self.firma(clave or self.CLAVE_SW, campos)}
+        return self.peticion(servidor.Telefono, "do_POST", "/telefono/entrada",
+                             campos, cabeceras=firmadas)
+
+    def test_una_llamada_de_signalwire_contesta_twiml(self):
+        salida = self.webhook()
+        self.assertEqual(salida["codigo"], 200)
+        self.assertIn(b"<Gather", salida["cuerpo"])
+        self.assertIn("peluquería".encode(), salida["cuerpo"])
+
+    def test_firmada_con_la_clave_de_twilio_no_entra(self):
+        # El fallo que importa: cada cabecera con su secreto. Si se validara
+        # «con lo que haya», la clave de un proveedor abriría la puerta del
+        # otro.
+        self.assertEqual(self.webhook(clave=self.CLAVE_TW)["codigo"], 403)
+
+    def test_y_al_reves_tampoco(self):
+        campos = {"CallSid": "CA1"}
+        firmadas = {telefonia.CABECERA_TWILIO: self.firma(self.CLAVE_SW, campos)}
+        salida = self.peticion(servidor.Telefono, "do_POST", "/telefono/entrada",
+                               campos, cabeceras=firmadas)
+        self.assertEqual(salida["codigo"], 403)
+
+    def test_con_el_cuerpo_cambiado_no_entra(self):
+        campos = {"CallSid": "CA1", "From": "+34600111222"}
+        firmadas = {telefonia.CABECERA_SIGNALWIRE: self.firma(self.CLAVE_SW, campos)}
+        otros = {"CallSid": "CA1", "From": "+34600999999"}
+        salida = self.peticion(servidor.Telefono, "do_POST", "/telefono/entrada",
+                               otros, cabeceras=firmadas)
+        self.assertEqual(salida["codigo"], 403)
+
+    def test_sin_firma_no_entra(self):
+        self.assertEqual(
+            self.peticion(servidor.Telefono, "do_POST", "/telefono/entrada",
+                          {"CallSid": "CA1"}, cabeceras={})["codigo"], 403)
+
+    def test_la_llamada_entera_por_signalwire(self):
+        self.assertEqual(self.webhook()["codigo"], 200)
+        campos = {"CallSid": "CA1", "SpeechResult": "¿cuánto vale un tinte?"}
+        firmadas = {telefonia.CABECERA_SIGNALWIRE:
+                    self.firma(self.CLAVE_SW, campos, "/telefono/turno")}
+        turno = self.peticion(servidor.Telefono, "do_POST", "/telefono/turno",
+                              campos, cabeceras=firmadas)
+        self.assertEqual(turno["codigo"], 200)
+        self.assertIn(b"45", turno["cuerpo"])

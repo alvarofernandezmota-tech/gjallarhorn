@@ -230,6 +230,11 @@ class Comun(BaseHTTPRequestHandler):
             vale = telefonia.firma_valida(
                 self.config_telefono.get("token", ""), url, campos,
                 self.headers.get(telefonia.CABECERA_TWILIO))
+        elif quien == "signalwire":
+            # Mismo validador que Twilio, otra cabecera y otro secreto.
+            vale = telefonia.firma_valida(
+                self.config_telefono.get("clave_signalwire", ""), url, campos,
+                self.headers.get(telefonia.CABECERA_SIGNALWIRE))
         elif quien == "telnyx":
             vale = telefonia.firma_valida_telnyx(
                 self.config_telefono.get("clave_publica", ""), cuerpo,

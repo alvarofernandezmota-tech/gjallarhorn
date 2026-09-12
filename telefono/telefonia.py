@@ -75,6 +75,11 @@ RAIZ = Path(__file__).resolve().parent.parent
 VOZ_POR_DEFECTO = "Polly.Lucia"      # castellano de España, en el proveedor
 CABECERA_TWILIO = "X-Twilio-Signature"
 CABECERA_TELNYX = "telnyx-signature-ed25519"
+# SignalWire firma IGUAL que Twilio —el mismo HMAC sobre la URL y los campos,
+# hasta el punto de que su propia libreria usa el validador de Twilio— pero
+# manda la firma en su cabecera. Por eso aqui solo hay un nombre mas: no hay
+# criptografia nueva que escribir, al contrario que con Telnyx.
+CABECERA_SIGNALWIRE = "X-SignalWire-Signature"
 CABECERA_MARCA_TELNYX = "telnyx-timestamp"
 VENTANA_TELNYX = 300                 # 5 min, lo que recomienda Telnyx
 IDIOMA = "es-ES"
@@ -113,9 +118,14 @@ def configuracion() -> dict | None:
     avisar._leer_env()
     token = os.environ.get("GJALLARHORN_TELEFONO_TOKEN", "").strip()
     clave = os.environ.get("GJALLARHORN_TELEFONO_CLAVE_PUBLICA", "").strip()
+    # La de SignalWire cae en el token si no se pone aparte: es el mismo tipo
+    # de secreto y casi nadie usa dos proveedores a la vez. Quien use los dos
+    # los separa; quien use solo SignalWire pone su clave donde el token y
+    # funciona sin enterarse de que existe otra variable.
+    firma_sw = os.environ.get("GJALLARHORN_TELEFONO_CLAVE_SIGNALWIRE", "").strip() or token
     if not token and not clave:
         return None
-    return {"token": token, "clave_publica": clave,
+    return {"token": token, "clave_publica": clave, "clave_signalwire": firma_sw,
             "voz": os.environ.get("GJALLARHORN_TELEFONO_VOZ", "").strip() or VOZ_POR_DEFECTO}
 
 
@@ -124,6 +134,9 @@ def proveedores(config: dict) -> list[str]:
     puestos = []
     if config.get("token") and not token_de_mentira(config["token"]):
         puestos.append("twilio")
+    sw = config.get("clave_signalwire") or ""
+    if sw and not token_de_mentira(sw) and sw != config.get("token"):
+        puestos.append("signalwire")
     clave = config.get("clave_publica") or ""
     # 32 bytes es lo que mide una clave Ed25519: si no, esta a medio pegar.
     if clave and not token_de_mentira(clave) and len(firmas.de_base64(clave)) == 32:
@@ -199,6 +212,8 @@ def quien_firma(cabeceras) -> str:
     """
     if cabeceras.get(CABECERA_TWILIO):
         return "twilio"
+    if cabeceras.get(CABECERA_SIGNALWIRE):
+        return "signalwire"
     if cabeceras.get(CABECERA_TELNYX):
         return "telnyx"
     return ""
