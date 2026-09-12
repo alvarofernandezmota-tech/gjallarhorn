@@ -1,3 +1,10 @@
+---
+tipo: changelog
+fecha: 2026-09-12
+repo: gjallarhorn
+etiquetas: [cambios, historial]
+---
+
 # Cambios
 
 Lo que ha ido pasando, sacado del historial y no de la memoria. El repo nació
