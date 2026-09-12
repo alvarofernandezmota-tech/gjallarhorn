@@ -1166,7 +1166,7 @@ class Conversacion:
         # mechas?» lleva la palabra y no quiere una. Se deja pasar a la FAQ,
         # que es donde el dueño tiene escrito lo que se contesta a eso.
         if (self.frases.reconoce("cita", comparable)
-                or self.frases.reconoce("disponibilidad", comparable)) \
+                or self._pregunta_por_huecos(comparable, limpia)) \
                 and not self.frases.reconoce("pregunta_cita", comparable):
             self._abrir_cita()
             self._rellenar_con(limpia)
@@ -1326,6 +1326,32 @@ class Conversacion:
         return Respuesta(self.frases.decir(clave), "recado",
                          aviso=f"Recado: «{limpia}»", cuelga=clave == "recado_insistente",
                          datos={"falta": "respuesta", "frase": limpia})
+
+    def _pregunta_por_huecos(self, comparable: str, frase: str) -> bool:
+        """¿Pregunta qué hay libre, o pregunta por un producto?
+
+        «¿Tenéis algo…?» se dice de las dos maneras, y lo que las separa es
+        que **una pregunta de disponibilidad lleva un cuándo**:
+
+            «¿tenéis algo el jueves por la mañana?»  → sí, quiere hueco
+            «¿tenéis algo sin gluten?»               → no, pregunta por la carta
+
+        Sin esto, la segunda abría una cita —«¿para qué servicio se la
+        apunto?»— en vez de contestar lo que el dueño tiene escrito en su
+        `faq.md`. Es el mismo error que el de `pregunta_cita`, con otra cara:
+        la palabra está y la intención no.
+
+        Las formas que ya dicen hueco por sí solas —«hueco», «libre»,
+        «disponible», «reservar»— entran por el intento `cita` y no pasan por
+        aquí, así que «¿tenéis algo libre?» sigue funcionando sin fecha.
+
+        Se intentó primero quitando «teneis algo» de la lista de frases, y
+        **rompió una prueba legítima**: «¿tenéis algo el jueves por la mañana?»
+        sí es disponibilidad. El fallo estaba en la lista, no en la prueba.
+        """
+        if not self.frases.reconoce("disponibilidad", comparable):
+            return False
+        return fechas.interpretar(frase, self.ahora()) is not None
 
     def _abierto_ahora(self, limpia: str) -> Respuesta:
         """Sí o no, y hasta cuándo o desde cuándo. El horario entero es el plan B."""
