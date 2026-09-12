@@ -34,112 +34,17 @@ import urllib.request
 from pathlib import Path
 
 from guardado import avisos
+from guardado import ajustes
 from guardado import datos
 
 RAIZ = Path(__file__).resolve().parent.parent
-# El `.env` en su propia variable, y las funciones lo resuelven al llamarse.
-# Estaba metido en los argumentos por defecto, que Python evalúa UNA VEZ al
-# definir la función: cambiar RAIZ después no cambiaba nada, y eso hacía
-# imposible que las pruebas se apartaran del .env de verdad. Un valor por
-# defecto que es una ruta calculada es siempre una trampa esperando.
-FICHERO_ENV = RAIZ / ".env"
 TIPOS_POR_DEFECTO = ("cita", "llamada", "fallo")
 _LOCK = threading.Lock()
 
 
-def _pares_del_env(fichero: Path) -> list[tuple[str, str]]:
-    """Los KEY=VALOR del fichero, en orden y con las repeticiones."""
-    if not fichero.exists():
-        return []
-    pares = []
-    for linea in fichero.read_text(encoding="utf-8").splitlines():
-        linea = linea.strip()
-        if not linea or linea.startswith("#") or "=" not in linea:
-            continue
-        clave, valor = linea.split("=", 1)
-        pares.append((clave.strip(), valor.strip().strip("'\"")))
-    return pares
-
-
-def _leer_env(fichero: Path | None = None) -> None:
-    """Carga KEY=VALOR de un .env al entorno, sin pisar lo que ya este puesto.
-
-    Si una clave sale dos veces en el fichero, vale **la ultima**. No es un
-    capricho: el servicio arranca con `EnvironmentFile=` y systemd hace eso
-    mismo. Leyendolo al reves —que es lo que salia del `setdefault` linea a
-    linea— `make revisar` veia el token bueno y el servicio arrancaba con el
-    de abajo, y no hay forma de dar con eso mirando: las llamadas se caen
-    con un 403 y aqui todo sale en verde.
-    """
-    fichero = FICHERO_ENV if fichero is None else fichero
-    ultimo = dict(_pares_del_env(fichero))         # la ultima gana, como systemd
-    for clave, valor in ultimo.items():
-        os.environ.setdefault(clave, valor)        # el entorno de verdad manda
-
-
-def poner_en_env(clave: str, valor: str, fichero: Path | None = None) -> str:
-    """Deja `clave=valor` en el .env. Devuelve «puesta», «cambiada» o «igual».
-
-    **Sustituye** las que hubiera en vez de añadir otra linea. Anadir es lo
-    que sale de un `echo >>`, y asi es como acabo un .env con el token tres
-    veces: una comentada, una con el hueco del ejemplo y otra de verdad.
-    Con systemd gana la ultima, o sea que la que acabas de poner puede no
-    ser la que se use, y eso no se ve por ningun lado.
-
-    No se toca lo que este comentado: un `# CLAVE=` del ejemplo es
-    documentacion, no una clave puesta.
-    """
-    fichero = FICHERO_ENV if fichero is None else fichero
-    linea = f"{clave}={valor}"
-    lineas = (fichero.read_text(encoding="utf-8").splitlines()
-              if fichero.exists() else [])
-    donde = [i for i, linea_ya in enumerate(lineas)
-             if linea_ya.strip().startswith(f"{clave}=")]
-    if not donde:
-        if lineas and lineas[-1].strip():
-            lineas.append("")
-        lineas.append(linea)
-        que = "puesta"
-    else:
-        que = "igual" if lineas[donde[0]] == linea else "cambiada"
-        lineas[donde[0]] = linea
-        for sobra in reversed(donde[1:]):        # las repetidas, fuera
-            del lineas[sobra]
-            que = "cambiada"
-    fichero.write_text("\n".join(lineas) + "\n", encoding="utf-8")
-    return que
-
-
-def quitar_del_env(clave: str, fichero: Path | None = None) -> int:
-    """Quita esa clave del .env. Devuelve cuantas lineas se han ido.
-
-    Lo comentado no se toca: un `# CLAVE=` del ejemplo es documentacion.
-    """
-    fichero = FICHERO_ENV if fichero is None else fichero
-    if not fichero.exists():
-        return 0
-    lineas = fichero.read_text(encoding="utf-8").splitlines()
-    quedan = [linea for linea in lineas
-              if not linea.strip().startswith(f"{clave}=")]
-    if len(quedan) != len(lineas):
-        fichero.write_text("\n".join(quedan) + "\n", encoding="utf-8")
-    return len(lineas) - len(quedan)
-
-
-def repetidas_en_env(fichero: Path | None = None) -> list[str]:
-    """Claves puestas mas de una vez. Vale la ultima, pero conviene saberlo."""
-    fichero = FICHERO_ENV if fichero is None else fichero
-    visto, repetidas = set(), []
-    for clave, _ in _pares_del_env(fichero):
-        if clave in visto and clave not in repetidas:
-            repetidas.append(clave)
-        visto.add(clave)
-    return repetidas
-
-
 def configuracion() -> dict | None:
     """Token, chat y tipos. None si no esta configurado."""
-    _leer_env()
+    ajustes.leer()
     token = os.environ.get("GJALLARHORN_TELEGRAM_TOKEN", "").strip()
     chat = os.environ.get("GJALLARHORN_TELEGRAM_CHAT", "").strip()
     if not token or not chat:

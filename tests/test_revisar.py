@@ -23,7 +23,7 @@ from guardado import copias  # noqa: E402
 from guardado import datos  # noqa: E402
 from negocio import frases as _frases  # noqa: E402
 from negocio import negocio as negocios  # noqa: E402
-from dueno import avisar  # noqa: E402
+from guardado import ajustes  # noqa: E402
 from dueno import revisar as _revisar  # noqa: E402
 from telefono import telefonia  # noqa: E402
 
@@ -169,7 +169,7 @@ class TestElEnvMalPuesto(CasoRevisar):
         self.addCleanup(lambda: os.environ.__setitem__(
             "GJALLARHORN_TELEFONO_TOKEN", antes) if antes else
             os.environ.pop("GJALLARHORN_TELEFONO_TOKEN", None))
-        avisar._leer_env(fichero)
+        ajustes.leer(fichero)
         self.assertEqual(os.environ["GJALLARHORN_TELEFONO_TOKEN"], "el_de_abajo")
 
     def test_lo_que_ya_esta_en_el_entorno_sigue_mandando(self):
@@ -177,23 +177,23 @@ class TestElEnvMalPuesto(CasoRevisar):
         fichero = self.env("GJALLARHORN_TELEFONO_TOKEN=el_del_fichero\n")
         os.environ["GJALLARHORN_TELEFONO_TOKEN"] = "el_del_entorno"
         self.addCleanup(lambda: os.environ.pop("GJALLARHORN_TELEFONO_TOKEN", None))
-        avisar._leer_env(fichero)
+        ajustes.leer(fichero)
         self.assertEqual(os.environ["GJALLARHORN_TELEFONO_TOKEN"], "el_del_entorno")
 
     def test_una_clave_repetida_se_avisa(self):
         fichero = self.env("GJALLARHORN_TELEFONO_TOKEN=uno\n"
                            "GJALLARHORN_TELEGRAM_CHAT=123\n"
                            "GJALLARHORN_TELEFONO_TOKEN=dos\n")
-        self.assertEqual(avisar.repetidas_en_env(fichero),
+        self.assertEqual(ajustes.repetidas(fichero),
                          ["GJALLARHORN_TELEFONO_TOKEN"])
 
     def test_un_env_normal_no_tiene_repetidas(self):
         fichero = self.env("# un comentario\nGJALLARHORN_TELEFONO_TOKEN=uno\n"
                            "\nGJALLARHORN_TELEGRAM_CHAT=123\n")
-        self.assertEqual(avisar.repetidas_en_env(fichero), [])
+        self.assertEqual(ajustes.repetidas(fichero), [])
 
     def test_sin_env_no_revienta(self):
-        self.assertEqual(avisar.repetidas_en_env(Path("/no/existe/.env")), [])
+        self.assertEqual(ajustes.repetidas(Path("/no/existe/.env")), [])
 
 
 class TestLaOrden(CasoRevisar):

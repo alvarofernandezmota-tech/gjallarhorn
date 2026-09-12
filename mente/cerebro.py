@@ -119,8 +119,8 @@ def proveedor() -> str:
     Sin `GJALLARHORN_LLM`, lo de siempre: Claude si hay clave y nada si no.
     Así, quien ya lo tenía funcionando no tiene que tocar nada.
     """
-    from dueno import avisar
-    avisar._leer_env()
+    from guardado import ajustes
+    ajustes.leer()
     elegido = os.environ.get("GJALLARHORN_LLM", "").strip().lower()
     if elegido in ("no", "off", "ninguno", "0"):
         return ""

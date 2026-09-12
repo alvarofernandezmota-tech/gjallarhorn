@@ -65,6 +65,7 @@ from urllib.parse import parse_qs
 
 from dueno import avisar
 from guardado import avisos
+from guardado import ajustes
 from guardado import datos
 from mente import memoria
 from telefono import firmas
@@ -115,7 +116,7 @@ def configuracion() -> dict | None:
     tiene que pasar. Un webhook sin con que comprobar la firma es un
     telefono que atiende a cualquiera que sepa la URL.
     """
-    avisar._leer_env()
+    ajustes.leer()
     token = os.environ.get("GJALLARHORN_TELEFONO_TOKEN", "").strip()
     clave = os.environ.get("GJALLARHORN_TELEFONO_CLAVE_PUBLICA", "").strip()
     # La de SignalWire cae en el token si no se pone aparte: es el mismo tipo

@@ -58,20 +58,19 @@ CREDENCIALES = ("GJALLARHORN_TELEFONO_TOKEN", "GJALLARHORN_TELEFONO_CLAVE_PUBLIC
 def _sin_credenciales_de_verdad() -> None:
     """Quita las credenciales del entorno y esconde el .env del repo.
 
-    Lo segundo hace falta además de lo primero: `avisar._leer_env()` va a
+    Lo segundo hace falta además de lo primero: `ajustes.leer()` va a
     buscar el fichero cada vez, así que no basta con limpiar `os.environ`.
-    Se apunta a un `.env` que no existe. **RAIZ no se toca**: sigue siendo la
-    raíz del repo de verdad, que es lo que dicen otras pruebas.
+    Se le dice por su propia variable que el .env está en una carpeta vacía.
     """
-    for variable in CREDENCIALES:
-        os.environ.pop(variable, None)
-
     import sys
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from dueno import avisar
+    from guardado import ajustes
+
+    for variable in CREDENCIALES:
+        os.environ.pop(variable, None)
     vacia = tempfile.mkdtemp(prefix="gjallarhorn-sin-env-")
     atexit.register(shutil.rmtree, vacia, ignore_errors=True)
-    avisar.FICHERO_ENV = Path(vacia) / ".env"
+    os.environ[ajustes.VARIABLE] = str(Path(vacia) / ".env")
 
 
 _datos_de_mentira()

@@ -21,8 +21,8 @@ import sys
 import time
 from pathlib import Path
 
-from dueno import avisar
 from guardado import avisos
+from guardado import ajustes
 from guardado import datos
 from negocio import negocio as negocios
 from dueno import revisar as _revisar
@@ -117,7 +117,7 @@ def _pedir_la_clave() -> str | bool:
         return False
 
     variable, comoSeLlama = cual
-    que = avisar.poner_en_env(variable, dicho)
+    que = ajustes.poner(variable, dicho)
     print(f"\n   ✅ Guardada {comoSeLlama} en .env ({que}).")
     print("      El .env esta en el .gitignore: no se sube.")
     import os
@@ -159,7 +159,7 @@ def _barrer_los_huecos(config: dict) -> None:
     for variable, valor in ((TOKEN_TWILIO, config.get("token")),
                             (CLAVE_TELNYX, config.get("clave_publica"))):
         if valor and telefonia.token_de_mentira(valor):
-            avisar.quitar_del_env(variable)
+            ajustes.quitar(variable)
             os.environ.pop(variable, None)
             print(f"      → he borrado {variable} del .env: era el hueco del")
             print("        ejemplo sin rellenar, no servia para nada.")

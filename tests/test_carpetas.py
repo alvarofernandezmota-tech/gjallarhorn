@@ -138,29 +138,36 @@ class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
 
     def test_las_credenciales_no_estan_en_el_entorno(self):
         import os
+
         import entorno
         for variable in entorno.CREDENCIALES:
             with self.subTest(variable=variable):
                 self.assertIsNone(os.environ.get(variable))
 
     def test_no_se_mira_el_env_del_repo(self):
-        from dueno import avisar
-        self.assertNotEqual(avisar.FICHERO_ENV, RAIZ / ".env")
-        self.assertFalse(avisar.FICHERO_ENV.exists())
+        from guardado import ajustes
+        self.assertNotEqual(ajustes.fichero(), RAIZ / ".env")
+        self.assertFalse(ajustes.fichero().exists())
 
-    def test_pero_la_raiz_sigue_siendo_la_de_verdad(self):
-        # Apartar el .env no puede mover la raíz: de ella cuelgan negocios/,
-        # datos/ y la plantilla del servicio.
-        from dueno import avisar
-        self.assertEqual(avisar.RAIZ, RAIZ)
+    def test_el_env_se_busca_desde_el_directorio_de_trabajo(self):
+        # Y no desde `__file__`: este módulo vive en la parte compartida, y
+        # esa ruta apuntaría a la librería en vez de a la aplicación que la
+        # usa. El `.env` es de quien despliega, no de quien programa.
+        import os
+
+        from guardado import ajustes
+        antes = os.environ.pop(ajustes.VARIABLE, None)
+        self.addCleanup(lambda: os.environ.__setitem__(ajustes.VARIABLE, antes)
+                        if antes else None)
+        self.assertEqual(ajustes.fichero(), Path.cwd() / ".env")
 
     def test_la_ruta_del_env_se_resuelve_al_llamar_no_al_definir(self):
-        # La causa raíz. Estaba en un argumento por defecto, y Python los
-        # evalúa UNA VEZ al definir la función: cambiar la variable después
-        # no cambiaba nada, y las pruebas no podían apartarse.
-        from dueno import avisar
-        for funcion in (avisar._leer_env, avisar.poner_en_env,
-                        avisar.quitar_del_env, avisar.repetidas_en_env):
+        # La causa raíz de la primera versión de esto: la ruta estaba en un
+        # argumento por defecto, y Python los evalúa UNA VEZ al definir la
+        # función. Cambiar la variable después no cambiaba nada.
+        from guardado import ajustes
+        for funcion in (ajustes.leer, ajustes.poner,
+                        ajustes.quitar, ajustes.repetidas):
             with self.subTest(funcion=funcion.__name__):
                 self.assertNotIn(RAIZ / ".env", funcion.__defaults__ or ())
 

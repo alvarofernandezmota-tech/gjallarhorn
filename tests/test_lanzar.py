@@ -21,7 +21,7 @@ import entorno  # noqa: E402
 
 import ed25519_de_mentira as telnyx  # noqa: E402
 
-from dueno import avisar  # noqa: E402
+from guardado import ajustes  # noqa: E402
 from dueno import lanzar  # noqa: E402
 
 
@@ -99,42 +99,42 @@ class TestEscribirEnElEnv(unittest.TestCase):
         return self.env.read_text(encoding="utf-8").splitlines()
 
     def test_en_un_env_que_no_existe_se_crea(self):
-        self.assertEqual(avisar.poner_en_env("UNA", "1", self.env), "puesta")
+        self.assertEqual(ajustes.poner("UNA", "1", self.env), "puesta")
         self.assertEqual(self.lineas(), ["UNA=1"])
 
     def test_se_sustituye_en_vez_de_anadir(self):
-        avisar.poner_en_env("UNA", "vieja", self.env)
-        self.assertEqual(avisar.poner_en_env("UNA", "nueva", self.env), "cambiada")
+        ajustes.poner("UNA", "vieja", self.env)
+        self.assertEqual(ajustes.poner("UNA", "nueva", self.env), "cambiada")
         self.assertEqual(self.lineas(), ["UNA=nueva"])
 
     def test_las_repetidas_de_antes_se_limpian(self):
         # El caso real: la misma clave tres veces, y con systemd gana la
         # última, así que la que acabas de poner puede no ser la que se usa.
         self.env.write_text("UNA=a\nOTRA=x\nUNA=b\nUNA=c\n", encoding="utf-8")
-        avisar.poner_en_env("UNA", "buena", self.env)
+        ajustes.poner("UNA", "buena", self.env)
         self.assertEqual(self.lineas(), ["UNA=buena", "OTRA=x"])
-        self.assertEqual(avisar.repetidas_en_env(self.env), [])
+        self.assertEqual(ajustes.repetidas(self.env), [])
 
     def test_lo_comentado_no_se_toca(self):
         # Un «# CLAVE=» del ejemplo es documentación, no una clave puesta.
         self.env.write_text("# UNA=lo que sea\nOTRA=x\n", encoding="utf-8")
-        avisar.poner_en_env("UNA", "1", self.env)
+        ajustes.poner("UNA", "1", self.env)
         self.assertIn("# UNA=lo que sea", self.lineas())
         self.assertIn("UNA=1", self.lineas())
 
     def test_poner_lo_mismo_dos_veces_no_cambia_nada(self):
-        avisar.poner_en_env("UNA", "1", self.env)
-        self.assertEqual(avisar.poner_en_env("UNA", "1", self.env), "igual")
+        ajustes.poner("UNA", "1", self.env)
+        self.assertEqual(ajustes.poner("UNA", "1", self.env), "igual")
         self.assertEqual(self.lineas().count("UNA=1"), 1)
 
     def test_no_se_come_lo_de_los_demas(self):
         self.env.write_text("OTRA=x\nTERCERA=y\n", encoding="utf-8")
-        avisar.poner_en_env("UNA", "1", self.env)
+        ajustes.poner("UNA", "1", self.env)
         for sigue in ("OTRA=x", "TERCERA=y", "UNA=1"):
             self.assertIn(sigue, self.lineas())
 
     def test_el_fichero_acaba_en_salto_de_linea(self):
-        avisar.poner_en_env("UNA", "1", self.env)
+        ajustes.poner("UNA", "1", self.env)
         self.assertTrue(self.env.read_text(encoding="utf-8").endswith("\n"))
 
 
@@ -196,23 +196,23 @@ class TestBarrerLosHuecos(unittest.TestCase):
     def test_se_borra_el_hueco_del_ejemplo(self):
         self.env.write_text("GJALLARHORN_TELEFONO_TOKEN=<tu API Key de Telnyx>\n"
                             "GJALLARHORN_TELEGRAM_CHAT=123\n", encoding="utf-8")
-        self.assertEqual(avisar.quitar_del_env("GJALLARHORN_TELEFONO_TOKEN", self.env), 1)
+        self.assertEqual(ajustes.quitar("GJALLARHORN_TELEFONO_TOKEN", self.env), 1)
         self.assertEqual(self.env.read_text(encoding="utf-8").splitlines(),
                          ["GJALLARHORN_TELEGRAM_CHAT=123"])
 
     def test_lo_comentado_no_se_toca(self):
         # Un «# CLAVE=» del ejemplo es documentación, no una clave puesta.
         self.env.write_text("# GJALLARHORN_TELEFONO_TOKEN=\nOTRA=x\n", encoding="utf-8")
-        avisar.quitar_del_env("GJALLARHORN_TELEFONO_TOKEN", self.env)
+        ajustes.quitar("GJALLARHORN_TELEFONO_TOKEN", self.env)
         self.assertIn("# GJALLARHORN_TELEFONO_TOKEN=",
                       self.env.read_text(encoding="utf-8"))
 
     def test_si_no_esta_no_pasa_nada(self):
         self.env.write_text("OTRA=x\n", encoding="utf-8")
-        self.assertEqual(avisar.quitar_del_env("NO_ESTA", self.env), 0)
+        self.assertEqual(ajustes.quitar("NO_ESTA", self.env), 0)
 
     def test_sin_env_no_revienta(self):
-        self.assertEqual(avisar.quitar_del_env("LO_QUE_SEA", Path("/no/existe/.env")), 0)
+        self.assertEqual(ajustes.quitar("LO_QUE_SEA", Path("/no/existe/.env")), 0)
 
     def test_una_credencial_de_verdad_no_se_borra_sola(self):
         # `_barrer_los_huecos` solo llama a esto para lo que es de relleno.

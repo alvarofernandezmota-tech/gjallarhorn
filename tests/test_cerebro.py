@@ -10,12 +10,15 @@ import json
 import os
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401
+
+from guardado import ajustes  # noqa: E402
 
 from mente import cerebro  # noqa: E402
 from negocio import negocio as negocios  # noqa: E402
@@ -67,10 +70,9 @@ class TestEntender(CasoCerebro):
         real = dict(os.environ)
         os.environ.pop("ANTHROPIC_API_KEY", None)
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(real)))
-        from dueno import avisar
-        leer = avisar._leer_env
-        avisar._leer_env = lambda *a, **k: None
-        self.addCleanup(setattr, avisar, "_leer_env", leer)
+        parche = mock.patch.object(ajustes, "leer", lambda *a, **k: None)
+        parche.start()
+        self.addCleanup(parche.stop)
         self.assertFalse(cerebro.configurado())
         self.assertIsNone(cerebro.entender("x", self.base))
 

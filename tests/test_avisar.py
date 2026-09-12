@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import urllib.error
 from pathlib import Path
 
@@ -13,6 +14,7 @@ sys.path.insert(0, str(RAIZ))
 import entorno  # noqa: E402,F401
 
 from dueno import avisar  # noqa: E402
+from guardado import ajustes  # noqa: E402
 from guardado import avisos  # noqa: E402
 
 CONFIG = {"token": "t", "chat": "c", "tipos": ("cita", "fallo")}
@@ -64,9 +66,9 @@ class TestEnviar(unittest.TestCase):
         for clave in ("GJALLARHORN_TELEGRAM_TOKEN", "GJALLARHORN_TELEGRAM_CHAT"):
             os.environ.pop(clave, None)
         self.addCleanup(lambda: (os.environ.clear(), os.environ.update(entorno_real)))
-        real = avisar._leer_env
-        avisar._leer_env = lambda *a, **k: None       # ni un .env de verdad
-        self.addCleanup(setattr, avisar, "_leer_env", real)
+        parche = mock.patch.object(ajustes, "leer", lambda *a, **k: None)  # ni un .env
+        parche.start()
+        self.addCleanup(parche.stop)
         self.assertIsNone(avisar.configuracion())
         self.assertFalse(avisar.enviar("hola", mandar=Buzon()))
 
@@ -107,7 +109,7 @@ class TestElEnv(unittest.TestCase):
             os.environ["PRUEBA_GJ_B"] = "ya-estaba"
             self.addCleanup(os.environ.pop, "PRUEBA_GJ_A", None)
             self.addCleanup(os.environ.pop, "PRUEBA_GJ_B", None)
-            avisar._leer_env(env)
+            ajustes.leer(env)
         self.assertEqual(os.environ["PRUEBA_GJ_A"], "uno")
         self.assertEqual(os.environ["PRUEBA_GJ_B"], "ya-estaba")
 

@@ -35,6 +35,7 @@ from dueno import avisar
 from mente import conocimiento
 from guardado import copias
 from guardado import datos
+from guardado import ajustes
 from negocio import frases as _frases
 from negocio import negocio as negocios
 from telefono import telefonia
@@ -150,7 +151,7 @@ def _el_telefono() -> list[Punto]:
 def _por_donde_habla() -> list[Punto]:
     puntos = []
     puntos.extend(_el_telefono())
-    repetidas = avisar.repetidas_en_env()
+    repetidas = ajustes.repetidas()
     if repetidas:
         puntos.append(Punto(AVISO, f".env: {', '.join(repetidas)} está puesto dos veces",
                             "vale el de abajo; borra el que sobre para no jugártela"))
