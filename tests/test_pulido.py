@@ -15,11 +15,11 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402
 
-from mente import conocimiento  # noqa: E402
-from mente import fechas  # noqa: E402
-from negocio import frases  # noqa: E402
-from negocio import negocio as negocios  # noqa: E402
-from mente import recepcion  # noqa: E402
+from hugin.mente import conocimiento  # noqa: E402
+from hugin.mente import fechas  # noqa: E402
+from hugin.negocio import frases  # noqa: E402
+from hugin.negocio import negocio as negocios  # noqa: E402
+from hugin.mente import recepcion  # noqa: E402
 from telefono import telefonia  # noqa: E402
 
 

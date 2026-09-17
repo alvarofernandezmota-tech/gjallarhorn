@@ -64,14 +64,14 @@ def puerto_cogido(puerto: int) -> bool:
 
 def negocio_y_datos(negocio: str) -> list[str]:
     sys.path.insert(0, str(RAIZ))
-    from negocio import agenda
-    from guardado import avisos
-    from guardado import datos
-    from mente import fechas
-    from mente import conocimiento
-    from negocio import frases
-    from mente import memoria
-    from negocio import negocio as negocios
+    from hugin.negocio import agenda
+    from hugin.guardado import avisos
+    from hugin.guardado import datos
+    from hugin.mente import fechas
+    from hugin.mente import conocimiento
+    from hugin.negocio import frases
+    from hugin.mente import memoria
+    from hugin.negocio import negocio as negocios
 
     lineas = []
     try:

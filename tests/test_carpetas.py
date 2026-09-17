@@ -19,7 +19,14 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-PAQUETES = {"telefono", "mente", "negocio", "guardado", "dueno"}
+# Lo que es de gjallarhorn: por dónde entra la conversación y quién la opera.
+# El cerebro —`mente`, `negocio`, `guardado`— ya no está aquí: vive en hugin,
+# montado como submódulo ([ADR-019]). Esa es la frontera que vigila
+# `TestLaFronteraConHugin`, más abajo.
+PAQUETES = {"telefono", "dueno"}
+
+# Los del cerebro, que tienen que estar DENTRO de hugin y no fuera.
+DE_HUGIN = ("mente", "negocio", "guardado")
 
 
 class TestLaEstructura(unittest.TestCase):
@@ -72,9 +79,9 @@ class TestLoQueSeRompeAlMover(unittest.TestCase):
         # La prueba de verdad: que los sitios que leen ficheros los vean.
         import os
         from dueno import avisar
-        from guardado import datos
-        from mente import conocimiento
-        from negocio import negocio as negocios
+        from hugin.guardado import datos
+        from hugin.mente import conocimiento
+        from hugin.negocio import negocio as negocios
         self.assertEqual(avisar.RAIZ, RAIZ)
         self.assertTrue(negocios.carpeta_negocios().is_dir(),
                         negocios.carpeta_negocios())
@@ -95,14 +102,15 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
 
     def ordenes_del_makefile(self):
         texto = (RAIZ / "Makefile").read_text(encoding="utf-8")
-        return set(re.findall(r"\$\(PY\) -m ([a-z_]+\.[a-z_]+)", texto))
+        return set(re.findall(r"\$\(PY\) -m ([a-z_]+(?:\.[a-z_]+)+)", texto))
 
     def test_cada_orden_del_makefile_apunta_a_un_modulo_que_existe(self):
         for orden in self.ordenes_del_makefile():
-            paquete, modulo = orden.split(".")
+            # Puede tener dos partes (`dueno.panel`) o tres, ahora que el
+            # cerebro va por el submódulo (`hugin.mente.cerebro`).
+            ruta = RAIZ.joinpath(*orden.split(".")).with_suffix(".py")
             with self.subTest(orden=orden):
-                self.assertTrue((RAIZ / paquete / f"{modulo}.py").exists(),
-                                f"«make» llama a {orden} y no está")
+                self.assertTrue(ruta.exists(), f"«make» llama a {orden} y no está")
 
     def test_ningun_servicio_llama_a_un_fichero_suelto(self):
         for unidad in RAIZ.glob("*.service.in"):
@@ -118,6 +126,21 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
             with self.subTest(unidad=unidad.name):
                 self.assertIn("WorkingDirectory=",
                               unidad.read_text(encoding="utf-8"))
+
+    def test_la_actualizacion_sola_trae_el_submodulo_antes_de_reiniciar(self):
+        # El ADR-019 lo promete con estas palabras: "la unidad trae el
+        # submódulo antes de reiniciar, y si no puede, no reinicia". Sin
+        # esto, `git pull --ff-only` en el servicio de Madre mueve el
+        # puntero de `.gitmodules` pero no descarga hugin/, y el `make
+        # reiniciar` de detrás tira el proceso que SÍ tenía el cerebro
+        # cargado por uno que revienta con ImportError en el primer
+        # mensaje: el bot se queda mudo sin que nada lo diga.
+        texto = (RAIZ / "gjallarhorn-actualizar.service.in").read_text(encoding="utf-8")
+        self.assertIn("git submodule update", texto)
+        # Y en el orden que importa: si el pull trae commits nuevos pero el
+        # submódulo no se puede traer, `reiniciar` no debe llegar a correr.
+        antes_de_reiniciar = texto.split("make -s reiniciar")[0]
+        self.assertIn("git submodule update", antes_de_reiniciar)
 
 
 if __name__ == "__main__":
@@ -168,3 +191,53 @@ class TestLaSuiteNoLeeTusSecretos(unittest.TestCase):
         # La consecuencia que importa: da igual lo que tengas en tu .env.
         from telefono import telefonia
         self.assertIsNone(telefonia.configuracion())
+
+
+class TestLaFronteraConHugin(unittest.TestCase):
+    """La mitad de la frontera del [ADR-019] que le toca a gjallarhorn.
+
+    La otra mitad está en hugin (`tests/test_libreria.py`), que se cae si el
+    cerebro importa un canal. Se comprueba desde los dos lados a propósito:
+    una frontera que solo se mira desde uno se cruza por el otro.
+    """
+
+    def modulos(self):
+        for carpeta in (*PAQUETES, "tests"):
+            yield from sorted((RAIZ / carpeta).rglob("*.py"))
+
+    def test_el_cerebro_no_ha_vuelto_a_casa(self):
+        # Copiar `mente/` aquí «para probar una cosa» y olvidarlo dentro es
+        # la forma fácil de acabar con dos cerebros que se van separando.
+        for carpeta in DE_HUGIN:
+            with self.subTest(carpeta=carpeta):
+                self.assertFalse((RAIZ / carpeta).exists(),
+                                 f"{carpeta}/ tiene que vivir en hugin, no aquí")
+
+    def test_al_cerebro_se_le_habla_por_su_nombre(self):
+        # `from mente import x` funcionaría si alguien deja una copia suelta,
+        # y entonces no se sabe cuál de los dos se está usando.
+        mal = []
+        for fichero in self.modulos():
+            for numero, linea in enumerate(
+                    fichero.read_text(encoding="utf-8").splitlines(), 1):
+                if re.match(rf"\s*(from|import)\s+({'|'.join(DE_HUGIN)})\b", linea):
+                    mal.append(f"{fichero.relative_to(RAIZ)}:{numero}: {linea.strip()}")
+        self.assertEqual(mal, [], "\n".join([
+            "se le habla al cerebro sin decir de dónde sale:", *mal,
+            "", "Es `from hugin.mente import ...`, no `from mente import ...`.",
+        ]))
+
+    def test_el_submodulo_esta_declarado_y_traido(self):
+        self.assertIn("path = hugin",
+                      (RAIZ / ".gitmodules").read_text(encoding="utf-8"))
+        # Un submódulo sin inicializar es una carpeta vacía, y el fallo sale
+        # luego como un ImportError que no dice que falte un `git submodule`.
+        self.assertTrue((RAIZ / "hugin" / "mente" / "recepcion.py").exists(),
+                        "hugin está vacío: falta `git submodule update --init`")
+
+    def test_make_pruebas_entra_en_el_submodulo(self):
+        # Sin esto, `make pruebas` sale en verde con hugin roto.
+        texto = (RAIZ / "Makefile").read_text(encoding="utf-8")
+        objetivo = texto.split("\npruebas:")[1].split("\n\n")[0]
+        self.assertIn("cd hugin", objetivo,
+                      "«make pruebas» no corre las pruebas de hugin")

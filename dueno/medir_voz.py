@@ -40,8 +40,8 @@ import tempfile
 import time
 from pathlib import Path
 
-from negocio import negocio as negocios
-from mente import recepcion
+from hugin.negocio import negocio as negocios
+from hugin.mente import recepcion
 from telefono import voz
 
 # Un silencio mayor que esto al teléfono es cuando el cliente dice «¿hola?».

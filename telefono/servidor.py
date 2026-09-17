@@ -66,12 +66,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from dueno import avisar
-from guardado import avisos
-from guardado import datos
-from negocio import frases
-from negocio import negocio as negocios
+from hugin.guardado import avisos
+from hugin.guardado import datos
+from hugin.negocio import frases
+from hugin.negocio import negocio as negocios
 from dueno import panel as _panel
-from mente import recepcion
+from hugin.mente import recepcion
 from telefono import telefonia
 from telefono import voz
 
@@ -491,7 +491,7 @@ def main() -> int:
     if Comun.negocio.horario is None:
         print("⚠️  sin [horario] en negocio.toml: se toma nota, no se reserva")
 
-    from mente import conocimiento
+    from hugin.mente import conocimiento
     faltan = conocimiento.que_falta(Comun.negocio.conocimiento)
     if faltan:
         print(f"⚠️  {Comun.negocio.nombre}: sin rellenar {', '.join(faltan)}")
