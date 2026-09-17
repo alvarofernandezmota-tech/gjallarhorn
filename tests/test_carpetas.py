@@ -127,6 +127,21 @@ class TestLosPuntosDeEntrada(unittest.TestCase):
                 self.assertIn("WorkingDirectory=",
                               unidad.read_text(encoding="utf-8"))
 
+    def test_la_actualizacion_sola_trae_el_submodulo_antes_de_reiniciar(self):
+        # El ADR-019 lo promete con estas palabras: "la unidad trae el
+        # submódulo antes de reiniciar, y si no puede, no reinicia". Sin
+        # esto, `git pull --ff-only` en el servicio de Madre mueve el
+        # puntero de `.gitmodules` pero no descarga hugin/, y el `make
+        # reiniciar` de detrás tira el proceso que SÍ tenía el cerebro
+        # cargado por uno que revienta con ImportError en el primer
+        # mensaje: el bot se queda mudo sin que nada lo diga.
+        texto = (RAIZ / "gjallarhorn-actualizar.service.in").read_text(encoding="utf-8")
+        self.assertIn("git submodule update", texto)
+        # Y en el orden que importa: si el pull trae commits nuevos pero el
+        # submódulo no se puede traer, `reiniciar` no debe llegar a correr.
+        antes_de_reiniciar = texto.split("make -s reiniciar")[0]
+        self.assertIn("git submodule update", antes_de_reiniciar)
+
 
 if __name__ == "__main__":
     unittest.main()
