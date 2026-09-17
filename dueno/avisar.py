@@ -33,8 +33,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from guardado import avisos
-from guardado import datos
+from hugin.guardado import avisos
+from hugin.guardado import datos
 
 RAIZ = Path(__file__).resolve().parent.parent
 # El `.env` en su propia variable, y las funciones lo resuelven al llamarse.

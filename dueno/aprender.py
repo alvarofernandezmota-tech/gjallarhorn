@@ -42,9 +42,9 @@ from pathlib import Path
 
 import re
 
-from guardado import avisos
-from guardado import datos
-from mente import conocimiento
+from hugin.guardado import avisos
+from hugin.guardado import datos
+from hugin.mente import conocimiento
 
 # Cuánto se mira hacia atrás. Un mes: lo de hace medio año o ya lo escribió
 # o ya no le interesa.
@@ -114,7 +114,7 @@ def _palabras(frase: str, base: Path | None) -> set[str]:
     Las mismas que usa el buscador: si «uñas» y «uña» fueran dos palabras
     distintas, la mitad de los grupos saldrían partidos por una ese.
     """
-    from mente import rag
+    from hugin.mente import rag
 
     return set(rag._tokens(frase, base))
 
@@ -126,7 +126,7 @@ def _como_se_dicen(frase: str) -> dict[str, str]:
     pantalla del dueño tiene que poner «masajes», que es lo que le han
     preguntado.
     """
-    from mente import rag
+    from hugin.mente import rag
 
     dichas = {}
     for palabra in re.findall(r"\w+", frase):
@@ -210,7 +210,7 @@ def main(argumentos: list[str] | None = None) -> int:
     """`python3 aprender.py`: qué le falta saber al agente, por orden."""
     import argparse
 
-    from negocio import negocio as negocios
+    from hugin.negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(
         description="Lo que el agente no supo contestar, para escribirlo")

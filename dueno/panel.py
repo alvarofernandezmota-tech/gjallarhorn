@@ -37,13 +37,13 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
-from negocio import agenda as _agenda
+from hugin.negocio import agenda as _agenda
 from dueno import aprender
-from guardado import avisos
-from guardado import datos as _datos
-from mente import conocimiento
-from mente import fechas
-from mente import memoria
+from hugin.guardado import avisos
+from hugin.guardado import datos as _datos
+from hugin.mente import conocimiento
+from hugin.mente import fechas
+from hugin.mente import memoria
 
 # Cuántos días se enseñan. Hoy y mañana es lo que se mira de verdad; la
 # semana entera es una hoja de cálculo, y para eso ya está `agenda.py`.
@@ -206,7 +206,7 @@ def main(argumentos: list[str] | None = None) -> int:
     """`python3 panel.py`: lo mismo que enseña la pantalla, en la terminal."""
     import argparse
 
-    from negocio import negocio as negocios
+    from hugin.negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="El panel del dueño, en texto")
     parser.add_argument("--negocio", default="peluqueria")

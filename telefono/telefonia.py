@@ -64,11 +64,11 @@ from pathlib import Path
 from urllib.parse import parse_qs
 
 from dueno import avisar
-from guardado import avisos
-from guardado import datos
-from mente import memoria
+from hugin.guardado import avisos
+from hugin.guardado import datos
+from hugin.mente import memoria
 from telefono import firmas
-from mente import recepcion
+from hugin.mente import recepcion
 from telefono import voz as voz_
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -279,7 +279,7 @@ PISTAS_FIJAS = ["cita", "precio", "cuánto vale", "anular", "cambiar", "horario"
 
 def pistas_de(negocio) -> str:
     """Las palabras que el proveedor debe esperar oír, para transcribir mejor."""
-    from mente import conocimiento
+    from hugin.mente import conocimiento
     servicios = [s["servicio"] for s in conocimiento.tarifas(negocio.conocimiento)]
     vistas, pistas = set(), []
     for pista in servicios + PISTAS_FIJAS:
@@ -473,7 +473,7 @@ def main() -> int:
     import argparse
     import sys as _sys
 
-    from negocio import negocio as negocios
+    from hugin.negocio import negocio as negocios
 
     parser = argparse.ArgumentParser(description="El telefono, sin telefono")
     parser.add_argument("--simular", action="store_true", help="una llamada por teclado")

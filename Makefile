@@ -61,10 +61,10 @@ serve: $(PY)  ## la demo, visible solo en tu tailnet (para el movil)
 	@tailscale serve status
 
 cerebro: $(PY)  ## ¿que entiende el LLM de una frase? (FRASE="...")
-	$(PY) -m mente.cerebro "$(FRASE)" --negocio $(NEGOCIO)
+	$(PY) -m hugin.mente.cerebro "$(FRASE)" --negocio $(NEGOCIO)
 
 buscar: $(PY)  ## ¿que encuentra en el conocimiento? (FRASE="...")
-	$(PY) -m mente.rag "$(FRASE)" --negocio $(NEGOCIO)
+	$(PY) -m hugin.mente.rag "$(FRASE)" --negocio $(NEGOCIO)
 
 panel: $(PY)  ## el dia del dueño en la terminal (en el movil: /panel)
 	$(PY) -m dueno.panel --negocio $(NEGOCIO)
@@ -73,7 +73,7 @@ aprender: $(PY)  ## que te preguntan y no supo contestar
 	$(PY) -m dueno.aprender --negocio $(NEGOCIO)
 
 frases: $(PY)  ## todo lo que dice tu bot, y si trata de tu o de usted
-	$(PY) -m negocio.frases --negocio $(NEGOCIO)
+	$(PY) -m hugin.negocio.frases --negocio $(NEGOCIO)
 
 lanzar: $(PY)  ## de aqui a la primera llamada, paso a paso
 	@$(PY) -m dueno.lanzar --negocio $(NEGOCIO) --puerto $(PUERTO_TELEFONO)
@@ -82,10 +82,10 @@ revisar: $(PY)  ## ¿esta el bot listo para coger llamadas? (sale 1 si no)
 	$(PY) -m dueno.revisar --negocio $(NEGOCIO)
 
 copia: $(PY)  ## copia de hoy de las citas, los clientes y los avisos
-	$(PY) -m guardado.copias --negocio $(NEGOCIO)
+	$(PY) -m hugin.guardado.copias --negocio $(NEGOCIO)
 
 copias: $(PY)  ## que copias hay guardadas
-	$(PY) -m guardado.copias --negocio $(NEGOCIO) --listar
+	$(PY) -m hugin.guardado.copias --negocio $(NEGOCIO) --listar
 
 agentes: $(PY)  ## lo que trabaja fuera de la llamada: recordatorios, resumen, revision
 	$(PY) -m dueno.agentes --negocio $(NEGOCIO)
@@ -102,11 +102,11 @@ sin-agentes-diarios:  ## dejar de correrlos solos
 	systemctl --user disable --now gjallarhorn-agentes.timer 2>/dev/null || true
 
 clientes: $(PY)  ## las fichas de quien ha llamado (esto SI lleva nombres)
-	$(PY) -m mente.memoria
+	$(PY) -m hugin.mente.memoria
 
 olvidar: $(PY)  ## borrar la ficha de un numero: make olvidar TELEFONO=+34600...
 	@test -n "$(TELEFONO)" || { echo "Falta el numero: make olvidar TELEFONO=+34600000000"; exit 1; }
-	$(PY) -m mente.memoria --olvidar "$(TELEFONO)"
+	$(PY) -m hugin.mente.memoria --olvidar "$(TELEFONO)"
 
 funnel: $(PY)  ## publicar SOLO el webhook del telefono en internet
 	@$(PY) -c "import telefonia, sys; c = telefonia.configuracion(); \
@@ -134,8 +134,12 @@ telefono-prueba: $(PY)  ## una llamada por teclado, como la veria el proveedor
 telegram-prueba: $(PY)  ## ¿llega un mensaje al movil? comprueba token y chat
 	$(PY) -m dueno.avisar --prueba
 
-pruebas: $(PY)  ## las pruebas y el lint
+pruebas: $(PY)  ## las pruebas y el lint, las de aqui y las de hugin
 	$(PY) -m unittest discover -s tests
+	@# El cerebro vive en el submodulo y tiene sus propias pruebas. Sin esta
+	@# linea, `make pruebas` sale en verde con hugin roto, que es la peor
+	@# forma de enterarse: la frontera se vigila desde los dos lados.
+	cd hugin && $(PY) -m unittest discover -s tests
 	@# Una comprobacion saltada NO es una comprobacion pasada: si no hay
 	@# ruff se dice con todas las letras en vez de morir con un
 	@# "command not found" que parece que el codigo esta mal.

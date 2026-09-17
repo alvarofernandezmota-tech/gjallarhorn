@@ -32,11 +32,11 @@ from datetime import date
 
 from dueno import aprender
 from dueno import avisar
-from mente import conocimiento
-from guardado import copias
-from guardado import datos
-from negocio import frases as _frases
-from negocio import negocio as negocios
+from hugin.mente import conocimiento
+from hugin.guardado import copias
+from hugin.guardado import datos
+from hugin.negocio import frases as _frases
+from hugin.negocio import negocio as negocios
 from telefono import telefonia
 
 BIEN, AVISO, FALLO = "✅", "⚠️ ", "❌"
@@ -69,7 +69,7 @@ def _conocimiento(negocio) -> list[Punto]:
         puntos.append(Punto(AVISO, "faq.md: vacía",
                             "el horario y lo que se pregunta por teléfono salen de ahí"))
     else:
-        from mente import rag
+        from hugin.mente import rag
         cuantos = len(rag.indice(negocio.conocimiento).pasajes)
         puntos.append(Punto(BIEN, f"conocimiento: {cuantos} párrafo(s) que puede contestar"))
     return puntos

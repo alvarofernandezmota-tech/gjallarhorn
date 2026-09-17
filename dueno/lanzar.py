@@ -22,9 +22,9 @@ import time
 from pathlib import Path
 
 from dueno import avisar
-from guardado import avisos
-from guardado import datos
-from negocio import negocio as negocios
+from hugin.guardado import avisos
+from hugin.guardado import datos
+from hugin.negocio import negocio as negocios
 from dueno import revisar as _revisar
 from telefono import telefonia
 from telefono import urlpublica

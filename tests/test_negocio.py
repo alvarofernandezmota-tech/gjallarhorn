@@ -20,8 +20,8 @@ sys.path.insert(0, str(RAIZ))
 
 import entorno  # noqa: E402,F401 — antes que nada
 
-from guardado import avisos  # noqa: E402
-from negocio import negocio as negocios  # noqa: E402
+from hugin.guardado import avisos  # noqa: E402
+from hugin.negocio import negocio as negocios  # noqa: E402
 from telefono import demo  # noqa: E402
 from telefono import voz  # noqa: E402
 
