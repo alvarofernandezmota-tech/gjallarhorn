@@ -32,6 +32,40 @@ IDIOMA = "es"
 MODELO_POR_DEFECTO = "small"
 
 
+def por_que_no_carga(error: ImportError, paquete: str) -> str:
+    """El mensaje de «no carga», diciendo cual de las dos cosas pasa.
+
+    Los dos motores arrastran paquetes compilados: faster-whisper trae
+    `ctranslate2`, `onnxruntime`, `av` y `tokenizers`; piper-tts trae los
+    suyos. Si cualquiera de ellos revienta al importarse —una ABI que no
+    cuadra, una .so que falta, una dependencia sin declarar— lo que sale es
+    un `ImportError` **que no es el del paquete que se pedia**.
+
+    Este mensaje decia «falta X, instalalo» en los dos casos, y eso costo
+    media hora en Madre el 2026-09-17 (en bifrost, que usa este mismo
+    Whisper): el paquete estaba instalado y el aviso mandaba a instalarlo
+    otra vez. El fallo de verdad —faster-whisper importa `requests` sin
+    declararlo— no se veia por ninguna parte.
+
+    Se distingue por el nombre del modulo que fallo, y en los dos casos va
+    el error de verdad detras: el que no se puede leer no se puede arreglar.
+    """
+    culpable = (getattr(error, "name", "") or "").split(".")[0]
+    propio = paquete.replace("-", "_").split("_")[0]
+    if culpable in ("", propio, paquete.replace("-", "_")):
+        return (
+            f"falta {paquete} para este Python. Instalalo con el pip de ESTE "
+            "interprete, que no tiene por que ser el que contesta a "
+            f"`pip`:\n      {sys.executable} -m pip install {paquete}"
+            f"\n\n(el error tal cual: {error})")
+    return (
+        f"{paquete} esta instalado, pero no puede cargar: {error}\n\n"
+        f"El que falla es «{culpable}», no {paquete}. Suele ser una version "
+        "compilada que no cuadra con este Python, o una dependencia que el "
+        "paquete importa y no declara. Para verlo entero:\n"
+        f"      {sys.executable} -c \"import {culpable}\"")
+
+
 class Transcriptor(Protocol):
     """Cualquier cosa que convierta un fichero de audio en texto."""
 
@@ -58,12 +92,7 @@ class Whisper:
             try:
                 from faster_whisper import WhisperModel
             except ImportError as error:
-                raise RuntimeError(
-                    "falta faster-whisper para este Python. Instalalo con el "
-                    "pip de ESTE interprete, que no tiene por que ser el que "
-                    f"contesta a `pip`:\n      {sys.executable} -m pip install "
-                    "faster-whisper"
-                ) from error
+                raise RuntimeError(por_que_no_carga(error, "faster-whisper")) from error
             # int8 en CPU: es lo que hace que esto sea viable sin GPU.
             self._motor = WhisperModel(self.modelo, device="cpu", compute_type="int8")
         return self._motor
@@ -148,11 +177,7 @@ class Piper:
                 from piper import PiperVoice
                 from piper.download_voices import download_voice
             except ImportError as error:
-                raise RuntimeError(
-                    "falta piper-tts para este Python. Instalalo con el pip de "
-                    "ESTE interprete, que no tiene por que ser el que contesta "
-                    f"a `pip`:\n      {sys.executable} -m pip install piper-tts"
-                ) from error
+                raise RuntimeError(por_que_no_carga(error, "piper-tts")) from error
             # `load` quiere la ruta de un .onnx, no el nombre de la voz. Se
             # descarga la primera vez y se queda en cache: pedirle a alguien
             # que baje el modelo a mano antes de arrancar es una forma segura
