@@ -1,0 +1,41 @@
+# Dependencias de gjallarhorn, con la version fijada.
+#
+# Hasta el 2026-09-18 este fichero no existia: el README decia
+# `pip install faster-whisper piper-tts` y el Makefile `pip install
+# faster-whisper piper-tts anthropic`, los dos sueltos y sin versiones. Dos
+# sitios que decian cosas distintas y ninguno que se pudiera comprobar.
+#
+# Fijadas y no "la ultima" por lo de siempre: esto corre en Madre como
+# servicio, y una version nueva con la API cambiada deja el telefono mudo sin
+# que nadie haya tocado el codigo.
+#
+# Todo va al .venv del repo, nunca al pip del sistema (en Arch esta bloqueado
+# y el paquete acaba donde el interprete que falla no mira):
+#
+#     make instalar
+#
+# Ademas hace falta `ffmpeg` como paquete del sistema —eso no lo instala pip—
+# y `espeak-ng` para que Piper fonemice.
+
+# La oreja: Whisper en local (telefono/voz.py).
+faster-whisper==1.1.1
+
+# `requests` va aqui porque faster-whisper NO lo declara y sin embargo lo
+# importa: faster_whisper/utils.py, linea 8, `import requests`, a pelo.
+#
+# Funcionaba de rebote porque se lo traia `huggingface-hub`. La 1.x se paso a
+# `httpx` y dejo de traerlo, asi que en una instalacion nueva el paquete se
+# instala "bien" y revienta al primer uso con un `ModuleNotFoundError: No
+# module named 'requests'`, hablando de algo que nadie habia pedido.
+#
+# Pasado de verdad en Madre el 2026-09-17, en bifrost, que usa el mismo
+# Whisper. Aqui estaba esperando a pasar igual.
+requests==2.34.2
+
+# La boca: Piper en local (telefono/voz.py).
+piper-tts==1.8.0
+
+# El LLM opcional del cerebro (hugin, mente/cerebro.py). Sin
+# ANTHROPIC_API_KEY no se usa, pero el paquete tiene que estar para cuando
+# se use: el import va dentro de la funcion.
+anthropic==1.6.0

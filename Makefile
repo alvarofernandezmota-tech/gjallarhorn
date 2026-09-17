@@ -32,7 +32,7 @@ $(PY):
 	  echo "⚠️  no he podido instalar ruff (¿sin red?). Las pruebas van igual."
 
 instalar: $(PY)  ## venv + dependencias + modelos de voz, de una vez
-	$(PIP) install faster-whisper piper-tts anthropic
+	$(PIP) install -r requirements.txt
 	$(PY) -m telefono.voz
 
 nuevo:  ## dar de alta otro negocio: make nuevo NEGOCIO=mi-negocio
