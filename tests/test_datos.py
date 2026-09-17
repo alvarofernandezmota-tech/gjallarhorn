@@ -189,7 +189,7 @@ class TestCadaBotHablaASuManera(unittest.TestCase):
         from mente import recepcion
         datos.usar(negocio)
         n = negocios.cargar(negocio)
-        llamada = recepcion.conversacion_de(n)
+        llamada = recepcion.conversacion_de(n, ahora=entorno.AHORA)
         return [llamada.atender(f).texto for f in frases_], n
 
     def test_uno_trata_de_usted_y_el_otro_tutea(self):

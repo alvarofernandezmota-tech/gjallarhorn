@@ -41,8 +41,13 @@ lo contrario de lo que necesita una cita.
 
 ✅ **De punta a punta, por voz, desde un móvil.** Conversación con memoria,
 agenda que reserva contra el horario, avisos al móvil por Telegram, y todo
-se opera con `make`. 220 pruebas, `ruff` limpio. Verificado en la máquina de
-casa el 2026-09-11: una llamada por voz desde un iPhone, oída y contestada.
+se opera con `make`. 795 pruebas, `ruff` limpio (contadas el 2026-09-17).
+Verificado en la máquina de casa el 2026-09-11: una llamada por voz desde un
+iPhone, oída y contestada.
+
+> Aquí ponía **220 pruebas**, y había 795. La cifra no se recontó al
+> escribirla y no la comprueba nadie: si la tocas, cuéntalas
+> (`make pruebas` lo dice en la última línea) en vez de arrastrar la de antes.
 
 ⚠️ Lo que **no** está hecho, y conviene no leerlo al revés:
 
@@ -105,7 +110,8 @@ estas dos órdenes en local son la única verificación real.
   `.env` o no van.
 - Marcar un aviso como visto antes de que Telegram confirme que lo tiene.
 - Dejar que el LLM redacte lo que se le dice al cliente, o ponga un precio.
-  Su salida es un JSON de cuatro campos, y así se queda.
+  Su salida es un JSON de seis campos (`intencion`, `servicio`, `cuando`,
+  `nombre`, `franja`, `confianza`), y así se queda.
 - Atender una petición del webhook de teléfono sin comprobar la firma.
 - Poner una ruta nueva en el puerto del teléfono (el público). Ahí solo vive
   `/telefono/*`; todo lo demás va en el de la demo, que no sale del tailnet.

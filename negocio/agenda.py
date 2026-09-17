@@ -150,9 +150,16 @@ class Hueco:
     fecha: str
     hora: str
 
-    @property
-    def dicho(self) -> str:
-        return f"{fechas.en_palabras(self.fecha)} a {fechas.hora_en_palabras(self.hora)}"
+    def dicho(self, hoy: date) -> str:
+        """En palabras, con el día que sea «hoy» para quien lo va a oír.
+
+        `hoy` se pide, no se adivina: era una propiedad que llamaba al reloj
+        del sistema, así que un hueco elegido con el reloj de la agenda se
+        decía con otro distinto. En producción coinciden y no se nota; en
+        cuanto se fija uno, la agenda ofrece el viernes y la boca dice
+        «mañana». Es el mismo fallo que ya se separó en `Conversacion.ahora`.
+        """
+        return f"{fechas.en_palabras(self.fecha, hoy)} a {fechas.hora_en_palabras(self.hora)}"
 
 
 class Agenda:

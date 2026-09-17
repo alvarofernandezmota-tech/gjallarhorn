@@ -94,7 +94,8 @@ class TestElInformeNoLlevaDatosDeNadie(unittest.TestCase):
         entorno.aislar(self)
         self.negocio = negocios.cargar("peluqueria")
         agenda = ag.Agenda("peluqueria", self.negocio.horario,
-                           ruta=Path(self._tmp.name) / "agenda.json")
+                           ruta=Path(self._tmp.name) / "agenda.json",
+                           ahora=entorno.AHORA)
         agenda.reservar("2026-12-24", "10:00", 30, "Corte de caballero", "Consuelo Ramírez")
         avisos.registrar("llamada", "Llamada de +34611223344 (Consuelo Ramírez)")
 
@@ -173,7 +174,8 @@ class TestDosALaVezNoSePisan(unittest.TestCase):
 
     def agenda(self):
         return ag.Agenda("peluqueria", self.negocio.horario,
-                         ruta=Path(self._tmp.name) / "agenda.json")
+                         ruta=Path(self._tmp.name) / "agenda.json",
+                         ahora=entorno.AHORA)
 
     def test_veinte_reservas_a_la_vez_no_pierden_ninguna(self):
         agenda = self.agenda()
