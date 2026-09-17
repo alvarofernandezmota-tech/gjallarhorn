@@ -183,7 +183,12 @@ class TestNoSeCitaEnElPasado(CasoAnular):
         dicho = self.guion(self.a_las(21), "cita para un tinte",
                            "hoy", "a las once de la mañana")
         self.assertIn("ya ha pasado", dicho)
-        self.assertIn("miércoles 16", dicho)
+        # El día siguiente se dice «mañana», no «el miércoles 16»: es lo que
+        # diría una persona. Esto esperaba el nombre del día, y pasaba solo
+        # porque `Hueco.dicho` miraba el reloj del sistema en vez del de la
+        # agenda —con el reloj de verdad el miércoles 16 ya no era mañana—.
+        self.assertIn("queda mañana", dicho)
+        self.assertNotIn("hoy", dicho)          # el día que se acabó, no se ofrece
         self.assertEqual(self.agenda.citas(), [])
 
     def test_la_agenda_no_reserva_en_el_pasado_ni_pidiendoselo(self):

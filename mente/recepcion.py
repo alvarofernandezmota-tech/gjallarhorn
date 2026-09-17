@@ -392,11 +392,13 @@ class Conversacion:
     peor que puede pasar aquí, así que a medias también se apunta.
     """
 
-    def __init__(self, base: Path | None = None, agenda=None, preguntar=None):
+    def __init__(self, base: Path | None = None, agenda=None, preguntar=None,
+                 ahora=None):
         self.base = base
         self.frases = _frases.cargar(base)
         self.agenda = agenda          # agenda.Agenda, o None: entonces solo toma nota
         self.preguntar = preguntar    # el LLM de cerebro.py; None = el real, si hay clave
+        self._ahora = ahora           # para las pruebas; si no, el reloj de Madrid
         self.cita: Cita | None = None
         self.servicio: dict | None = None     # del que se viene hablando
         self.nombre: str | None = None        # a nombre de quién va lo que se pida
@@ -564,9 +566,10 @@ class Conversacion:
             return self._sin_huecos()
         self._ofrecidos, self.esperando = proximos, "fecha"
         cita.fecha, cita.franja = None, None
+        hoy = self.ahora().date()
         return Respuesta(self.frases.decir(
             "sin_huecos_dia", fecha=dia,
-            alternativas=self._enumerar([h.dicho for h in proximos])), "cita")
+            alternativas=self._enumerar([h.dicho(hoy) for h in proximos])), "cita")
 
     def _primeros_huecos(self) -> Respuesta:
         """«Cuando podáis», sin día: lo más pronto que hay, un hueco por día."""
@@ -578,8 +581,10 @@ class Conversacion:
         if not proximos:
             return self._sin_huecos()
         self._ofrecidos, self.esperando = proximos, "fecha"
+        hoy = self.ahora().date()
         return Respuesta(self.frases.decir(
-            "primeros_huecos", alternativas=self._enumerar([h.dicho for h in proximos])), "cita")
+            "primeros_huecos",
+            alternativas=self._enumerar([h.dicho(hoy) for h in proximos])), "cita")
 
     def _sin_huecos(self) -> Respuesta:
         self.cita.cerrada = True
@@ -798,8 +803,14 @@ class Conversacion:
         uno para probar, «hoy» significa un día en la conversación y otro en
         la agenda, y la cita se va a un día que nadie pidió. Dos relojes en el
         mismo sitio son un fallo esperando a que alguien los separe.
+
+        Sin agenda —el negocio que solo toma nota— no hay de dónde sacarlo, y
+        ahí vale el que se pase al construir la llamada. Es la misma costura
+        que `Agenda`: sin nada, el reloj de verdad.
         """
-        return self.agenda.ahora() if self.agenda is not None else fechas.ahora()
+        if self.agenda is not None:
+            return self.agenda.ahora()
+        return self._ahora or fechas.ahora()
 
     def _duracion(self) -> int:
         return _agenda.duracion_en_minutos(
@@ -875,7 +886,7 @@ class Conversacion:
 
         if cambia_dia:
             huecos = self.agenda.proximos_huecos(cita.fecha, duracion, por_dia=1)
-            dichos = [h.dicho for h in huecos]
+            dichos = [h.dicho(self.ahora().date()) for h in huecos]
             cita.fecha, cita.hora, cita.acotada = None, None, False
             self.esperando = "fecha"
         else:
@@ -1438,7 +1449,12 @@ class Conversacion:
         return texto
 
 
-def conversacion_de(negocio) -> Conversacion:
-    """Una llamada nueva para un negocio, con agenda si tiene horario escrito."""
-    ag = _agenda.Agenda(negocio.ruta.name, negocio.horario) if negocio.horario else None
-    return Conversacion(negocio.conocimiento, agenda=ag)
+def conversacion_de(negocio, ahora=None) -> Conversacion:
+    """Una llamada nueva para un negocio, con agenda si tiene horario escrito.
+
+    `ahora` es para las pruebas: sin él, el reloj de verdad. Va a la agenda
+    cuando la hay, porque el reloj de la llamada sale de ella.
+    """
+    ag = (_agenda.Agenda(negocio.ruta.name, negocio.horario, ahora=ahora)
+          if negocio.horario else None)
+    return Conversacion(negocio.conocimiento, agenda=ag, ahora=ahora)

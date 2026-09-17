@@ -7,10 +7,23 @@ gjallarhorn no depende de ningún otro repo: aquí solo se desvían **sus** dato
 """
 
 import atexit
+from datetime import datetime
 import os
 from pathlib import Path
 import shutil
 import tempfile
+from zoneinfo import ZoneInfo
+
+
+# El reloj de la suite: viernes 11 de septiembre de 2026, a las diez.
+#
+# Una prueba que escribe una fecha a mano y deja correr el reloj de verdad
+# caduca: la agenda no reserva en el pasado, así que el día que esa fecha
+# quedó atrás se pusieron 21 pruebas en rojo solas, sin que nadie tocara el
+# código. Quien fije una fecha, que fije también el reloj —`ahora=AHORA` al
+# construir la agenda o la llamada— y así la suite dice lo mismo hoy que
+# dentro de un año.
+AHORA = datetime(2026, 9, 11, 10, 0, tzinfo=ZoneInfo("Europe/Madrid"))
 
 
 # El negocio con el que se prueba es **de las pruebas**, y vive en

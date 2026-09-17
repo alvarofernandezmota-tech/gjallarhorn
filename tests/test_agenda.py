@@ -32,13 +32,19 @@ HORARIO = agenda.Horario.desde({
 })
 LUNES, MARTES, JUEVES = "2026-09-14", "2026-09-15", "2026-09-17"
 
+# Esas tres fechas son futuro **si el reloj es el de la suite**, que está
+# congelado el viernes anterior (`entorno.AHORA`). Con el reloj de verdad
+# dejaron de serlo, y 16 pruebas de este fichero se pusieron en rojo solas.
+VIERNES = entorno.AHORA
+
 
 class CasoAgenda(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.agenda = agenda.Agenda("prueba", HORARIO,
-                                    ruta=Path(self._tmp.name) / "agenda.json")
+                                    ruta=Path(self._tmp.name) / "agenda.json",
+                                    ahora=VIERNES)
 
 
 class TestElHorario(unittest.TestCase):
@@ -129,8 +135,8 @@ class TestLosHuecos(CasoAgenda):
 
     def test_los_huecos_se_dicen_como_una_persona(self):
         hueco = self.agenda.proximos_huecos(LUNES, 30)[0]
-        self.assertIn("martes", hueco.dicho)
-        self.assertIn("diez de la mañana", hueco.dicho)
+        self.assertIn("martes", hueco.dicho(VIERNES.date()))
+        self.assertIn("diez de la mañana", hueco.dicho(VIERNES.date()))
 
 
 class TestLaConversacionReserva(unittest.TestCase):
@@ -140,8 +146,11 @@ class TestLaConversacionReserva(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.negocio = negocios.cargar("peluqueria")
+        # `Conversacion.ahora()` sale de la agenda —el reloj de la llamada es
+        # uno solo—, así que congelar esta congela también la conversación.
         self.agenda = agenda.Agenda("peluqueria", self.negocio.horario,
-                                    ruta=Path(self._tmp.name) / "agenda.json")
+                                    ruta=Path(self._tmp.name) / "agenda.json",
+                                    ahora=VIERNES)
 
     def llamada(self):
         return recepcion.Conversacion(self.negocio.conocimiento, agenda=self.agenda)

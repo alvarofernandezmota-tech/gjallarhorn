@@ -38,7 +38,7 @@ class Caso(unittest.TestCase):
         self.n = negocios.cargar(self.negocio)
 
     def dice(self, *frases):
-        llamada = recepcion.conversacion_de(self.n)
+        llamada = recepcion.conversacion_de(self.n, ahora=entorno.AHORA)
         return [llamada.atender(f).texto for f in frases], llamada
 
 
