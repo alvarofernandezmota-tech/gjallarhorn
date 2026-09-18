@@ -1,7 +1,26 @@
 # gjallarhorn
 
 Un recepcionista telefónico: atiende la llamada, informa de tarifas y toma la
-cita. **Proyecto independiente, sin dependencias de ningún otro repo.**
+cita.
+
+El cerebro —entender, decidir y recordar— vive aparte, en
+[hugin](https://github.com/alvarofernandezmota-tech/hugin), que entra aquí
+como submódulo ([ADR-019]). Esa separación es a propósito: hugin **no sabe
+que gjallarhorn existe**, así que el mismo cerebro sirve para el teléfono o
+para cualquier otro canal. Lo que hay en este repo es el canal —audio,
+telefonía— y las herramientas del dueño del negocio.
+
+> **Para clonarlo hace falta traer el submódulo**, o `hugin/` queda vacío y
+> el primer mensaje revienta con un `ImportError` que no dice que falte un
+> `git submodule`:
+>
+> ```bash
+> git clone --recurse-submodules https://github.com/alvarofernandezmota-tech/gjallarhorn.git
+> ```
+>
+> Si ya lo has clonado sin eso: `git submodule update --init --recursive`.
+> Y si hugin no es accesible para ti, el cerebro no se puede traer — pide
+> acceso antes de seguir.
 
 > **Estado: funciona de punta a punta por voz, desde un móvil.** Conversa con
 > memoria, reserva contra el horario y avisa por Telegram. Falta la telefonía
