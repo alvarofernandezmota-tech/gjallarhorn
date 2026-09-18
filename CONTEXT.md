@@ -7,16 +7,23 @@ tarifas y toma la cita. Por voz, y en local.
 
 ## Decisiones
 
-### 1. Proyecto independiente, sin dependencias de ningún otro repo
+### 1. El canal es propio; el cerebro vive en hugin, como submódulo
 
-**Decisión**: repo propio, con sus propios `mente/fechas.py`, `guardado/almacen.py` y
-`telefono/voz.py`. No importa nada de fuera.
+**Decisión histórica**: repo propio, con sus propios `mente/fechas.py`,
+`guardado/almacen.py` y `telefono/voz.py`. No importaba nada de fuera.
 
 **Razón**: hubo unas horas en las que esto tiraba de otro repo y **se cortó a
 propósito**. Un recepcionista de peluquería no tiene por qué arrastrar el repo
 del diario personal de nadie para arrancar, y un fallo en un lado no puede
 dejar mudo el otro. Si alguna vez hace falta algo de fuera, **se copia**: son
 treinta líneas frente a una dependencia entre proyectos.
+
+**Estado actual (ADR-019)**: `mente/fechas.py` y `guardado/almacen.py` se
+sacaron a `hugin`, que entra aquí como submódulo. La razón de fondo no
+cambió —el canal sigue sin arrastrar el repo del diario personal de nadie—,
+solo que ahora esa independencia vive en un límite de repo (submódulo
+versionado) en vez de en una copia. Lo que sigue siendo propio, sin
+dependencia externa, es `telefono/voz.py`.
 
 ### 2. `mente/fechas.py` mira hacia delante
 
