@@ -71,19 +71,21 @@ todas:
 Eso no depende del modelo que se use: la consulta la resuelve una tabla, no un
 generativo. Un LLM podrá redactar mejor la frase, **el número no lo pone él**.
 
-## Independiente
+## Lo que vive aquí, y lo que vive en hugin
 
-Nada de esto importa otro repo. Lo que necesita, lo tiene:
+`mente/fechas.py` y `guardado/almacen.py` ya no están en este repo: se
+mudaron a `hugin` (ADR-019), el submódulo del que habla la cabecera. Lo que
+sí es propio de gjallarhorn es el canal:
 
 | | |
 |---|---|
-| `mente/fechas.py` | cuándo quiere la cita, **siempre hacia delante** |
-| `guardado/almacen.py` | JSON con versión de esquema y escritura atómica |
 | `telefono/voz.py` | Whisper y Piper, las dos **en local** |
 
-Lo de `mente/fechas.py` no es solo independencia: un parser de diario resuelve hacia
-**atrás** —«el lunes» es el que pasó— y un recepcionista siempre mira hacia
-delante. Nadie reserva cita para el martes pasado.
+«Cuándo quiere la cita, siempre hacia delante» sigue siendo la regla de
+`mente/fechas.py`, solo que ahora se lee su código y sus pruebas dentro de
+`hugin/`, no aquí. Un parser de diario resuelve hacia **atrás** —«el lunes»
+es el que pasó— y un recepcionista siempre mira hacia delante: nadie reserva
+cita para el martes pasado.
 
 ## Dar de alta un negocio: copiar una carpeta
 

@@ -25,17 +25,22 @@ audio → voz.escuchar → recepcion.atender → voz.hablar → audio
 Las decisiones y sus porqués: [`CONTEXT.md`](CONTEXT.md). Cómo se usa:
 [`README.md`](README.md).
 
-## Independiente: no importa ningún otro repo
+## hugin es un submódulo, no una copia
 
-`mente/fechas.py`, `guardado/almacen.py` y `telefono/voz.py` son propios. Hubo unas horas en las que
-esto tiraba de otro repo y **se cortó a propósito**: un recepcionista de
-peluquería no tiene por qué arrastrar el repo del diario personal de nadie
-para arrancar.
+`mente/fechas.py` y `guardado/almacen.py` vivieron aquí un tiempo y se
+sacaron a `hugin` (ADR-019): entra como submódulo, y sin
+`git clone --recurse-submodules` (o `git submodule update --init
+--recursive` después) `hugin/` queda vacío y el primer mensaje revienta con
+un `ImportError` que no dice que falta un submódulo. `telefono/voz.py` sí es
+propio de este repo — es el canal, y hugin no sabe ni que existe.
 
-Si alguna vez hace falta algo de otro repo, **cópialo aquí**. Son treinta
-líneas frente a una dependencia entre proyectos. Y ojo con copiar de un
-diario: un parser de fechas de diario resuelve hacia **atrás**, que es justo
-lo contrario de lo que necesita una cita.
+Ojo si alguna vez se actualiza el puntero del submódulo con `git submodule
+update --remote`: hugin pasó por el ADR-024, una reestructuración mayor que
+convirtió su raíz de «es el paquete» a «contiene el paquete»
+(`hugin/hugin/mente/...`, instalado con `pip install -e ".[dev]"`, no con
+`sys.path.insert` a la raíz). El puntero de este repo sigue clavado en un
+commit **anterior** a ese cambio a propósito; moverlo sin más rompería cada
+`from hugin.mente import ...` de `telefono/` y `dueno/`.
 
 ## Estado actual
 
